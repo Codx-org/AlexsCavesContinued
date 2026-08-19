@@ -18,9 +18,14 @@ mod.description = "Explore new rare cave biomes hidden under the surface of the 
 mod.authors = ["Alexthe668", "Noonyeyz", "Codx.io"]
 mod.license.name = "LGPL-3.0"
 mod.license.url = "https://www.gnu.org/licenses/lgpl-3.0.html"
-mod.sources_url = "https://github.com/AlexModGuy/AlexsCaves"
-mod.homepage_url = "https://www.curseforge.com/minecraft/mc-mods/alexs-caves"
-mod.issues_url = "https://github.com/AlexModGuy/AlexsCaves/issues"
+# These three are USER-FACING: they become Fabric's contact{sources,issues,homepage},
+# Forge/NeoForge's issueTrackerURL + displayURL/modUrl, and the Maven POM's scm/url. They
+# must name THIS continuation, not upstream, or every bug report lands in Alexthe668's
+# tracker. Upstream's own links stay recorded in the header comment at the top of this file
+# and in mod.authors, which is where the LGPL lineage belongs.
+mod.sources_url = "https://github.com/2Lynk/AlexsCavesContinued"
+mod.homepage_url = "https://modrinth.com/mod/alexs-caves-continued"
+mod.issues_url = "https://github.com/2Lynk/AlexsCavesContinued/issues"
 mod.inception_year = "2023"
 
 # Fabric-only manifest fields (ignored by the Forge/NeoForge manifest generators).
