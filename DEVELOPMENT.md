@@ -658,6 +658,18 @@ would be a large diff with no payoff on Forge/NeoForge.
 
 ### Gotchas the runtime shakedown found (client boots, 2026-08-18)
 
+- **⚠️ A verdict file written by two versions of the same sweep script is not one table, and reading
+  it as one invents bugs that were never there.** Round 1 of the client sweep ran *before* the
+  `grep -vF SignedJWT` filter was added to `clients.sh`, so 14 perfectly healthy nodes are recorded in
+  `/tmp/acc-boot/CLIENTS` as `DIRTY badlines=1` or `2` — every one of them the benign Realms
+  offline-auth line. Round 2 ran with the filter and recorded the same class of node as `PASS`. The
+  two rounds sit in the same file under a header line, which makes the mixture invisible. **Never
+  reconcile a sweep from its verdict column; re-derive every verdict from the LOGS under the current
+  rules**, which for all 58 client logs gives **56 PASS + 2 no-boot** (both the Wayland/GLFW
+  environment failure below, `Suspected Mods: NONE`) and **zero** dirty nodes. Corollary for writing
+  the harness: a sweep script that changes its verdict rule should start a *new* results file rather
+  than append to the old one.
+
 These are the bugs that **only a dev client** surfaces. Every one of them booted a green `runServer`
 on every node, which is exactly why the "test them all at the end" plan had to include clients.
 
@@ -701,13 +713,13 @@ on every node, which is exactly why the "test them all at the end" plan had to i
   into SignedJWT` is benign offline-Realms noise** that matches the standard BAD regex on *every*
   client node, so it has to be filtered or every node reads DIRTY. `/tmp/acc-boot/reclass.sh` encodes
   both.
-- **The Wayland/GLFW dev-client block tracks the Forge BUILD, and it is not monotonic.** The
-  workspace notes records it for 26.2-forge (Forge 65.0.5); the shakedown reproduced it
-  identically on **62.0.9 (26.1)** and **63.0.2 (26.1.1)** — `IllegalStateException: GLFW error before
-  init: [0x1000C]Wayland: The platform does not provide the window position`, `Suspected Mods: NONE` —
-  while **64.0.12 (26.1.2) boots fine on the same box**. So three of this tree's five Forge nodes ≥26.1
-  cannot be client-tested on a Wayland session; verify them statically or on X11. Not a mod bug: the
-  26.1.2 control and every Fabric/NeoForge node of the same MC version boot.
+- **The Wayland/GLFW dev-client block tracks the Forge BUILD, and it is not monotonic.** It kills
+  **62.0.9 (26.1)** and **63.0.2 (26.1.1)** — `IllegalStateException: GLFW error before init:
+  [0x1000C]Wayland: The platform does not provide the window position`, `Suspected Mods: NONE` — and
+  does **not** kill **64.0.12 (26.1.2)** or **65.1.0 (26.2)**, both of which reach the title screen on
+  the same box in the same session. So two of this tree's five Forge nodes ≥26.1 cannot be
+  client-tested on a Wayland session; verify those two statically or on X11. Not a mod bug: the two
+  controls and every Fabric/NeoForge node of the same MC version boot.
 - **`scripts/verify_mixins.py` skipped a `@Mixin` target that arrived by WILDCARD import, silently.**
   `resolve_imports` only ever built a map from explicit `import a.b.C;` lines, so under `import
   net.minecraft.world.entity.*;` a `@Mixin(Entity.class)` resolved to the bare name `Entity`, and
@@ -782,19 +794,35 @@ on every node, which is exactly why the "test them all at the end" plan had to i
   with `grep -E "$BAD" | grep -vF SignedJWT`; before that filter existed, 25 perfectly healthy nodes
   were reported DIRTY with `badlines=1` or `2`. The four *server*-side markers this file lists are
   unaffected — this one only shows up client-side.
-- **The Wayland/Forge dev-client block tracks the Forge BUILD, and 26.1.2 is a hole in it.** The
-  workspace notes records a 26.2 Forge dev client dying at `GLX._initGlfw` with
-  *"[0x1000C]Wayland: The platform does not provide the window position"*. The client sweep dates it
-  properly: it kills **62.0.9 (26.1)**, **63.0.2 (26.1.1)** and **65.1.0 (26.2)** and does **not**
-  kill **64.0.12 (26.1.2)**, which boots to the title screen on the same box in the same session. So
-  it is neither "all 26.x Forge" nor monotonic — verify those three statically
-  (`verify_mixins.py`) or on X11, and do not read their `DEAD` as a mod regression. ⚠️ The crash
+- **⚠️ The Wayland/Forge dev-client block is TWO builds, not "26.x Forge" — and this file
+  asserted the wrong set twice.** The workspace notes record a 26.2 Forge dev client dying at
+  `GLX._initGlfw` with *"[0x1000C]Wayland: The platform does not provide the window position"*, and
+  both bullets here repeated **65.1.0 (26.2)** as blocked. The full client sweep disproves it:
+  `26.2-forge` reaches `Sound engine started` with **zero** GLFW errors in its log. What is actually
+  blocked is **62.0.9 (26.1)** and **63.0.2 (26.1.1)**; **64.0.12 (26.1.2)** and **65.1.0 (26.2)**
+  both boot. So it is neither "all 26.x Forge" nor monotonic nor even contiguous — verify those
+  two statically (`verify_mixins.py`) or on X11, and do not read their `DEAD` as a mod regression.
+  **A build-tracking environment failure has to be probed per build**, exactly like the Forge API
+  facts elsewhere in this file; inheriting one node's verdict is how the wrong set got written down. ⚠️ The crash
   report that Forge then tries to write fails on its own (`Can't getDevice() before it was
   initialized`, `ModList.indexedMods is null`), which buries the real `Suspected Mods: NONE` line —
   read the GLFW throw, not the report generator's secondary failure.
 
 
-## Where the version walk stands (2026-08-18)
+## Where the version walk stands (2026-08-19)
+
+**The runtime shakedown is COMPLETE: 56 of 58 dev CLIENTS boot clean, and the two that do not are the
+environment, not the mod.** Re-deriving every verdict from the 58 logs in `/tmp/acc-boot/client/`
+under one rule set (GOOD = `Sound engine started|OpenAL initialized`; BAD = the ten fatal markers
+minus `SignedJWT`; plus `Minecraft Crash Report|FAILURE: Build failed|GLFW error before init`) gives
+**56 PASS, 0 DIRTY, 2 NOBOOT** — `26.1-forge` and `26.1.1-forge`, both `GLFW error before init:
+[0x1000C]Wayland`, `Suspected Mods: NONE`. The two client-only fixes are confirmed at runtime across
+their whole affected band, not just the node they were written against: `Sheets loaded too early` is
+absent from **all 12** NeoForge nodes ≥1.21.4 with `registered item model definition types` landing on
+`modloading-worker-0` *before* `Reloading ResourceManager` on every one, and `1.21.8-forge` /
+`1.21.9-forge` now load `mixinextras-forge-0.4.1.jar` via `ClasspathLocator` + the nested
+`MixinExtras-0.4.1.jar` via `JarInJarDependencyLocator`, with zero injection errors.
+
 
 **Green: all 58 nodes — the whole planned matrix.** The wave-closing all-node `--continue` build is
 **confirmed** — `BUILD SUCCESSFUL in 26m 48s`, 727 actionable tasks (550 executed, 177 up-to-date),
