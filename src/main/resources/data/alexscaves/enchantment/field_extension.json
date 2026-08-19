@@ -1,0 +1,21 @@
+{
+  "description": {
+    "translate": "enchantment.alexscaves.field_extension"
+  },
+  "supported_items": "#alexscaves:enchantable/galena_gauntlet",
+  "weight": 10,
+  "max_level": 4,
+  "min_cost": {
+    "base": 1,
+    "per_level_above_first": 6
+  },
+  "max_cost": {
+    "base": 41,
+    "per_level_above_first": 10
+  },
+  "anvil_cost": 1,
+  "slots": [
+    "mainhand",
+    "offhand"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "__comment": "The cartographer's level-2 underground-cabin map. Until 26 this was built in Java by VillagerUndergroundCabinMapTrade, which 26 leaves nowhere to live: trades are registry entries now and neither loader kept a hook to add one. The exploration_map loot function performs the identical sequence (MapItem.create at zoom 2 / renderBiomePreviewMap / addTargetDecoration with a '+'), so this is the same offer, not an approximation. Dropped from the jar below 26 by DataPackMigration.dropVillagerTradeData.",
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 5
+  },
+  "additional_wants": {
+    "id": "minecraft:compass"
+  },
+  "gives": {
+    "id": "minecraft:map"
+  },
+  "given_item_modifiers": [
+    {
+      "function": "minecraft:exploration_map",
+      "destination": "alexscaves:on_underground_cabin_maps",
+      "decoration": "alexscaves:underground_cabin",
+      "zoom": 2,
+      "search_radius": 100,
+      "skip_existing_chunks": true
+    },
+    {
+      "function": "minecraft:set_name",
+      "target": "custom_name",
+      "name": {
+        "translate": "item.alexscaves.underground_cabin_explorer_map"
+      }
+    }
+  ],
+  "max_uses": 10,
+  "xp": 6,
+  "reputation_discount": 0.2
+}

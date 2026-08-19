@@ -1,0 +1,10 @@
+{
+  "__comment": "From 1.20.5 a map decoration is a MapDecorationType registry entry whose assetId names a sprite on the map_decorations atlas, so the mod's cabin marker is drawn by vanilla instead of by the hand-rolled quad ClientEvents used to emit. Atlas definitions merge across namespaces, so this file only has to contribute alexscaves' own directory. Inert below 1.20.5, where that atlas does not exist.",
+  "sources": [
+    {
+      "type": "directory",
+      "source": "map/decorations",
+      "prefix": "map/decorations/"
+    }
+  ]
+}

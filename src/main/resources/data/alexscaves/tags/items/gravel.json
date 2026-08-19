@@ -1,0 +1,10 @@
+{
+  "__comment": "The metal swarf recipe used to ask for a gravel tag in the convention namespace, and Fabric API's convention-tags-v2 has never shipped one — NeoForge and Forge 26 both call it c:gravels, and there is no Fabric counterpart at all. So the recipe was fatally unparseable on every Fabric node from 1.21.2 (where ingredient tags became strict) and silently empty below it. Owning the tag here fixes every version and loader at once, exactly as the concrete tag beside it does: vanilla gravel is named outright, and whatever convention tag the loader does ship is folded in optionally so modded gravels still count where it exists.",
+  "values": [
+    "minecraft:gravel",
+    {
+      "id": "#forge:gravel",
+      "required": false
+    }
+  ]
+}

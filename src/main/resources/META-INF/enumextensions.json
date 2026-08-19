@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "enum": "net/minecraft/world/entity/MobCategory",
+      "name": "ALEXSCAVES_CAVE_CREATURE",
+      "constructor": "(Ljava/lang/String;IZZI)V",
+      "parameters": {
+        "class": "com/github/alexmodguy/alexscaves/server/entity/ACMobCategories",
+        "field": "CAVE_CREATURE_PROXY"
+      }
+    },
+    {
+      "enum": "net/minecraft/world/entity/MobCategory",
+      "name": "ALEXSCAVES_DEEP_SEA_CREATURE",
+      "constructor": "(Ljava/lang/String;IZZI)V",
+      "parameters": {
+        "class": "com/github/alexmodguy/alexscaves/server/entity/ACMobCategories",
+        "field": "DEEP_SEA_CREATURE_PROXY"
+      }
+    }
+  ]
+}

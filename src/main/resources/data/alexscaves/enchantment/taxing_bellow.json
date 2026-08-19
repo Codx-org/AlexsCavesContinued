@@ -1,0 +1,24 @@
+{
+  "description": {
+    "translate": "enchantment.alexscaves.taxing_bellow"
+  },
+  "supported_items": "#alexscaves:enchantable/magic_conch",
+  "weight": 2,
+  "max_level": 1,
+  "min_cost": {
+    "base": 1,
+    "per_level_above_first": 19
+  },
+  "max_cost": {
+    "base": 41,
+    "per_level_above_first": 10
+  },
+  "anvil_cost": 4,
+  "slots": [
+    "mainhand"
+  ],
+  "exclusive_set": [
+    "minecraft:unbreaking",
+    "minecraft:mending"
+  ]
+}

@@ -1,0 +1,86 @@
+package com.github.alexmodguy.alexscaves.citadel.client.tick;
+
+import com.github.alexmodguy.alexscaves.citadel.server.tick.TickRateTracker;
+import com.github.alexmodguy.alexscaves.citadel.server.tick.modifier.TickRateModifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class ClientTickRateTracker extends TickRateTracker {
+    public static final Logger LOGGER = LogManager.getLogger("citadel-client-tick");
+    private static final Map<Minecraft, ClientTickRateTracker> dataMap = new HashMap<>();
+
+    public Minecraft client;
+
+    private static final float MS_PER_TICK = 50f;
+
+    public ClientTickRateTracker(Minecraft client) {
+        this.client = client;
+
+    }
+
+    public void syncFromServer(CompoundTag tag) {
+        tickRateModifierList.clear();
+        fromTag(tag);
+    }
+
+    public static ClientTickRateTracker getForClient(Minecraft minecraft) {
+        if (!dataMap.containsKey(minecraft)) {
+            ClientTickRateTracker tracker = new ClientTickRateTracker(minecraft);
+            dataMap.put(minecraft, tracker);
+            return tracker;
+        }
+        return dataMap.get(minecraft);
+    }
+
+    public void masterTick() {
+        super.masterTick();
+        // Before 1.21 the client timer's tick length was a mutable field and this pushed the new
+        // value into it every tick. 1.21 made it final and has the timer pull the length from
+        // Minecraft#getTickTargetMillis instead, so the same effect arrives from the other side —
+        // mixin.client.MinecraftMixin scales that method's answer by getClientTickRate(). Nothing
+        // to push from here on those versions.
+        //? if <1.21
+        ((com.github.alexmodguy.alexscaves.mixin.client.citadel.TimerAccessor) client.timer).ac$setMsPerTick(getClientTickRate());
+    }
+
+    public float getClientTickRate() {
+        float f = MS_PER_TICK;
+        if (Minecraft.getInstance().level == null || Minecraft.getInstance().player == null) {
+            return f;
+        }
+        for (TickRateModifier modifier : tickRateModifierList) {
+            if (modifier.appliesTo(Minecraft.getInstance().level, Minecraft.getInstance().player.getX(), Minecraft.getInstance().player.getY(), Minecraft.getInstance().player.getZ())) {
+                f *= modifier.getTickRateMultiplier();
+            }
+        }
+        return Math.max(1F, f * getEntityTickLengthModifier(Minecraft.getInstance().player));
+    }
+
+    public float modifySoundPitch(SoundInstance soundInstance) {
+        float f = 1.0F;
+        if (Minecraft.getInstance().level == null || Minecraft.getInstance().player == null) {
+            return f;
+        }
+        for (TickRateModifier modifier : tickRateModifierList) {
+            if (modifier.appliesTo(Minecraft.getInstance().level, Minecraft.getInstance().player.getX(), Minecraft.getInstance().player.getY(), Minecraft.getInstance().player.getZ())) {
+                f /= modifier.getTickRateMultiplier();
+            }
+        }
+        return Math.max(1F, f * getEntityTickLengthModifier(Minecraft.getInstance().player));
+    }
+
+    @Override
+    public void tickEntityAtCustomRate(Entity entity) {
+        if (entity.level().isClientSide() && entity.level() instanceof ClientLevel) {
+            ((ClientLevel) entity.level()).tickNonPassenger(entity);
+        }
+    }
+}

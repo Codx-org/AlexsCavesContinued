@@ -1,0 +1,25 @@
+{
+  "description": {
+    "translate": "enchantment.alexscaves.relentless_darkness"
+  },
+  "supported_items": "#alexscaves:enchantable/dreadbow",
+  "weight": 1,
+  "max_level": 1,
+  "min_cost": {
+    "base": 1,
+    "per_level_above_first": 20
+  },
+  "max_cost": {
+    "base": 41,
+    "per_level_above_first": 10
+  },
+  "anvil_cost": 8,
+  "slots": [
+    "mainhand"
+  ],
+  "exclusive_set": [
+    "alexscaves:precise_volley",
+    "alexscaves:dark_nock",
+    "alexscaves:twilight_perfection"
+  ]
+}

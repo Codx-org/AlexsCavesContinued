@@ -1,0 +1,111 @@
+package com.github.alexmodguy.alexscaves.server.block;
+
+import com.github.alexmodguy.alexscaves.server.misc.ACCompat;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.pathfinder.PathComputationType;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+
+import javax.annotation.Nullable;
+
+public class OceanFloraBlock extends BushBlock implements LiquidBlockContainer {
+
+    // 1.20.3 made Block#codec() abstract for datapack-defined blocks; Alex's Caves' blocks
+    // are never described by value, so they all share one placeholder. See ACPlatform.
+    //? if >=1.20.3 {
+    /*@Override
+    public com.mojang.serialization.MapCodec<? extends OceanFloraBlock> codec() {
+        return com.github.alexmodguy.alexscaves.server.misc.ACPlatform.unsupportedBlockCodec();
+    }
+    *///?}
+    public static final VoxelShape SHAPE = Block.box(1, 0, 1, 15, 12, 15);
+
+    public OceanFloraBlock() {
+        super(Properties.of().mapColor(DyeColor.WHITE).dynamicShape().instabreak().sound(SoundType.WET_GRASS).offsetType(OffsetType.XZ));
+    }
+
+    @Override
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter getter, BlockPos pos) {
+        return true;
+    }
+
+    public float getShadeBrightness(BlockState state, BlockGetter getter, BlockPos blockPos) {
+        return 1.0F;
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter getter, BlockPos pos, CollisionContext context) {
+        Vec3 vec3 = ACCompat.blockOffset(state, getter, pos);
+        VoxelShape shape = SHAPE;
+        return shape.move(vec3.x, vec3.y, vec3.z);
+    }
+
+    @Override
+    public long getSeed(BlockState blockState, BlockPos pos) {
+        return Mth.getSeed(pos.getX(), 0, pos.getZ());
+    }
+
+    @Override
+    protected boolean mayPlaceOn(BlockState state, BlockGetter level, BlockPos pos) {
+        return state.isFaceSturdy(level, pos, Direction.UP) && !state.is(Blocks.MAGMA_BLOCK) || state.getBlock() == this;
+    }
+
+    @Override
+    public float getMaxHorizontalOffset() {
+        return 0.2F;
+    }
+
+    @Override
+    public BlockState updateShape(BlockState state, Direction direction, BlockState state1, LevelAccessor levelAccessor, BlockPos blockPos, BlockPos blockPos1) {
+        BlockState prev = super.updateShape(state, direction, state1, levelAccessor, blockPos, blockPos1);
+        if (!prev.isAir()) {
+            levelAccessor.scheduleTick(blockPos, Fluids.WATER, Fluids.WATER.getTickDelay(levelAccessor));
+        }
+        return prev;
+    }
+
+    @Nullable
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        LevelAccessor levelaccessor = context.getLevel();
+        BlockPos blockpos = context.getClickedPos();
+        BlockState above = levelaccessor.getBlockState(blockpos.above());
+        FluidState fluidstate = context.getLevel().getFluidState(blockpos);
+        return fluidstate.is(FluidTags.WATER) && fluidstate.getAmount() == 8 ? this.defaultBlockState() : null;
+    }
+
+    public FluidState getFluidState(BlockState p_154537_) {
+        return Fluids.WATER.getSource(false);
+    }
+
+
+    // 1.20.2 gave LiquidBlockContainer#canPlaceLiquid a (nullable) Player, for the same
+    // game-event attribution as pickupBlock; nothing here uses it.
+    //? if >=1.20.2
+    /*public boolean canPlaceLiquid(net.minecraft.world.entity.player.Player player, BlockGetter p_154505_, BlockPos p_154506_, BlockState p_154507_, Fluid p_154508_) {*/
+    //? if <1.20.2
+    public boolean canPlaceLiquid(BlockGetter p_154505_, BlockPos p_154506_, BlockState p_154507_, Fluid p_154508_) {
+        return false;
+    }
+
+    public boolean placeLiquid(LevelAccessor p_154520_, BlockPos p_154521_, BlockState p_154522_, FluidState p_154523_) {
+        return false;
+    }
+
+    public boolean isPathfindable(BlockState state, BlockGetter getter, BlockPos pos, PathComputationType type) {
+        return false;
+    }
+}
