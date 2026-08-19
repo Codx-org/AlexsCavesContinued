@@ -1,0 +1,9 @@
+{
+  "__comment": "Replaces an upstream LivingEntity#getMobType override. 1.20.5 deleted MobType and moved every behaviour it drove onto entity type tags; on 1.20.4 and below this file is inert, because nothing reads the tag and the Java override is still compiled in.",
+  "replace": false,
+  "values": [
+    "alexscaves:brainiac",
+    "alexscaves:luxtructosaurus",
+    "alexscaves:raycat"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+    "pack": {
+        "description": "alexscaves resources",
+        ${pack_meta}
+    }
+}

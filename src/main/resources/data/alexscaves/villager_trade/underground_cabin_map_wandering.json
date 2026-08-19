@@ -1,0 +1,33 @@
+{
+  "__comment": "The wandering trader's underground-cabin map: the same offer, priced at 8 emeralds and sold once. Its pre-26 counterpart was the second VillagerUndergroundCabinMapTrade in ACVillagerTradeEvents, added to the trader's generic pool — which is the minecraft:wandering_trader/common tag here.",
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 8
+  },
+  "additional_wants": {
+    "id": "minecraft:compass"
+  },
+  "gives": {
+    "id": "minecraft:map"
+  },
+  "given_item_modifiers": [
+    {
+      "function": "minecraft:exploration_map",
+      "destination": "alexscaves:on_underground_cabin_maps",
+      "decoration": "alexscaves:underground_cabin",
+      "zoom": 2,
+      "search_radius": 100,
+      "skip_existing_chunks": true
+    },
+    {
+      "function": "minecraft:set_name",
+      "target": "custom_name",
+      "name": {
+        "translate": "item.alexscaves.underground_cabin_explorer_map"
+      }
+    }
+  ],
+  "max_uses": 1,
+  "xp": 10,
+  "reputation_discount": 0.2
+}

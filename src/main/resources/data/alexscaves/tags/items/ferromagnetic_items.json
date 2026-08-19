@@ -1,0 +1,115 @@
+{
+  "__comment": "all items pulled or pushed by magnets. Every convention-tag reference below is optional, and each is preceded by the vanilla items it would have contributed. Fabric API's convention-tags module ships a DIFFERENT subset of these on every build it has ever made \u2014 1.20.1's pin has no c:ingots/iron, 1.20.5's and 1.21's have no c:nuggets/iron, none of them has ever had c:ores/iron \u2014 and a required reference to a tag that does not exist makes the WHOLE tag fail to load, taking alexscaves:galena_gauntlet_crystallization_items down with it. Optional references keep every other mod's iron on the loaders that do define these, while vanilla's own iron stays magnetic everywhere.",
+  "values": [
+    "alexscaves:metal_swarf",
+    "alexscaves:scrap_metal",
+    "alexscaves:metal_scaffolding",
+    "alexscaves:metal_barrel",
+    "alexscaves:waste_drum",
+    "alexscaves:flood_basalt",
+    "minecraft:iron_boots",
+    "minecraft:netherite_boots",
+    "minecraft:chainmail_boots",
+    "minecraft:iron_leggings",
+    "minecraft:netherite_leggings",
+    "minecraft:chainmail_leggings",
+    "minecraft:iron_chestplate",
+    "minecraft:netherite_chestplate",
+    "minecraft:chainmail_chestplate",
+    "minecraft:iron_helmet",
+    "minecraft:netherite_helmet",
+    "minecraft:chainmail_helmet",
+    "minecraft:stonecutter",
+    "minecraft:spawner",
+    "minecraft:iron_ingot",
+    {
+      "id": "#forge:ingots/iron",
+      "required": false
+    },
+    "minecraft:netherite_ingot",
+    {
+      "id": "#forge:ingots/netherite",
+      "required": false
+    },
+    "minecraft:iron_nugget",
+    {
+      "id": "#forge:nuggets/iron",
+      "required": false
+    },
+    "#minecraft:iron_ores",
+    "alexscaves:galena_iron_ore",
+    {
+      "__comment": "Fabric API ships no c:ores/iron item tag, and this mod only ever contributed its galena ore to the BLOCK side of it \u2014 hence the two lines above, which are what that reference is worth on a loader that has no such tag. Optional so the loaders that do define it still bring every other mod's iron ore along.",
+      "id": "#forge:ores/iron",
+      "required": false
+    },
+    "minecraft:ancient_debris",
+    {
+      "id": "#forge:ores/netherite_scrap",
+      "required": false
+    },
+    "minecraft:raw_iron",
+    {
+      "id": "#forge:raw_materials/iron",
+      "required": false
+    },
+    "minecraft:iron_block",
+    {
+      "id": "#forge:storage_blocks/iron",
+      "required": false
+    },
+    "minecraft:raw_iron_block",
+    {
+      "id": "#forge:storage_blocks/raw_iron",
+      "required": false
+    },
+    "minecraft:netherite_block",
+    {
+      "id": "#forge:storage_blocks/netherite",
+      "required": false
+    },
+    "minecraft:iron_sword",
+    "minecraft:iron_pickaxe",
+    "minecraft:iron_axe",
+    "minecraft:iron_shovel",
+    "minecraft:iron_hoe",
+    "minecraft:netherite_scrap",
+    "minecraft:netherite_sword",
+    "minecraft:netherite_pickaxe",
+    "minecraft:netherite_axe",
+    "minecraft:netherite_shovel",
+    "minecraft:netherite_hoe",
+    "#minecraft:rails",
+    "minecraft:heavy_weighted_pressure_plate",
+    "minecraft:compass",
+    "minecraft:lodestone",
+    "#minecraft:anvil",
+    "minecraft:blast_furnace",
+    "minecraft:bucket",
+    "minecraft:cauldron",
+    "minecraft:chain",
+    "minecraft:flint_and_steel",
+    "minecraft:hopper",
+    "minecraft:iron_door",
+    "minecraft:iron_trapdoor",
+    "minecraft:iron_bars",
+    "minecraft:minecart",
+    "minecraft:shears",
+    "minecraft:shield",
+    "minecraft:smithing_table",
+    "minecraft:tripwire_hook",
+    "minecraft:crossbow",
+    "minecraft:chest_minecart",
+    "minecraft:command_block_minecart",
+    "minecraft:furnace_minecart",
+    "minecraft:hopper_minecart",
+    "minecraft:minecart",
+    "minecraft:tnt_minecart",
+    "minecraft:recovery_compass",
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "minecraft:basalt",
+    "minecraft:smooth_basalt",
+    "minecraft:polished_basalt"
+  ]
+}

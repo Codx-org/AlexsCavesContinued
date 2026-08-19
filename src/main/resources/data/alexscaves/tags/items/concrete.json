@@ -1,0 +1,25 @@
+{
+  "__comment": "The cinder brick recipe used to ask for a concrete tag in the forge namespace, which no Forge build has ever shipped — 47.x through 54.x all have zero of them — and the convention name both loaders settled on is c:concretes (Forge 52.x and up, NeoForge 20.5 and up). So the recipe was quietly uncraftable everywhere, and became a fatal parse error once 1.21.2 made ingredient tags strict. Owning the tag here fixes every version and loader at once: the sixteen vanilla concretes are named outright, and whatever convention tag the loader does ship is folded in optionally, so modded concretes still count where it exists. The literal old id is deliberately not written anywhere in this file — the Forge 26 convention pass rewrites that string wherever it appears, prose included.",
+  "values": [
+    "minecraft:white_concrete",
+    "minecraft:orange_concrete",
+    "minecraft:magenta_concrete",
+    "minecraft:light_blue_concrete",
+    "minecraft:yellow_concrete",
+    "minecraft:lime_concrete",
+    "minecraft:pink_concrete",
+    "minecraft:gray_concrete",
+    "minecraft:light_gray_concrete",
+    "minecraft:cyan_concrete",
+    "minecraft:purple_concrete",
+    "minecraft:blue_concrete",
+    "minecraft:brown_concrete",
+    "minecraft:green_concrete",
+    "minecraft:red_concrete",
+    "minecraft:black_concrete",
+    {
+      "id": "#c:concretes",
+      "required": false
+    }
+  ]
+}

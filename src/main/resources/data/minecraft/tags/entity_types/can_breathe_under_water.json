@@ -1,0 +1,11 @@
+{
+  "__comment": "Mobs that do not drown. Until 1.20.1 these overrode LivingEntity#canBreatheUnderwater in code; 1.20.2 made that method final and reads this tag instead.",
+  "replace": false,
+  "values": [
+    "alexscaves:deep_one",
+    "alexscaves:deep_one_knight",
+    "alexscaves:deep_one_mage",
+    "alexscaves:mine_guardian",
+    "alexscaves:tremorzilla"
+  ]
+}
