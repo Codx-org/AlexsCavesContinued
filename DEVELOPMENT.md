@@ -824,6 +824,16 @@ absent from **all 12** NeoForge nodes ≥1.21.4 with `registered item model defi
 `MixinExtras-0.4.1.jar` via `JarInJarDependencyLocator`, with zero injection errors.
 
 
+**Ship-readiness re-verification, 2026-08-19, on `MOD_IS_RELEASE=true` and version `1.0.0`.** The
+closing build was re-run as a *release* build so it doubles as the artifact build rather than costing
+a second pass, and all four checks are green against those artifacts rather than against snapshots:
+`BUILD SUCCESSFUL`, `GRADLE_EXIT=0`, 727 actionable tasks, **zero** task failures across all 58;
+`verify_mixins.py` **15307 injection points, all targets resolve**; `aw_check.py` **problems=0** on
+all 22 MC versions (83 entries at 1.20.1 falling to 70 at 26.2); `convaudit.py` **missing=0** on all
+22 Fabric versions. `versions/*/build/libs/` holds **58** mod jars, every one
+`alexscaves-1.0.0-<loader>+<mc>.jar`, with **zero** `-SNAPSHOT` — plus 58 sources and 58 javadoc jars
+that any uploader must filter out (see the release-build gotchas above).
+
 **Green: all 58 nodes — the whole planned matrix.** The wave-closing all-node `--continue` build is
 **confirmed** — `BUILD SUCCESSFUL in 26m 48s`, 727 actionable tasks (550 executed, 177 up-to-date),
 zero task failures across all 58
@@ -1778,6 +1788,30 @@ the right argument — a real empty `PatchedDataComponentMap`, so it returns the
 **Not yet done on any node: `runClient`.** Every verdict so far is `runServer` plus
 `verify_mixins.py`, so nothing client-side — the armour layer, the render-stage mixin, the shaders —
 has been exercised at runtime.
+
+### Release-build gotchas (found closing the walk, 2026-08-19)
+
+- **⚠️ A long Gradle build launched through the tool's own background mechanism dies when that
+  background task is killed** — the kill takes the whole process group, Gradle daemon included. The
+  58-node closing build was cut down at 49/58 with zero failures, which is indistinguishable in the
+  log from a build that is merely still running: the tell is that no `gradle` process for this tree
+  appears in `ps` while the log's last line is a live task. Launch anything that takes tens of minutes
+  **detached** — `setsid zsh <script> < /dev/null > /dev/null 2>&1 &` from a foreground call, with the
+  script appending its own `GRADLE_EXIT` — and poll the log rather than holding the process. Gradle's
+  incrementality makes the restart cheap (the 49 finished nodes came back UP-TO-DATE and the resume
+  took 3m22s), so the cost of getting this wrong is recoverable, but only if you notice.
+- **`ls versions/*/build/libs/*.jar | grep -v sources | wc -l` is NO LONGER the release pre-flight
+  count.** This tree emits **three** jars per node — the mod jar, `-sources` and `-javadoc` — so that
+  documented check returns **116**, not 58, and an uploader that regex-matches the directory would
+  happily create store entries for javadoc artifacts. Filter both: `grep -v -e sources -e javadoc`.
+  Expect `58`, every one named `alexscaves-1.0.0-<loader>+<mc>.jar` with no `-SNAPSHOT`.
+- **A `git push` is where you find out the repository moved.** GitHub answers a transferred repo with
+  `remote: This repository moved` and then completes the push through the redirect, so nothing fails
+  and it is easy to miss. The manifests' `sources_url`/`issues_url` had been baked from the old owner
+  and needed re-pointing at `Codx-org` — a redirect is not a canonical URL, and it breaks the moment
+  anyone creates a new repo at the old path. Grep the tree for the old owner after any transfer;
+  here it is exactly `stonecutter.properties.toml` lines 26 and 28, and changing them invalidates all
+  58 nodes, so it wants to ride along with a build you were going to run anyway.
 
 ## Standing workspace rules that bite here
 

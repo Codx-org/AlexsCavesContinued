@@ -23,9 +23,9 @@ mod.license.url = "https://www.gnu.org/licenses/lgpl-3.0.html"
 # must name THIS continuation, not upstream, or every bug report lands in Alexthe668's
 # tracker. Upstream's own links stay recorded in the header comment at the top of this file
 # and in mod.authors, which is where the LGPL lineage belongs.
-mod.sources_url = "https://github.com/2Lynk/AlexsCavesContinued"
+mod.sources_url = "https://github.com/Codx-org/AlexsCavesContinued"
 mod.homepage_url = "https://modrinth.com/mod/alexs-caves-continued"
-mod.issues_url = "https://github.com/2Lynk/AlexsCavesContinued/issues"
+mod.issues_url = "https://github.com/Codx-org/AlexsCavesContinued/issues"
 mod.inception_year = "2023"
 
 # Fabric-only manifest fields (ignored by the Forge/NeoForge manifest generators).
