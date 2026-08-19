@@ -8,8 +8,8 @@ Continued therefore **bundles the subset it uses**, package-relocated from
 
 Relocation is mandatory, not cosmetic: a player may well have the real Citadel installed for
 another mod, and two copies of one fully-qualified class name in a single classloader is a hard
-failure. Licence-wise this is clean — Citadel is LGPL-3.0 and Alex's Caves is GPL-3.0, so
-incorporation is allowed.
+failure. Licence-wise this is clean — both Citadel and Alex's Caves are LGPL-3.0, as is
+this continuation, so incorporation is allowed.
 
 There is deliberately **no `deps.citadel`** in `stonecutter.properties.toml` and no
 `required("citadel")` in any buildscript. Nothing resolves the real mod on any node.
