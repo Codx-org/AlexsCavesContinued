@@ -343,9 +343,15 @@ would be a large diff with no payoff on Forge/NeoForge.
   `c:glass_blocks`), nothing like the v2 path form (`c:ingots/iron`) the upstream recipes were written
   against. Filtering an audit to either module alone gives a wrong answer *in either direction*: v2-only
   said 1.21.2-fabric was missing one tag when it was missing none, v1-only said 27 were missing on
-  nodes that are fine. Union them. What the union found: **27 distinct tags → 90 of this mod's 90
-  recipes** unresolvable on the four oldest Fabric nodes (i.e. the entire crafting tree gone), 3 on
-  1.20.5/1.20.6, 2 on 1.21. **And it is invisible below 1.21.2**, where a missing ingredient tag is a
+  nodes that are fine. Union them. What the union found: **27 distinct tags** missing on the four
+  oldest Fabric nodes, 3 on 1.20.5/1.20.6, 2 on 1.21 — taking the tag-backed part of the crafting tree
+  with them. ⚠️ **This bullet used to say "90 of this mod's 90 recipes … the entire crafting tree
+  gone", and both halves of that are wrong.** Recounted 2026-08-19: **467** recipe JSONs ship (301
+  shaped, 71 stonecutting, 41 shapeless, 52 cooking, 1 trim, 1 `alexscaves:cave_map`), **107** carry a
+  tag ingredient, **104** name a mod-owned tag, and **34** tag files fold a convention tag in as
+  `"required": false`. 90 was neither the total nor the affected count; don't quote it, and don't read
+  "the whole tree" into a break that reaches at most 104 of 467.
+  **And it is invisible below 1.21.2**, where a missing ingredient tag is a
   silently EMPTY ingredient rather than a fatal one — no log line, a green `Done`, and an uncraftable
   recipe. The fix is the shape `alexscaves:concrete` and `alexscaves:gravel` already established,
   applied 27 more times: **the mod owns the tag**, naming the vanilla member outright and folding in
@@ -1812,6 +1818,28 @@ has been exercised at runtime.
   anyone creates a new repo at the old path. Grep the tree for the old owner after any transfer;
   here it is exactly `stonecutter.properties.toml` lines 26 and 28, and changing them invalidates all
   58 nodes, so it wants to ride along with a build you were going to run anyway.
+
+### Licensing (settled 2026-08-19)
+
+- **The mod is LGPL-3.0, and so is upstream** — `AlexModGuy/AlexsCaves` and `AlexModGuy/Citadel` both
+  declare `license="GNU LESSER GENERAL PUBLIC LICENSE"` in their `mods.toml`, but **neither GitHub repo
+  ships a licence file at all** (checked via `/contents/` and `/license`). The claim exists only in the
+  manifest. This continuation now carries the text properly, which also settles the vendored-Citadel
+  question: incorporation is *same-licence*, not compatible-licence. `docs/notes/citadel.md` said
+  GPL-3.0 for a long time and was wrong.
+- **LGPLv3 is two files, not one.** It is the GPLv3 text plus additional permissions, so the FSF layout
+  is `COPYING` (GPLv3) + `COPYING.LESSER` (LGPLv3), both at the root. ✅ **GitHub's licensee detects
+  that pair correctly** — `gh api repos/Codx-org/AlexsCavesContinued --jq .license` reports
+  `LGPL-3.0`, i.e. it picks the LESSER one rather than reading the pair as GPL. Verified after push;
+  no filename workaround is needed.
+- **GPLv3 §4 makes the licence travel with the binary**, so the same two files also live at
+  `src/main/resources/META-INF/`. Before that, **not one of the 58 jars contained any licence text**.
+  No build-logic change was needed: `ModPlatformPlugin.configureProcessResources` scopes its `filter {}`
+  to `filesMatching("*.mixins.json")`, so plain resources pass through untouched. Re-verify after any
+  release build with `unzip -l <jar> | grep META-INF/COPYING` — expect two entries in all 58.
+- ⚠️ **The repo is still PRIVATE** (`"private": true`). Shipping LGPL binaries to Modrinth/CurseForge
+  obliges offering the corresponding source to recipients, so it has to go public — or a source offer
+  has to exist — **before** the first upload, not after.
 
 ## Standing workspace rules that bite here
 
