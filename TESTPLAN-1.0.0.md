@@ -6,7 +6,7 @@ for the six smoke passes.
 **What this exists to catch.** Every verdict on this build so far is boot-level: 58 dev servers
 reached `Done`, 56 dev clients reached the title screen, `verify_mixins.py` resolved 15307 injection
 points, and three data audits came back clean. **Not one world has ever been generated.** For a mod
-that is six cave biomes, 14 structures, 43 mobs, 575 items and 346 recipes, "the title screen
+that is six cave biomes, 14 structures, 43 mobs, 575 items and 467 recipes, "the title screen
 drew" says nothing about whether the caves appear or the items have textures. Everything below
 is the part no headless probe can see.
 
@@ -127,10 +127,11 @@ Open the creative tabs and scroll every one.
 
 ### 4. Crafting — the 27 convention tags
 
-The mod ships **346 recipes**, and **104** of them rest on the **34 mod-owned item tags** that fold
-in a `c:`/`forge:` convention tag as an optional member. Before that rewrite the whole crafting tree
-was unresolvable on the four oldest Fabric nodes, and three recipes were silently uncraftable on
-several Forge/NeoForge nodes.
+The mod ships **467 recipes** — 301 shaped, 71 stonecutting, 41 shapeless, 52 cooking, one trim and
+the `alexscaves:cave_map` type — and **104** of them rest on the **34 mod-owned item tags** that fold
+a `c:`/`forge:` convention tag in as an optional member. Before that rewrite those 104 were
+unresolvable on the four oldest Fabric nodes, and three were silently uncraftable on several
+Forge/NeoForge nodes. Those are the ones to actually craft.
 
 - [ ] Open the recipe book / JEI and confirm the mod's recipes list
 - [ ] Craft at least: `cinder_brick`, `hologram_projector`, `siren_light` *(the three that were
