@@ -86,7 +86,7 @@ public class AtlatitanEntity extends SauropodBaseEntity implements KeybindUsingM
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.325D).add(Attributes.MAX_HEALTH, 400.0D).add(Attributes.KNOCKBACK_RESISTANCE, 1.0D).add(Attributes.ATTACK_DAMAGE, 8);
+        return ACCompat.temptable(Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.325D).add(Attributes.MAX_HEALTH, 400.0D).add(Attributes.KNOCKBACK_RESISTANCE, 1.0D).add(Attributes.ATTACK_DAMAGE, 8));
     }
 
     @Override

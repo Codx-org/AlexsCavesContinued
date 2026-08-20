@@ -119,24 +119,90 @@ Everything else matches file for file, including 26.2's `AdvancementTabMixin +1`
 Headline counts: `1.20.1-fabric` 317 → `1.21.11-fabric` 280 → `26.1.x-fabric` 281 → `26.2-fabric`
 282. Access-widener entries fall 83 → 75 → 70 over the same range as gated arms drop out.
 
-## Known gaps — Fabric ships without these
+## The game-bus dispatch layer (the gap that used to live here)
 
-Each is a deliberate hole with a reason, not an oversight. Written down so they are not rediscovered
-as bugs:
+⚠️ **This section used to be a list of small missing dispatchers, and it was WRONG BY OMISSION.** The
+truth the in-world battery found on 2026-08-19 is much larger: **nothing on Fabric posted a Forge
+*game*-bus event at all**. `fabric/forge/common/MinecraftForge` supplied an `EVENT_BUS` and every
+handler was registered on it, but `grep` for `new ServerAboutToStartEvent(`, `new TickEvent.`,
+`new LivingDeathEvent`, `new PlayerEvent.` found **zero** construction sites in the whole tree. The
+port reproduced Forge's loader *patches* faithfully — that is what the `mixin/fabric/**` classes are
+— and simply never got the layer that *fires* the events those patches feed.
 
-- **Villager trades are not dispatched.** Below 26 the two underground-cabin-map trades come from
-  `ACVillagerTradeEvents`' Forge/NeoForge listeners and nothing on Fabric ever constructed the two
-  stub events; from 26 the trades are datapack entries and work on every loader. The two stubs are
-  therefore in the `>=26` source-set exclusion beside the class that named them.
-- **No `RenderLivingEvent` dispatcher mixin exists** — the event class is present so consumers
-  compile, but nothing posts it on this loader.
-- The deferred `1.20.1` seam items: HUD-overlay stubs, multipart level plumbing, tool-action
-  dispatch, `AcidFluidType#move`, fluid-interaction dispatch below 26.
+**The consequence that mattered: the six cave biomes did not exist on Fabric.**
+`CommonEvents#onServerAboutToStart` calls `ACBiomeRarity.init()` and fills `BiomeSourceAccessor`'s
+key map, which `MultiNoiseBiomeSourceMixin#ac_getNoiseBiomeCoords` consumes; with no post, every
+Fabric world generated with vanilla caves only — silently, with no log line, on a server that boots
+green.
+
+**This is now CLOSED.** The dispatch layer was built out in four stages and every handler
+`CommonEvents` / `ClientEvents` declares has a producer on Fabric. What each stage wired:
+
+| stage | producers | what had been dead |
+|---|---|---|
+| 1 — lifecycle | `AlexsCavesFabric` posts `ServerAboutToStartEvent` from Fabric's `SERVER_STARTING` and `ServerStoppingEvent` from `SERVER_STOPPING` | the cave biomes; tick-rate-modifier cleanup |
+| 2 — server/player/living | `fabric/event/ACGameEvents`, `ACDamageEvents` + the ~20 `mixin/fabric/**` dispatchers | `serverTick` (so `ACWorldWorkerManager`, so **cave maps**), the effect add/remove/expire hooks, the damage cancels, mount protection, spawn-time behaviour, dimension travel, the login warning, the anvil recipes |
+| 3 — client render | `fabric/event/ACClientGameEvents` + `mixin/fabric/client/**` | camera angles, hand render, fog colour + fog setup, FOV + FOV modifier, block screen effect, living-renderer pre/post, HUD overlays, boss-bar progress |
+| 4 — trades (MC <26) | `fabric/event/ACFabricVillagerTrades` + `VillagerTradesTableMixin` / `WandererTradesTableMixin` | the two underground-cabin-map trades |
+
+Three of those are worth their own note.
+
+- **`ServerStoppingEvent` is posted from `SERVER_STOPPING`, not `SERVER_STOPPED`** — the handler
+  clears tick-rate modifiers off a tracker it looks up from the server, so the server must still be
+  usable when it runs.
+- **`RenderGuiOverlayEvent` is answered without being posted.** `mixin/fabric/client/GuiHudMixin`
+  drives the same two loader-neutral predicates the Forge listener drove
+  (`ClientEvents#hidePossessedPlayerOverlay` / `#hideExperienceBar`) directly at the vanilla draw
+  sites. Posting a stand-in event only to consume it in the same tree would be ceremony; the
+  behaviour is what has to match, and it does.
+- **Stage 4 never writes vanilla's trade tables**, where Forge's `VillagerTradingManager` writes them
+  back and needs a `static {}` snapshot to stay non-accumulating across reloads. Two
+  `@ModifyExpressionValue`s on the `GETSTATIC` of `VillagerTrades.TRADES` /
+  `WANDERING_TRADER_TRADES` hand vanilla a merged copy instead, so the real tables stay permanently
+  pristine and every rebuild starts from the same input — Forge's snapshot property, for free. The
+  merge is conservative: a profession enters the override map only if a listener actually changed a
+  level, and a level's array is rebuilt only if its contents differ by reference identity, so the
+  ~20 untouched professions keep vanilla's own array objects. From **26** the whole code-side trade
+  API is gone and trades are datapack entries on every loader, so all five files are in the `>=26`
+  source-set exclusion and the two mixins are in `vanishedMixins`.
+
+**Three events are deliberately answered another way and must NOT get producers.**
+
+- `RenderLevelStageEvent` — superseded tree-wide by `client/ACLevelRenderStage`, which Fabric drives
+  from `mixin.client.LevelRenderStageMixin` exactly as Forge ≥1.21.3 does.
+- `EntityAttributeCreationEvent` and `SpawnPlacementRegisterEvent` — both answered by
+  `fabric/entity/ACFabricEntityRegistration`, which constructs each event itself and hands it
+  straight to the same registration code the Forge listener would have received.
+
+**General form, and the reason this was invisible for a whole milestone: a compile-green, boot-green
+loader port proves the shapes exist, not that anything calls them.** When a port supplies another
+loader's API surface, enumerate the *producers* as carefully as the consumers — `grep` for
+`new <Event>(` and for the bus's `post`, not just for the handler annotations. The cheap standing
+check is a set difference: every `*Event` named in `CommonEvents`/`ClientEvents` against every
+`new *Event(` under `fabric/` + `mixin/fabric/`.
+
+## Known gaps — Fabric still ships without these
+
+Deliberate holes with a reason, not oversights. Written down so they are not rediscovered as bugs:
+
+- The deferred `1.20.1` seam items: multipart level plumbing, tool-action dispatch,
+  `AcidFluidType#move`, fluid-interaction dispatch below 26 (`EntityMixin`'s `fabric && <26`
+  `ac_pushInModFluids` stopgap, which retires at 26 when vanilla grows the same hook).
 - ~20 `//? if fabric` gates are still unbounded above; revisit them the next time a version band
   makes one of them wrong.
 
+⚠️ **This list was wrong by omission once, and the fix for that is a script rather than a promise.**
+It used to say nothing at all about the game bus while ~20 handlers had never run on any Fabric node.
+`scripts/event_audit.py` is now the guard: it set-differences every `@SubscribeEvent` parameter type
+against every `new *Event(` under `fabric/` + `mixin/fabric/` and exits 1 on a gap. Run it after any
+wave that adds a handler — a new consumer with no producer is otherwise compile-green, boot-green and
+completely silent. See the note in the repo's `DEVELOPMENT.md` for how it scopes out the Forge/NeoForge-only
+spellings and how it was sensitivity-checked.
+
 ## Still not done anywhere in the tree
 
-`runClient` has never been run on any of the 58 nodes, and `runServer` has never been run on a 26.x
-node. Every verdict in this milestone is `compileJava` + `verify_mixins.py` + `aw_check.py`, per the
-standing "test them all at the end" plan.
+~~`runClient` has never been run on any of the 58 nodes, and `runServer` has never been run on a 26.x
+node.~~ **Superseded 2026-08-18/20**: all 58 dev servers and all 58 dev clients boot clean
+(`26.1-forge` / `26.1.1-forge` needed GLFW kept off Wayland — an environment fix, not a mod one), and
+`1.20.1-forge`, `1.21.11-forge` and `1.21.11-fabric` have been through the full in-world command
+battery. See the repo's `DEVELOPMENT.md` for all three write-ups.

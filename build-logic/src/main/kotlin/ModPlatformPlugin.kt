@@ -372,14 +372,17 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 					// tags; DataPackMigration.dropVillagerTradeData removes those files below 26.
 					"**/server/event/ACVillagerTradeEvents.java",
 					"**/server/entity/util/VillagerUndergroundCabinMapTrade.java",
-					// ...and the two Fabric stand-ins for the loader events that class listened to.
-					// Nothing on this loader ever constructed either — the trades came from the
-					// datapack on 26 and from ACVillagerTradeEvents' Forge/NeoForge listeners below
-					// it, never from a Fabric dispatcher — so these two exist purely so that class
-					// compiles, and they follow it out. Both name VillagerTrades.ItemListing, which
-					// 26 deleted with the rest of the code-side trade API.
+					// ...and the whole Fabric side of the same feature: the two stand-ins for the
+					// loader events that class listened to, the dispatcher that posts them and the
+					// two mixins that hand vanilla the merged result. All five name
+					// VillagerTrades.ItemListing, which 26 deleted with the rest of the code-side
+					// trade API, so none of them can compile here — and none of them is needed,
+					// because on 26 the trades come from the datapack on every loader alike.
 					"**/fabric/forge/event/village/VillagerTradesEvent.java",
 					"**/fabric/forge/event/village/WandererTradesEvent.java",
+					"**/fabric/event/ACFabricVillagerTrades.java",
+					"**/mixin/fabric/VillagerTradesTableMixin.java",
+					"**/mixin/fabric/WandererTradesTableMixin.java",
 				)
 		}
 		// ...and the mirror image. Both target classes arrived with 26.1.
@@ -551,6 +554,11 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				// side of this pair compiles on any given node — see the source-set excludes above.
 				if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=26")) {
 					add("client.LightTextureMixin")
+					// The Fabric trade-table pair, whose source files leave the compile with the
+					// rest of the code-side trade API above. Listed here as well as pruned by
+					// package on the other two loaders, because on Fabric the fabric. prefix stays.
+					add("fabric.VillagerTradesTableMixin")
+					add("fabric.WandererTradesTableMixin")
 				} else {
 					add("client.LightmapMixin")
 					add("client.LightmapRenderStateExtractorMixin")

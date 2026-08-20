@@ -101,7 +101,7 @@ public class RaycatEntity extends TamableAnimal implements IComandableMob {
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.3D).add(Attributes.MAX_HEALTH, 24.0D).add(Attributes.ATTACK_DAMAGE, 1.0D);
+        return ACCompat.temptable(Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.3D).add(Attributes.MAX_HEALTH, 24.0D).add(Attributes.ATTACK_DAMAGE, 1.0D));
     }
 
     // Answered by data/minecraft/tags/entity_types/ from 1.20.5, which deleted MobType.

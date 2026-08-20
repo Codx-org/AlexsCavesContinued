@@ -154,7 +154,7 @@ public class GingerbreadManEntity extends Monster implements IAnimatedEntity, ID
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.45D).add(Attributes.MAX_HEALTH, 10.0D).add(Attributes.ATTACK_DAMAGE, 2).add(Attributes.FOLLOW_RANGE, 48.0D);
+        return ACCompat.temptable(Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.45D).add(Attributes.MAX_HEALTH, 10.0D).add(Attributes.ATTACK_DAMAGE, 2).add(Attributes.FOLLOW_RANGE, 48.0D));
     }
 
     public static boolean checkGingerbreadManSpawnRules(EntityType<? extends Monster> entityType, ServerLevelAccessor levelAccessor, MobSpawnType mobSpawnType, BlockPos blockPos, RandomSource randomSource) {

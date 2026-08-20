@@ -218,7 +218,7 @@ public class TremorzillaEntity extends DinosaurEntity implements KeybindUsingMou
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.3D).add(Attributes.MAX_HEALTH, 500.0D).add(Attributes.ARMOR, 10.0D).add(Attributes.FOLLOW_RANGE, 128.0D).add(Attributes.ATTACK_DAMAGE, 30.0D).add(Attributes.KNOCKBACK_RESISTANCE, 1.0D);
+        return ACCompat.temptable(Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.3D).add(Attributes.MAX_HEALTH, 500.0D).add(Attributes.ARMOR, 10.0D).add(Attributes.FOLLOW_RANGE, 128.0D).add(Attributes.ATTACK_DAMAGE, 30.0D).add(Attributes.KNOCKBACK_RESISTANCE, 1.0D));
     }
 
     protected void registerGoals() {

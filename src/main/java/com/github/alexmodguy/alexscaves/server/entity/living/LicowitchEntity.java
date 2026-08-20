@@ -74,7 +74,14 @@ public class LicowitchEntity extends Monster implements IAnimatedEntity {
     private static final EntityDataAccessor<Optional<UUID>> POSSESSED_UUID_1 = SynchedEntityData.defineId(LicowitchEntity.class, ACEntityDataRegistry.OPTIONAL_UUID.get());
     private static final EntityDataAccessor<Optional<UUID>> POSSESSED_UUID_2 = SynchedEntityData.defineId(LicowitchEntity.class, ACEntityDataRegistry.OPTIONAL_UUID.get());
     private static final EntityDataAccessor<Optional<BlockPos>> CRUCIBLE_POS = SynchedEntityData.defineId(LicowitchEntity.class, EntityDataSerializers.OPTIONAL_BLOCK_POS);
-    private static EntityDataAccessor<Optional<Vec3>> TELEPORTING_TO_POS = SynchedEntityData.defineId(TremorzillaEntity.class, ACEntityDataRegistry.OPTIONAL_VEC_3.get());
+    // ⚠️ UPSTREAM BUG, fixed here: this said TremorzillaEntity.class. An EntityDataAccessor's id is
+    // allocated out of the id tree of the class handed to defineId, so the licowitch's own accessor
+    // took a slot in the TREMORZILLA's tree — which from 1.20.5 kills BOTH mobs, because
+    // SynchedEntityData.Builder sizes its slot array from ClassTreeIdRegistry.getCount(entity class):
+    // the licowitch gets "Data value id is too big with 35! (Max is 26)" and the tremorzilla gets
+    // "has not defined synched data value 35" for the hole this left in its own tree. Below 1.20.5
+    // ids were a plain map with no per-class bound, so it was silently harmless there.
+    private static final EntityDataAccessor<Optional<Vec3>> TELEPORTING_TO_POS = SynchedEntityData.defineId(LicowitchEntity.class, ACEntityDataRegistry.OPTIONAL_VEC_3.get());
     public static final Animation ANIMATION_SWING_LEFT = Animation.create(20);
     public static final Animation ANIMATION_SWING_RIGHT = Animation.create(20);
     public static final Animation ANIMATION_EAT = Animation.create(100);

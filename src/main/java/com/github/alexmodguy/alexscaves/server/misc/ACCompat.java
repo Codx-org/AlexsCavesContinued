@@ -3122,4 +3122,29 @@ public class ACCompat {
         return entity.isMultipartEntity();
         //?}
     }
+
+    /**
+     * Adds {@code minecraft:tempt_range} to an attribute builder, on the versions that have it.
+     *
+     * <p>⚠️ <b>This is a crash, not a cosmetic gap.</b> 1.21.2 moved {@code TemptGoal}'s range from a
+     * hard-coded {@code TargetingConditions.range(10.0)} onto a new {@code TEMPT_RANGE} attribute,
+     * read unconditionally at the top of {@code TemptGoal#canUse}. Vanilla adds it in {@code
+     * Animal.createAnimalAttributes()} only — {@code Mob}/{@code Monster}/{@code LivingEntity} do
+     * not carry it — and {@code AttributeSupplier#getAttributeInstance} throws {@code
+     * IllegalArgumentException: Can't find attribute minecraft:tempt_range} for an attribute the
+     * supplier never declared. All three loaders are identical here (checked in each one's own
+     * patched jar), so every one of this mod's eleven {@code TemptGoal} mobs — all of which build
+     * from {@code Monster.createMonsterAttributes()} — killed the server on its first goal tick on
+     * every node from 1.21.2 up. Found by summoning an atlatitan on {@code 1.21.11-fabric}.
+     *
+     * <p>{@code 10.0} is not a guess: it is both vanilla's own default for the attribute and the
+     * constant 1.20.1's {@code TemptGoal} baked in, so the behaviour is unchanged on all 58 nodes.
+     */
+    public static net.minecraft.world.entity.ai.attributes.AttributeSupplier.Builder temptable(net.minecraft.world.entity.ai.attributes.AttributeSupplier.Builder builder) {
+        //? if >=1.21.2 {
+        /*return builder.add(net.minecraft.world.entity.ai.attributes.Attributes.TEMPT_RANGE, 10.0D);
+        *///?} else {
+        return builder;
+        //?}
+    }
 }
