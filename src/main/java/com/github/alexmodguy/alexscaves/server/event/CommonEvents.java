@@ -553,9 +553,14 @@ public class CommonEvents {
         }
     }
 
+    // ⚠️ Upstream wrote `isClientSide()` here. PlayerLoggedInEvent only ever fires for a
+    // ServerPlayer, so that guard is unconditionally false and the warning has never been sent on
+    // any loader or any version — including upstream 2.0.2. Inverted, which is plainly what was
+    // meant: the message is built with a translation key and delivered over the network, i.e. it is
+    // a server-side send.
     @SubscribeEvent
     public void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (AlexsCaves.COMMON_CONFIG.warnGenerationIncompatibility.get() && !AlexsCaves.MOD_GENERATION_CONFLICTS.isEmpty() && event.getEntity().level().isClientSide()) {
+        if (AlexsCaves.COMMON_CONFIG.warnGenerationIncompatibility.get() && !AlexsCaves.MOD_GENERATION_CONFLICTS.isEmpty() && !event.getEntity().level().isClientSide()) {
             for (String modid : AlexsCaves.MOD_GENERATION_CONFLICTS) {
                 if (CodxLib.isModLoaded(modid)) {
                     ACCompat.sendSystemMessage(event.getEntity(), Component.translatable("alexscaves.startup_warning.generation_incompatible", modid).withStyle(ChatFormatting.RED));

@@ -63,6 +63,9 @@ public class AlexsCavesFabricClient implements ClientModInitializer {
         // client handlers; see ACNetwork.
         com.github.alexmodguy.alexscaves.server.message.ACNetwork.registerClientReceiver();
 
+        // The client game bus. Both tick phases; see ACClientGameEvents.
+        com.github.alexmodguy.alexscaves.fabric.event.ACClientGameEvents.register();
+
         // Phase two of the six, and the one that has to come first here: ClientProxy.clientInit()
         // is what adds the AddLayers, ModifyBakingResult and RegisterShaders listeners, so nothing
         // below would have a listener if this were posted later.

@@ -130,7 +130,7 @@ public class GummyBearEntity extends Animal implements IDancesToJukebox, IAnimat
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.25D).add(Attributes.MAX_HEALTH, 36.0D).add(Attributes.ATTACK_DAMAGE, 4.0F);
+        return ACCompat.temptable(Monster.createMonsterAttributes().add(Attributes.MOVEMENT_SPEED, 0.25D).add(Attributes.MAX_HEALTH, 36.0D).add(Attributes.ATTACK_DAMAGE, 4.0F));
     }
 
     public static boolean checkGummyBearSpawnRules(EntityType<? extends Animal> type, LevelAccessor levelAccessor, MobSpawnType mobType, BlockPos pos, RandomSource randomSource) {

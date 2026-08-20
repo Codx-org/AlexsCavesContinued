@@ -134,7 +134,7 @@ public class TremorsaurusEntity extends DinosaurEntity implements KeybindUsingMo
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().add(Attributes.ATTACK_DAMAGE, 14.0D).add(Attributes.MOVEMENT_SPEED, 0.2D).add(Attributes.KNOCKBACK_RESISTANCE, 0.9D).add(Attributes.FOLLOW_RANGE, 32.0D).add(Attributes.MAX_HEALTH, 150.0D).add(Attributes.ARMOR, 8.0D);
+        return ACCompat.temptable(Monster.createMonsterAttributes().add(Attributes.ATTACK_DAMAGE, 14.0D).add(Attributes.MOVEMENT_SPEED, 0.2D).add(Attributes.KNOCKBACK_RESISTANCE, 0.9D).add(Attributes.FOLLOW_RANGE, 32.0D).add(Attributes.MAX_HEALTH, 150.0D).add(Attributes.ARMOR, 8.0D));
     }
 
     public void tick() {

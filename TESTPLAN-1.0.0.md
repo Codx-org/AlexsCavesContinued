@@ -218,3 +218,58 @@ line is usually enough to identify which one it is.
 **Do not read a green boot as a pass.** Several of the bugs found in this port reached `Done` and
 the title screen while being completely broken: the biome attributes, the ferromagnetic tag, the
 silently-uncraftable recipes and the unapplied `@ModifyExpressionValue` handlers all boot clean.
+
+---
+
+## Results — server-side automated battery (2026-08-19)
+
+Two of the four full-pass nodes are done — `1.20.1-forge` and `1.21.11-fabric` — plus
+`1.21.11-forge`, added off-plan because it is the cheapest node that sits *above* both the
+`tempt_range` (1.21.2) and `defineId` (1.20.5) bug boundaries on Forge. Driven over RCON on a
+**fresh normal world**, seed pinned
+to `20250819` so the two runs are coordinate-comparable. ~866 commands each: three vanilla-biome and
+three vanilla-structure controls, then locate/place every AC biome and structure, `setblock` every
+block, `summon` every mob, and `loot spawn` every chest and entity table. Harness in `/tmp/acc-test/`
+(`run_node.sh`, `battery.py`, `analyse.py`, `rcon.py`) — worth committing if it is wanted again.
+
+| Section | `1.20.1-forge` | `1.21.11-fabric` | `1.21.11-forge` |
+|---|---|---|---|
+| vanilla controls (biome + structure) | 3/3 + 3/3 | 3/3 + 3/3 | 3/3 + 3/3 |
+| `locate biome` (AC) | 5/6 | 5/6 | 5/6 |
+| `locate structure` (AC) | 13/14 | 13/14 | 13/14 |
+| `place structure` | 9/14 | 9/14 | 9/14 |
+| `setblock` (every block) | 352/354 | 352/354 | 352/354 |
+| `summon` (every mob) | 43/43 | 43/43 | 43/43 |
+| `loot spawn` chest tables | 16/16 | 16/16 | 16/16 |
+| `loot spawn` entity tables | 43/43 | 43/43 | 43/43 |
+| exceptions / `ERROR` in server log | none | none | none |
+
+**Every non-100% cell is expected and identical on all three nodes**, which is the point of running
+them on one seed:
+
+- `toxic_caves` is simply not within `locate`'s search radius on this seed — the other five AC
+  biomes resolve, and the three vanilla controls do too, so the biome source works.
+- `ocean_trench` is ocean-only; a land spawn cannot locate it and `place` answers *"That position is
+  not loaded"*.
+- The four `place structure` misses (`gingerbread_town`, `licowitch_tower`, `soda_bottle`, `volcano`)
+  are biome-gated and correctly refuse to generate in a vanilla biome — `/place` honours a
+  structure's own predicates.
+- The two `setblock` misses are `cave_painting_friendship` / `cave_painting_hunt`: orphan **upstream**
+  blockstate JSONs with no registry entry behind them. Not this port's doing, and cosmetic.
+
+**What the battery caught that nothing else could** — three bugs, all fixed, all written up in
+`DEVELOPMENT.md` under *"Gotchas the in-world test battery found"*: nothing on Fabric ever posted a Forge
+**game**-bus event (so the six cave biomes did not exist on any of the 22 Fabric nodes), 1.21.2's
+`TEMPT_RANGE` attribute crashed eleven mobs on all three loaders, and one upstream `defineId` naming
+the wrong class bricked the licowitch and the tremorzilla on every node ≥1.20.5. The `1.21.11-forge`
+row above is the proof of the last two on Forge *above* both of their version boundaries — the
+`1.20.1-forge` row sits below both and its green was never evidence for them.
+
+### Still not covered by this
+
+- `1.21.1-neoforge` and `26.2-fabric` (the other two full-pass nodes) and the six-node smoke pass.
+- **Everything client-side and everything interactive.** No GUI, no rendering, no armour, no mob
+  behaviour, no crafting, no cave book, no cave map. A summon that succeeds proves the entity
+  constructs and survives its first ticks — nothing about what it then does.
+- **18 of the 20 `CommonEvents` handlers are still dead on all 22 Fabric nodes** (only the two
+  server-lifecycle events are posted). `serverTick` is among them, so cave maps never resolve there.

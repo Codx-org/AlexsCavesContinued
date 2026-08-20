@@ -1,6 +1,9 @@
 package com.github.alexmodguy.alexscaves.fabric;
 
 import com.github.alexmodguy.alexscaves.AlexsCaves;
+import com.github.alexmodguy.alexscaves.fabric.forge.common.MinecraftForge;
+import com.github.alexmodguy.alexscaves.fabric.forge.event.server.ServerAboutToStartEvent;
+import com.github.alexmodguy.alexscaves.fabric.forge.event.server.ServerStoppingEvent;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.MinecraftServer;
@@ -58,8 +61,36 @@ public class AlexsCavesFabric implements ModInitializer {
         // mod's own flush order depends on them, so they go first and stand on their own.
         com.github.alexmodguy.alexscaves.fabric.entity.ACFabricAttributes.register();
 
-        ServerLifecycleEvents.SERVER_STARTING.register(starting -> server = starting);
+        // ⚠️ Both halves matter. The field is what ServerLifecycleHooks.getCurrentServer() reads;
+        // the two posts are what put this mod's ~20 game-bus handlers on the air at all, since on
+        // this loader nothing else ever constructs a Forge lifecycle event. Without the first one
+        // CommonEvents#onServerAboutToStart never runs, so ACBiomeRarity is never initialised and
+        // BiomeSourceAccessor never gets its key map — and the six cave biomes are then absent from
+        // every world the mod generates, silently, with no log line. Fabric's SERVER_STARTING sits
+        // exactly where Forge fires ServerAboutToStartEvent: registries loaded and frozen, no level
+        // loaded yet, so nothing has asked the biome source a question the table cannot answer.
+        ServerLifecycleEvents.SERVER_STARTING.register(starting -> {
+            server = starting;
+            MinecraftForge.EVENT_BUS.post(new ServerAboutToStartEvent(starting));
+            // Forge's VillagerTradingManager rebuilds the trade tables off this same event, so the
+            // cabin-map trades are added at exactly the moment they are added on the other two
+            // loaders. Gone from 26, where trades are datapack registry entries on every loader.
+            //? if <26
+            com.github.alexmodguy.alexscaves.fabric.event.ACFabricVillagerTrades.loadTrades();
+        });
+        // STOPPING, not STOPPED: the handler clears the tick-rate modifiers off a tracker it looks
+        // up from the server, so the server has to still be usable when it runs — which is the same
+        // guarantee Forge's ServerStoppingEvent gives. The field is nulled a moment later, on
+        // STOPPED, so anything running during shutdown still resolves the server.
+        ServerLifecycleEvents.SERVER_STOPPING.register(stopping ->
+                MinecraftForge.EVENT_BUS.post(new ServerStoppingEvent(stopping)));
         ServerLifecycleEvents.SERVER_STOPPED.register(stopped -> server = null);
+
+        // The rest of the game bus. Everything with a first-class Fabric API callback is posted
+        // from ACGameEvents; everything that needs an anchor inside a vanilla method is posted from
+        // a mixin under mixin/fabric/. Both fill the same MinecraftForge.EVENT_BUS these two
+        // lifecycle posts do.
+        com.github.alexmodguy.alexscaves.fabric.event.ACGameEvents.register();
 
         // Everything Forge's @Mod annotation does, in order. The constructor registers this mod's
         // four Fabric-side mod-bus listeners and then flushes ~28 DeferredRegisters — which on this
