@@ -68,7 +68,6 @@ public class ACCreativeTabRegistry {
                 add(output, ACBlockRegistry.GALENA.get());
                 add(output, ACBlockRegistry.GALENA_STAIRS.get());
                 add(output, ACBlockRegistry.GALENA_SLAB.get());
-                add(output, ACBlockRegistry.GALENA_BRICKS.get());
                 add(output, ACBlockRegistry.GALENA_WALL.get());
                 add(output, ACBlockRegistry.GALENA_BRICKS.get());
                 add(output, ACBlockRegistry.GALENA_BRICK_STAIRS.get());

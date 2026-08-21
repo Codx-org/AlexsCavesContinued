@@ -31,7 +31,11 @@ platform {
 			forgeLikeVersionRange.set("[1,)")
 		}
 		required("codxlib") {
-			forgeLikeVersionRange.set("[1.3,)")
+			// >=1.3.6, not >=1.3: /acc menu is built on CodxLib's api.ui.menu chest-menu toolkit,
+			// and 1.3.3 ships no api/ui/menu classes at all — an older CodxLib is a
+			// NoClassDefFoundError the first time an operator runs the command. 1.3.6 is also the
+			// build-time pin (deps.codxlib) and the first CodxLib on BOTH Modrinth and CurseForge.
+			forgeLikeVersionRange.set("[1.3.6,)")
 		}
 		// NOTE: no Citadel dependency — the subset Alex's Caves uses is bundled into the mod
 		// under com.github.alexmodguy.alexscaves.citadel (see docs/notes/citadel.md).

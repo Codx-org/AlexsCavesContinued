@@ -240,6 +240,10 @@ stonecutter parameters {
 			replace("import net.minecraftforge.event.TickEvent",
 				"import com.github.alexmodguy.alexscaves.fabric.forge.event.TickEvent")
 		}
+		string("!fab-ev-registercommands", true) {
+			replace("import net.minecraftforge.event.RegisterCommandsEvent",
+				"import com.github.alexmodguy.alexscaves.fabric.forge.event.RegisterCommandsEvent")
+		}
 		// ── the two hook facades ──────────────────────────────────────────
 		// Unlike everything above these two are not events the mod LISTENS to but the factories it
 		// FIRES from, so the stand-ins reproduce a return value rather than a type. All ten methods
@@ -4695,8 +4699,18 @@ stonecutter parameters {
 	// which exists on both sides), and nothing else on the server references the client classes — the
 	// stripping was an optimisation and a guard rail, never load-bearing. Fabric is untouched: its
 	// own `!fab-onlyin-class` rule turns the same token into `@Environment(EnvType.CLIENT)`, and the
-	// two groups are never registered together. NeoForge 26.2 is untouched too — it only logs the
-	// same finding through `OnlyInWarningsHandler` and boots past it.
+	// two groups are never registered together.
+	//
+	// ⚠ NeoForge needs the same neutralisation, for a *different* symptom, and this note asserted the
+	// opposite until a 1.21.11-neoforge dev CLIENT was actually booted. NeoForge does not throw — it
+	// reports the finding through `net.neoforged.neoforge.common.OnlyInWarningsHandler` — but that
+	// handler raises a **blocking modal**: the client stops on "Warning while loading mods / 1 warning
+	// has occurred during loading", naming this mod, and waits for a click on "Proceed to main menu"
+	// before it will reach the title screen. Every launch, for every player. The boundary is a
+	// NeoForge-BUILD one exactly like Forge's: `OnlyInWarningsHandler` is absent from every cached
+	// universal jar through **21.6.20-beta (1.21.6)** and present from **21.7.25-beta (1.21.7)** up,
+	// so nine nodes are affected (1.21.7 → 26.2). Stripping is already gone on those builds, so
+	// neutralising costs nothing there either — same argument as above, same 71 dist-neutral bodies.
 	//
 	// The two imports are left dangling on purpose: an unused import is legal Java, and
 	// `net.minecraftforge.api.distmarker.OnlyIn` still exists on 65.1.0 (the cleaner reads its own
@@ -4705,6 +4719,17 @@ stonecutter parameters {
 	// contain the source token — a rule whose target embeds its source is not safely idempotent.
 	if (current.project.endsWith("-forge") && eval(current.version, ">=26.1")) replacements {
 		string("!mc261-onlyin-forge", true) {
+			replace("@OnlyIn(Dist.CLIENT)", "/* client-only */")
+		}
+	}
+
+	// The NeoForge half of the note above. A separate group with its own rule name, because a node is
+	// either Forge or NeoForge and the two are therefore never registered together — sharing one rule
+	// name across two groups would be fine, but sharing a *target* inside one group is what fails
+	// configuration with "Ambiguous replacement", and keeping them apart makes the two boundaries
+	// (Forge >=26.1, NeoForge >=1.21.7) independently editable.
+	if (current.project.endsWith("-neoforge") && eval(current.version, ">=1.21.7")) replacements {
+		string("!mc2117-onlyin-neoforge", true) {
 			replace("@OnlyIn(Dist.CLIENT)", "/* client-only */")
 		}
 	}

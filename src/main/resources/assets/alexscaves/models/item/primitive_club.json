@@ -1,5 +1,6 @@
 {
   "parent": "builtin/entity",
+  "textures": {"particle": "alexscaves:item/primitive_club"},
   "gui_light": "front",
   "ambientocclusion": true,
   "display": {

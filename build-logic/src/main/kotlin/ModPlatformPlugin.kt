@@ -635,6 +635,14 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				val relinked = DataPackMigration.migrateCoreShadersTo1205(destinationDir, ctx.modId)
 				logger.lifecycle("Relinked $relinked core shaders against the 1.20.5 GLSL interface")
 			}
+			// 1.20.5 turned LocationPredicate's `structure`/`biome` and the advancement
+			// BlockPredicate's `tag` into holder sets. Both records are all-optionalFieldOf, so
+			// the old keys are dropped in silence and what is left matches EVERYWHERE — ten
+			// advancements granted on world entry. See DataPackMigration.
+			if (migrateTo1205) doLast {
+				val changed = DataPackMigration.migrateAdvancementPredicatesTo1205(destinationDir)
+				logger.lifecycle("Migrated $changed advancement location predicates to the 1.20.5 holder-set format")
+			}
 			// The data pack is authored Forge-side; NeoForge reads its own namespaces.
 			if (ctx.loader is Loader.NeoForge) doLast {
 				val changed = DataPackMigration.migrateNeoForge(
@@ -787,6 +795,25 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				// post shaders (bumpy.fsh declares no uniform but its sampler) and all 7 chains.
 				val reblocked = DataPackMigration.migrateShadersTo1216(destinationDir, ctx.modId)
 				logger.lifecycle("Rewrote $reblocked post shader assets onto the 1.21.6 uniform blocks")
+			}
+			// 1.21.9 deleted every post-pass vertex shader but rotscale and drew the fullscreen
+			// quad from gl_VertexID instead, so a chain naming minecraft:post/sobel or
+			// minecraft:post/blit as its VERTEX stage cannot compile — logged and nulled below 26.2,
+			// a blanked frame from it. Runs after the ≥1.21.6 pass whose SamplerInfo block it
+			// reuses — see DataPackMigration.migratePostShadersTo1219. Expect 15: 7 chains, 3 of
+			// this mod's post vertex shaders deleted and the 5 fragment shaders it rewrites.
+			if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=1.21.9")) doLast {
+				val requadded = DataPackMigration.migratePostShadersTo1219(destinationDir, ctx.modId)
+				logger.lifecycle("Rewrote $requadded post shader assets onto the 1.21.9 screen quad")
+			}
+			// …and 26.2 split the post pipeline's binds into two groups, which turns the chain-level
+			// `Globals` declaration the ≥1.21.6 pass emits from the thing that BINDS the block into a
+			// duplicate of a bind group 0 entry — fatal, and the 26.2 black main menu. Must run after
+			// that pass, and must never run below 26.2, where the same line is what makes GameTime
+			// resolve at all — see DataPackMigration.dropPostChainGlobalsTo1262. Expect 1 (hologram).
+			if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.2")) doLast {
+				val unglobbed = DataPackMigration.dropPostChainGlobalsTo1262(destinationDir, ctx.modId)
+				logger.lifecycle("Dropped the duplicate Globals bind from $unglobbed post chains for 26.2")
 			}
 			// 1.21.11 emptied a biome's `effects` into a top-level `attributes` map — everything the
 			// client reads off a biome is an EnvironmentAttribute now. An unmigrated biome parses

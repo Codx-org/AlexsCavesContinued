@@ -39,10 +39,12 @@ platform {
 		}
 		required("codxlib") {
 			slug("codxlib")
-			// >=1.3.4, not >=1.3.0: CodxLib 1.3.3's Fabric jars declare fabricloader >=0.19.3 on
-			// every node and refuse to start under an MC-appropriate older loader. Forge and
-			// NeoForge keep [1.3,) — CodxLib was never broken there.
-			fabricLikeVersionRange = ">=1.3.4"
+			// >=1.3.6 on two counts. CodxLib 1.3.3's Fabric jars declare fabricloader >=0.19.3 on
+			// every node and refuse to start under an MC-appropriate older loader; and /acc menu is
+			// built on CodxLib's api.ui.menu chest-menu toolkit, which 1.3.3 does not ship at all,
+			// so anything below 1.3.6 is a NoClassDefFoundError when an operator runs the command.
+			// 1.3.6 is the build-time pin (deps.codxlib) and the first CodxLib on both stores.
+			fabricLikeVersionRange = ">=1.3.6"
 		}
 		// NOTE: no Citadel dependency — the subset Alex's Caves uses is bundled into the mod
 		// under com.github.alexmodguy.alexscaves.citadel. Fabric has no Citadel at all, so

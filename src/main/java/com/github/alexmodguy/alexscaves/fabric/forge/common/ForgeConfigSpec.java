@@ -36,14 +36,19 @@ import java.util.function.Supplier;
  * <p><b>The API surface is deliberately closed</b>, exactly as wide as the two spec classes:
  * {@link Builder#comment}, {@link Builder#translation}, {@link Builder#push}, {@link Builder#pop},
  * {@link Builder#define(String, boolean)}, the two {@code defineInRange} overloads,
- * {@link Builder#configure}, and {@link ConfigValue#get()}. If a new option needs a shape that is
+ * {@link Builder#configure}, {@link ConfigValue#get()}, and — for the in-game admin menu —
+ * {@link ConfigValue#set} plus {@link ConfigValue#save()}. If a new option needs a shape that is
  * not here, widen this class — never the Stonecutter rule that points at it.
  *
- * <p><b>What is not reproduced:</b> there is no config-changed event and no runtime reload. On the
- * other two loaders the loader owns the file and re-fires its config events when it is edited;
- * here {@link #load(Path)} runs once, from the constructor, before anything reads a value. An edit
- * takes effect on the next launch, which is what a {@code worldRestart} option does on every
- * loader anyway — and none of this mod's 58 options is watched for live changes on Forge either.
+ * <p><b>What is not reproduced:</b> there is no config-changed event and no file watcher. On the
+ * other two loaders the loader owns the file and re-fires its config events when it is edited by
+ * hand; here {@link #load(Path)} runs once, from the constructor, before anything reads a value, so
+ * a hand edit takes effect on the next launch. That is what a {@code worldRestart} option does on
+ * every loader anyway, and none of this mod's 58 options is watched for live changes on Forge
+ * either. {@link ConfigValue#set} is the other direction and is fully live: it writes the cached
+ * value that all 106 call sites read and {@link ConfigValue#save()} persists it, which is exactly
+ * what Forge's own pair does. That pair is what {@code ACAdminMenu} drives, and it is the reason
+ * the menu needs no gate on any of the 58 nodes.
  *
  * <p>An unreadable or malformed file is never fatal: the offending line is logged and its option
  * keeps its default, and the file is rewritten in canonical form afterwards, so a corrupted config
@@ -52,9 +57,13 @@ import java.util.function.Supplier;
 public final class ForgeConfigSpec {
 
     private final List<ConfigValue<?>> values;
+    private Path file;
 
     private ForgeConfigSpec(List<ConfigValue<?>> values) {
         this.values = values;
+        for (ConfigValue<?> value : values) {
+            value.spec = this;
+        }
     }
 
     /**
@@ -66,6 +75,7 @@ public final class ForgeConfigSpec {
      * function of the values, so it is a no-op on disk unless something actually changed.
      */
     public void load(Path file) {
+        this.file = file;
         Map<String, String> raw = new HashMap<>();
         if (Files.exists(file)) {
             try {
@@ -81,6 +91,17 @@ public final class ForgeConfigSpec {
             }
         }
         write(file);
+    }
+
+    /**
+     * Rewrites the file this spec was loaded from, so an in-game edit survives a restart. A no-op
+     * before {@link #load(Path)} has run, which cannot happen in practice — the constructor loads
+     * both specs before any of this mod's code exists to change one.
+     */
+    public void save() {
+        if (file != null) {
+            write(file);
+        }
     }
 
     /**
@@ -236,19 +257,66 @@ public final class ForgeConfigSpec {
         final String key;
         final String path;
         final String comment;
+        final T defaultValue;
         T value;
+        ForgeConfigSpec spec;
 
         ConfigValue(String section, String key, String comment, T defaultValue) {
             this.section = section;
             this.key = key;
             this.path = section.isEmpty() ? key : section + "." + key;
             this.comment = comment;
+            this.defaultValue = defaultValue;
             this.value = defaultValue;
         }
 
         @Override
         public T get() {
             return value;
+        }
+
+        /**
+         * The value this option was declared with, whatever the file or a later {@link #set} says.
+         *
+         * <p>Present on Forge's {@code ConfigValue} and on NeoForge's {@code ModConfigSpec} — javap'd
+         * on every cached build from Forge 47.4.21 to 65.1.0 and NeoForge 20.4.251 to 26.2.0.37-beta,
+         * all of which declare {@code public T getDefault()}. So {@code ACAdminMenu}'s reset button
+         * asks the same question on all 58 nodes rather than carrying its own copy of 39 defaults,
+         * which could only ever drift out of step with {@code ACServerConfig}.
+         */
+        public T getDefault() {
+            return defaultValue;
+        }
+
+        /**
+         * Replaces the value every call site reads, clamping it into range first.
+         *
+         * <p>Forge's own {@code set} does not clamp — it takes the caller's word and lets the next
+         * read fail its own range check. Clamping here is the safer half of the same contract and
+         * costs nothing, because the only caller in this tree is the admin menu, whose buttons
+         * already clamp to the identical bounds. It does mean a value handed in out of range is
+         * silently corrected rather than rejected; that is deliberate, since the alternative is
+         * throwing out of a chest-menu click.
+         *
+         * <p>This does <b>not</b> write the file — call {@link #save()} for that, exactly as on
+         * the other two loaders, so a batch of edits costs one write rather than one per option.
+         */
+        public void set(T newValue) {
+            if (newValue != null) {
+                value = clamp(newValue);
+            }
+        }
+
+        /** Persists the whole spec. Mirrors Forge's {@code ConfigValue#save()}, which does the same. */
+        public void save() {
+            if (spec != null) {
+                spec.save();
+            }
+        }
+
+        /** Identity unless the subtype carries a range. */
+        T clamp(T candidate) {
+            return candidate;
         }
 
         abstract void parse(String raw, Path file);
@@ -314,6 +382,11 @@ public final class ForgeConfigSpec {
         }
 
         @Override
+        Integer clamp(Integer candidate) {
+            return Math.max(min, Math.min(max, candidate));
+        }
+
+        @Override
         String write() {
             return value.toString();
         }
@@ -347,6 +420,11 @@ public final class ForgeConfigSpec {
             } catch (NumberFormatException e) {
                 reject(raw, file);
             }
+        }
+
+        @Override
+        Double clamp(Double candidate) {
+            return Double.isNaN(candidate) ? value : Math.max(min, Math.min(max, candidate));
         }
 
         /**

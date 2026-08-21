@@ -1,5 +1,6 @@
 {
   "parent": "builtin/entity",
+  "textures": {"particle": "alexscaves:item/limestone_spear"},
   "gui_light": "front",
   "ambientocclusion": true,
   "display": {

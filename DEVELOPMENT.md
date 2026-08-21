@@ -65,7 +65,7 @@ claiming 26.1, the store hands players an arbitrary one.
 ## codxlib
 
 Alex's Caves Continued is a codxlib consumer, wired to the standard recipe (see the workspace
-`../DEVELOPMENT.md`). Build-time pin `deps.codxlib` in `stonecutter.properties.toml`; each node
+notes). Build-time pin `deps.codxlib` in `stonecutter.properties.toml`; each node
 resolves `codx:codxlib:<ver>-<loader>+<mc>` from **mavenLocal**, so
 `cd ../codxlib && python3 scripts/install_maven_local.py` after any codxlib change or this tree
 stops resolving. Declared runtime floor is `[1.3,)` on Forge/NeoForge and `>=1.3.4` on Fabric
@@ -118,6 +118,94 @@ would be a large diff with no payoff on Forge/NeoForge.
 
 ## Gotchas already hit
 
+- ⚠️⚠️ **1.20.5 turned `LocationPredicate`'s `structure`/`biome` and the advancement
+  `BlockPredicate`'s `tag` into holder sets, and because every field of both records is an
+  `optionalFieldOf` the old keys were DROPPED IN SILENCE — leaving an empty predicate that matches
+  everywhere.** `minecraft:location` polls the player, so on all 51 nodes ≥1.20.5 the four
+  structure advancements (`root`, `discover_abyssal_ruins`, `gingerbread_town`, `licowitch_tower`)
+  and the six `discover_*` biome ones granted **the instant a world was entered** — and `root`
+  granting pops the whole tab, which is exactly what the user reported. `walk_on_rock_candy` is the
+  same bug on the block half (`stepping_on.block.tag`): it granted on any block at all. Read the key
+  sets out of the Mojmap bytecode, node by node, because the boundary is **not** guessable —
+  1.20.2, 1.20.3 and 1.20.4 all still spell them singular, so this is 1.20.5 exactly:
+
+  | class | ≤1.20.4 | ≥1.20.5 |
+  |---|---|---|
+  | `LocationPredicate` | `biome`, `structure` | `biomes`, `structures` |
+  | `advancements…BlockPredicate` | `blocks`, `tag` | `blocks` only |
+
+  Fixed 2026-08-21 by `DataPackMigration.migrateAdvancementPredicatesTo1205`, gated `>=1.20.5`,
+  expected count **11**. A bare id string is a legal single-element holder set, so only the *key*
+  moves; `#tag` is how a holder set spells a tag. It has to be a migration pass rather than a source
+  fix — the standing preference in this file — because the correct spelling genuinely differs per
+  band, which is the one case that preference does not cover.
+  Two things generalise past this instance. **(1) A predicate built entirely from `optionalFieldOf`
+  fails OPEN.** There is no log line, no failed load and no gate that can see it: the advancement
+  parses, loads and fires, it just fires on nothing in particular. The same shape already cost
+  AlexsMobsContinued its "Gone Bananas" advancement (report #31). **(2) The pass has to walk the
+  document, not `conditions`' top-level keys** — `player` is an *array of loot conditions* in every
+  affected file, so the host to identify is a `"condition": "minecraft:entity_properties"` object,
+  which is why this reuses `rewriteEntityPredicateHosts`' shape rather than
+  `migrateItemPredicateFields`'. Grep `src/main/resources` for `"structure"`, `"biome"` and `"tag"`
+  before assuming the blast radius: every non-advancement hit here was a false alarm
+  (`loot_modifiers` = the mod's *own* `alexscaves:cave_tablet` codec field, `structure_set` =
+  vanilla's own unchanged entry field, `set_nbt`'s tag and the recipe ingredient tags = handled by
+  existing passes), and `location_check` appears nowhere in the tree.
+- ⚠️ **1.21.2 stopped deriving a BlockItem's name from its block, and every one of this mod's
+  ~360 block items was called `item.alexscaves.<path>` because of it.** `BlockItem` used to
+  override `getDescriptionId()` to return `getBlock().getDescriptionId()`; from 1.21.2 the name
+  comes off `Item.Properties` like any other item's and a BlockItem must ask for the block prefix
+  with `Item.Properties#useBlockDescriptionPrefix()`. `ACBlockRegistry` built all 11 of its
+  BlockItem variants from a bare `new Item.Properties()`, so on every node 1.21.2 → 26.2 the
+  tooltips were raw lang keys while the shipped keys are all `block.alexscaves.*`. **Models and
+  icons come from a different `Properties` field and were fine**, which is precisely why a boot
+  test could not see it — you have to hover an item. Fixed 2026-08-21 with a
+  `blockItemProperties()` helper gated `>=1.21.2`, verified by compiling `1.21.2-fabric` (the
+  boundary node) and `1.21.5-fabric` alongside the active tree. Read it out of javap:
+  `net.minecraft.world.item.BlockItem` on 26.2 declares **nothing but a constructor**.
+
+- ⚠️ **`Entity#hashCode` goes through `Entity#getId`, and `getId` THROWS on an entity that was
+  never added to a level.** So a `PartEntity` — built in its parent's constructor, never
+  registered, never given an id — cannot be a `HashMap`/`HashSet` key, and the failure is
+  `IllegalStateException: Tried to access entity ID before ID assignment` thrown from
+  **rendering**, not from the collection. `citadel/client/render/LightningRender` kept its bolt
+  owners in an `Object2ObjectOpenHashMap` and `MagnetronRenderer` passes a `MagnetronPartEntity`
+  as the owner, so the client died the first frame a Magnetron was on screen
+  (`LightningRender.update` → `Map.computeIfAbsent` → `Entity.hashCode`). Fixed 2026-08-21 with
+  an `IdentityHashMap`, which is what "bolt owner" meant anyway and is behaviour-identical on
+  older versions where `Entity` did not override `hashCode` at all. `QuarrySmasherRenderer`'s
+  four `update(1..4, …)` owners became interned `Object` constants at the same time rather than
+  leaning on the `Integer` cache to make identity work. The mod has **five** `PartEntity`
+  subclasses (magnetron, tremorzilla, hullbreaker, sauropod, `ACMultipartEntity`) — the other
+  entity-keyed collections here are all typed `LivingEntity`, which no part entity is, so they
+  are safe. **Anything typed `Entity` or `Object` that hashes is not.**
+
+- ⚠️ **A duplicate `add(output, …)` in a creative tab is a client crash, and no boot test finds it.**
+  `ACCreativeTabRegistry` listed `GALENA_BRICKS` twice in the Magnetic Caves tab (once before
+  `GALENA_WALL`, once in its right place). Vanilla's `CreativeModeTab$ItemDisplayBuilder.accept`
+  throws `IllegalStateException: Accidentally adding the same item stack twice
+  [item.alexscaves.galena_bricks]`, and `CreativeModeTabs.buildAllTabContents` runs the first time
+  a player **opens the creative inventory** — so the client boots to the title screen, loads a
+  world, and dies on the E key. The 56-node dev-client shakedown could never have caught it because
+  it only ever checked that the title screen appeared. The duplicate predates the fork and every
+  node from **1.19.3 up** shipped it. Fixed 2026-08-21 by deleting the stray line; a Python scan of
+  all 7 tabs confirmed it was the only one. **Scan the tab lists for repeated ids after any edit** —
+  and open creative once in any client test.
+
+- ⚠️ **Never assign an IMMUTABLE collection to an access-widened vanilla field that other mods also
+  extend.** `ACBlockEntityRegistry.expandVanillaDefinitions` added the pewen/thornwood signs by
+  writing `ImmutableSet.Builder.build()` into `BlockEntityType.validBlocks` (widened `accessible` +
+  `mutable` in `alexscaves.accesswidener`). Farmer's Delight adds its canvas signs to the same
+  vanilla `SIGN` type through Fabric API's `BlockEntityType#addValidBlock`, which writes straight
+  into that field — so it hit `ImmutableCollection.add` → `UnsupportedOperationException`, its
+  entrypoint threw, and the game died at `Minecraft.<init>` with a crash report naming only FD.
+  **Whoever initialises second loses**, and Fabric orders mod initialisers by discovery, so it
+  reproduced on some launches and not others — the same two jars passed a full probe run at 23:11
+  on 19 Aug and crashed at 23:10, the only difference being the ACC jar's filename. Fixed
+  2026-08-21 by rebuilding both sets as a `LinkedHashSet`: same contents, same iteration order,
+  still open for whoever comes third. Found while testing **AlexsCavesContinuedDelight**, which
+  requires both mods and so would have shipped the coin toss to every player.
+  ⚠️ **Only `26.2-fabric` has been rebuilt with these four fixes — the other 57 nodes still carry all of them.**
 - **`"Loaded 7 recipes"` on a 1.20.1 dev server is NORMAL, not a broken data pack.** AMC's
   known-good 1.20.1-forge node prints the same line in every one of its archived logs. 1.20.1's
   initial `WorldLoader` pass loads a reduced pack set; the advancement count on the same line
@@ -664,6 +752,165 @@ would be a large diff with no payoff on Forge/NeoForge.
   from the log** — both are one `Caused by` under `Registry Loading` — so read every entry in the
   error report, not the first.
 
+### Gotchas the 26.x Fabric client shakedown found (2026-08-20)
+
+Two user-reported symptoms on two adjacent nodes — *"on 26.2 fabric I get a black menu screen and in
+26.1.2 the game crashed"* — and neither is a 26.x port bug in the sense the version walk was looking
+for. One is a resource the mod ships being **right below a version and fatal at it**; the other had
+been latent on **every Fabric node ≥1.20.5 since the Fabric milestone** and needed a living entity to
+touch water before anything noticed.
+
+- **⚠️ 1.21.9 deleted every post-pass VERTEX shader but `rotscale`, and a chain naming a deleted one
+  cannot compile.** The fullscreen quad is generated from `gl_VertexID` now, so `minecraft:post/blit`
+  and `minecraft:post/sobel` are gone as vertex stages and a pass that names one logs *"Couldn't
+  compile program for pipeline"* and is **nulled** — `ShaderManager#getPostChain` returns null and the
+  effect silently does nothing (below 26.2 that is a lost effect; at 26.2 it blanks the frame, see
+  below). `DataPackMigration.migratePostShadersTo1219` deletes this mod's three equivalent vertex
+  stages and rewrites the five fragment shaders onto the new inputs; expect **15** assets. It refuses
+  to drop a vertex stage that is not byte-equivalent to the screen quad (`Position.xy * OutSize`,
+  `texCoord = Position.xy;`, `oneTexel`) rather than silently losing a stage that did something else.
+- **⚠️⚠️ 26.2 split a post pipeline's binds into TWO bind groups, which makes the chain-level
+  `"Globals"` uniform declaration a duplicate — and that is the black main menu.** From 26.2
+  `PostChain.createPass` builds on `RenderPipelines.POST_PROCESSING_SNIPPET`, which now includes
+  `GLOBALS_SNIPPET`, so `Globals` is already bound in **group 0**; every input's `<name>Sampler`,
+  `SamplerInfo` and *every key of `Pass.uniforms()`* go into a second `BindGroupLayout`, and
+  `BindGroupLayout.ensureCompatible(List<BindGroupLayout>)` walks all groups with **one**
+  `HashSet<String>` → *"Duplicate bind name 'Globals' in bind group layout 1"*. The throw is swallowed
+  the same way a compile failure is, so the chain is null, the mod's screen pass draws nothing, and the
+  **whole frame** is black with no crash and no obvious log line. ⚠️ **The same line is load-bearing
+  below 26.2**: `PostChain` there contains *zero* references to `BindGroupLayout` and
+  `POST_PROCESSING_SNIPPET` declares no `Globals` (1.21.6 declares only `Projection`; 1.21.9 and 26.1.2
+  declare nothing), so declaring it is what makes `GameTime` resolve at all — which is why
+  `blockPostChainUniformsTo1216` emits it and why the fix is a **separate `>=26.2` pass**
+  (`dropPostChainGlobalsTo1262`, expect **1** — `hologram`, the one fragment shader that reads `Time`)
+  rather than an edit to the older one. General form, and the reason a green build says nothing here:
+  **a JSON asset can be simultaneously required on one node and fatal on the next, and the loader
+  reports neither as an error.** The javap tell is one grep: `PostChain` naming `BindGroupLayout`, and
+  `RenderPipelines.POST_PROCESSING_SNIPPET`'s uniform list.
+- **⚠️⚠️ On Fabric, `Bootstrap.validate()` builds every vanilla `AttributeSupplier` BEFORE mod init, so
+  an attribute registered from `onInitialize` is wrapped as a `Holder.direct` and can never be looked
+  up again.** `AttributeSupplier` is a `Map<Holder<Attribute>, AttributeInstance>` and
+  `MappedRegistry.wrapAsHolder(T)` returns `byValue.get(value)` — a bound `Holder$Reference` — or, when
+  the value is not registered yet, `Holder.direct(value)`, a record. The two can never be equal. In the
+  26.1.2 dev log `Bootstrap.validate()` → `DefaultAttributes.<clinit>` → `createLivingAttributes` is
+  stamped **four seconds before** `Fabric common init`, so `mixin/fabric/LivingEntityAttributesMixin`'s
+  `@Inject` at `createLivingAttributes` RETURN keyed the map with a Direct; at tick time the attribute
+  *was* registered, `wrapAsHolder` returned the Reference, and `getAttributeInstance`'s bare
+  `instances.get(holder)` missed — `IllegalArgumentException: Can't find attribute
+  alexscaves:swim_speed`, out of `LivingEntity.travelInWater` ← `travel` ← `aiStep` ← `Bat.tick`, i.e.
+  **the first time any living entity entered a fluid**. ⚠️ **The message is a red herring**: it is built
+  from `holder.getRegisteredName()`, whose default implementation prints `[unregistered]` only for the
+  *lookup* holder — so a message that names the attribute proves the lookup side is bound and says
+  nothing about the key side. Fixed by moving the two `Registry.register` calls into
+  `ACFabricAttributes`' **static initialiser**, so the mixin's first touch of `SWIM_SPEED` registers it
+  at that instant whenever the class is first loaded; `register()` stays as an empty method that forces
+  `<clinit>` at the old point for a production run, where `Bootstrap.validate()` never runs. General
+  form: **on Fabric, "mod init" is later than vanilla's bootstrap, so anything a vanilla static
+  initialiser can reach must register from its own `<clinit>`, not from `onInitialize`.** This is the
+  fourth member of the family this file records (after `ACFoods` at 1.20.5, the brewing `ItemStack` at
+  26.1 and `RecipeCaveMap` at 26.2) and the only one that is an *identity* bug rather than a
+  not-yet-bound one. Verified at runtime on `26.1.2-fabric`: a zombie and a bat live in a water column
+  for six seconds with zero exceptions, and `/attribute @e[type=zombie] alexscaves:swim_speed get`
+  answers `1.0` — that command performs exactly the holder-keyed lookup that used to miss.
+- **Kotlin block comments NEST, so a literal `/*` inside a KDoc silently breaks the file.** Writing a
+  Stonecutter arm marker or a shader snippet into a `DataPackMigration` doc comment opens a second
+  comment that the closing `*/` only half-closes, and the failure is an "Unclosed comment" cascade
+  pointing at whatever declaration comes next — never at the doc comment. Never put an opening
+  comment marker inside another comment; describe it in prose instead.
+### Gotchas the content-warning pass found (same 26.x client shakedown, 2026-08-20)
+
+The two fixes above made the 26.x Fabric client *boot*; the log it then produced was still carrying
+34 content warnings that every green build and every `Done` server had passed. None is a port bug —
+all four families are upstream content defects that a newer MC merely started reporting — and three
+of the four are **invisible below a specific version**, which is why 58 green nodes said nothing.
+Two standing scripts came out of it: **`scripts/model_audit.py`** and **`scripts/sound_audit.py`**.
+
+- **⚠️⚠️ An out-of-bounds face `uv` was a silent wrong-texture bug on every version this mod has ever
+  shipped, and is a FATAL bake failure from 26.1.** A face `uv` is model space scaled by
+  `texture_size` (default `[16,16]`); a rect that leaves that box does **not** clamp — it samples
+  whatever neighbouring sprite happens to sit beside this one in the stitched atlas, so the block has
+  been rendering foreign pixels since 1.20.1 with no log line anywhere. From 26.1
+  `FaceBakery.computeMaterialTransparency` → `SpriteContents.computeTransparency` →
+  `NativeImage.computeTransparency` hard-throws *"Cannot compute translucency out of bounds: [16, 6,
+  20, 10] in 16x16 image"*, and the throw fails the **whole model bake**, cascading into `Missing
+  model for variant` for every blockstate that named it — i.e. a missing block, not a slightly wrong
+  one. **51 faces across 13 models** were out of range here (`uranium_rod` and `abyssal_altar` being
+  the two that actually threw). The repair is per axis and mechanical — if the rect overflows,
+  translate it so its lower edge sits on the sprite origin; clamp only if it is *wider* than the
+  sprite, which is only ever true of a degenerate face — and a pure translation preserves the
+  authored orientation, rotation and extent, so the fixes are pixel-exact rather than a guess.
+  `scripts/model_audit.py --fix` does it.
+- **Only a face with AREA reaches the transparency check, so the degenerate ones are latent rather
+  than fatal — and that same short-circuit is why a `#missing` texture can sit in a shipped model for
+  years without ever showing magenta.** MC skips a zero-extent quad *before* the texture lookup as
+  well as before the transparency check. That is the whole reason `curly_fern_top` / `fern_thatch`
+  carry `#missing` faces and never warn, while `heart_of_iron` / `quarry` — whose `#missing` faces are
+  real geometry, merely fully occluded by their siblings — do. **Do not read "nobody has ever seen
+  it" as "it is not a bug"**; a later version that stops short-circuiting turns the whole set fatal at
+  once, which is exactly what 26.1 did to the UVs.
+- **`Missing texture references in model …` is a 1.21.4-and-up warning family** — 0 on the 30 nodes
+  below it, 20 on 26.x — in two shapes. (1) `#missing` is a **Blockbench** placeholder for a face the
+  modeller left untextured; it is never present in the model's `textures` map, so it can only ever
+  resolve to the magenta sprite. 48 faces across four models here; retexturing them to the sibling
+  face's slot keeps geometry and quad count byte-identical, so it is provably a no-op on the
+  degenerate ones and strictly an improvement on the occluded ones. (2) An **ISTER item model**
+  (`builtin/entity`, no `textures` block at all) has never resolved `particle` — and note that is
+  *this port's* doing rather than upstream's: `DataPackMigration.stripDeadParent` strips the
+  `builtin/entity` parent from 1.21.4, which is what leaves the slot open. Cosmetic only
+  (`SpecialModelWrapper` bakes the base model solely for its display transforms, so the slot feeds
+  the break/use particle icon and nothing else), but it is 16 of the 20 lines.
+- **⚠️ A texture slot is resolved against the STITCHED ATLAS, so a PNG existing on disk is not
+  the same question as the texture existing.** The `minecraft:blocks` atlas is sourced from the
+  `block/` and `item/` directories only — across every namespace, which is why a mod that ships no
+  `atlases/blocks.json` of its own still gets its own `block/`+`item/` sprites stitched, and why a
+  texture under `entity/` (loaded standalone by an entity renderer) is **not** in it. Filling the 16
+  ISTER `particle` slots above, three of them — `raygun`, `shot_gum`, `galena_gauntlet` — got the
+  obvious file, the entity texture the item's own renderer already uses, and that traded one warning
+  family for another: `Missing textures in model alexscaves:item/raygun:` where the baseline log had
+  **zero**. Each now names the item's dominant crafting material instead (`item/polymer_plate`,
+  `item/gumball_pile`, `block/packed_galena`) — all three lack an `item/<id>` sprite of their own,
+  being entity-rendered. Two lessons, and the second is the larger one: a `texture_exists`-style
+  check keyed on `os.path.isfile` passes this bug silently, so `model_audit.py`'s check 2 asserts
+  **atlas residency** as well as existence; and **a fix verified only against the warnings it was
+  aimed at is not verified** — count every marker in the after-log against the baseline, including
+  the ones you were not expecting to move.
+- **⚠️ Auditing a model's texture slots in ISOLATION invents dozens of false misses — resolve from
+  the BAKE ROOTS.** A model that is only ever used as a `parent` is a *template* and deliberately
+  leaves slots open (`block/anemone_base` and friends expect a child to fill `#base`/`#tentacles`);
+  MC resolves slots in the context of the **leaf**, and so must any checker. `model_audit.py` walks
+  only the models a blockstate or an item model actually names. Two smaller traps in the same code:
+  an unqualified texture id (`block/iron_block`) means **`minecraft:`**, not the mod namespace, and
+  `elements` are inherited from the nearest ancestor that declares any, not from the leaf alone.
+- **A model whose `parent` names something that was never registered still gets loaded, and warns.**
+  `models/item/thornwood_leaves.json` was an upstream orphan — no block, no blockstate, no block
+  model, no texture, nothing in `ACBlockRegistry` (the thornwood tree has *branches*,
+  `ThornwoodBranchBlock`) — but `DataPackMigration.writeItemModelDefinitions` derives its 575
+  definitions **from the model tree**, so the orphan got an item-model definition, MC loaded it, and
+  the client logged `Missing block model: alexscaves:block/thornwood_leaves` forever. Deleting the
+  one file is the whole fix. Same family as the `cave_painting_friendship` / `cave_painting_hunt`
+  orphan blockstates already recorded above — **grep the model tree against the registry, not the
+  other way round**, since an orphan is by definition referenced by nothing.
+- **⚠️⚠️ Sweep the sound tree in BOTH directions, because a key-name typo reads as "missing content"
+  from one end and as nothing at all from the other.** A registered `SoundEvent` with no
+  `sounds.json` key logs `Missing sound for event: …` once and is then silent for the session; a
+  `sounds.json` key no event registers is never reported at all. A typo produces one of each, and the
+  **pairing is the diagnosis**: here the counts stayed equal at 481/481 while
+  `abyssal_chasm_ambience_mood` and `luxtructosaurus_breath` were "missing" and `abyssal_chasm_mood`
+  and `luxtructosaurus_breathe` were dead — i.e. the audio had shipped correctly all along and only
+  the spelling was wrong, so both "missing sounds" were one renamed key each. The abyssal chasm had
+  therefore been playing **no mood sound at all** since upstream (its biome JSON references the
+  correct id; the other five biomes all spell it the long way). Two more defects fell out of the same
+  sweep: `luxtructosaurus_snort` is registered and played on the nostril-particle animation but **no
+  snort audio exists anywhere in the tree**, and `purple_soda_swim` named five files where three ever
+  shipped (a copy-paste from `acid_swim_*`, which really does have five). ⚠️ **A third direction is
+  worth checking too** — a `subtitle` key with no `en_us` translation renders the raw key on screen
+  and **nothing logs it**; two were referenced here, one of them a singular/plural mismatch against a
+  key that was already translated into 12 languages. `scripts/sound_audit.py` checks all four.
+- **Fix content bugs in `src/main/resources`, not in a `DataPackMigration` pass** — the standing
+  preference in this file, and every fix in this pass honours it. All four families are wrong on all
+  58 nodes and merely *reported* on some, so a source fix is correct everywhere and repairs the
+  released versions retroactively, where a migration pass could only ever fix the band it is aimed at.
+
 ### Gotchas the in-world test battery found (first world ever generated, 2026-08-19)
 
 Every verdict before this section was boot-level: a dev server reaching `Done`, a dev client reaching
@@ -834,6 +1081,68 @@ about content, and neither `verify_mixins.py` nor a green build has any opinion 
   as a broken world seed. Related: pin the seed (`20250819` here) so the Fabric and Forge runs are
   directly comparable — matching *coordinates* is a far stronger signal than matching counts.
 
+
+### Gotchas the `/acc` + interactive client/server pass found (2026-08-20)
+
+The first pass that ever ran a dev **client and a dev server together** — a persistent RCON server
+with a dev client joined to it over quick-play — rather than booting each alone. Two of the five
+below are things a solo boot cannot see at all, and one of them corrects a claim this file made.
+
+- **⚠️⚠️ NeoForge does not merely *log* the `@OnlyIn` finding — from build `21.7.25-beta` (MC 1.21.7)
+  it raises a BLOCKING MODAL, and this file asserted the opposite.** The Forge half of that gotcha
+  (`RuntimeDistCleaner` throwing from 62.0.9) is recorded above and was fixed with the
+  `!mc261-onlyin-forge` rule; the closing sentence of that note read *"NeoForge 26.2 is untouched too
+  — it only logs the same finding through `OnlyInWarningsHandler` and boots past it"*, which is true
+  of a **server** and false of a **client**. `net.neoforged.neoforge.common.OnlyInWarningsHandler`
+  stops the client on *"Warning while loading mods / 1 warning has occurred during loading"*, names
+  this mod, and waits for a click on **Proceed to main menu** — every launch, for every player, before
+  the title screen. It is a NeoForge-**BUILD** boundary exactly like Forge's: probing all 18 cached
+  universal jars gives `21.6.20-beta` → absent, `21.7.25-beta` → present, so **nine** nodes are
+  affected (1.21.7, 1.21.8, 1.21.9, 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2). Fixed with a
+  second replacement group, `!mc2117-onlyin-neoforge`, gated `neoforge && >=1.21.7` and rewriting the
+  same 71 dist-neutral `@OnlyIn(Dist.CLIENT)` bodies to `/* client-only */`. It is a **separate
+  group** from the Forge one rather than a widened condition: a node is either Forge or NeoForge so
+  the two are never registered together, and keeping them apart makes the two boundaries
+  independently editable. ⚠️ **The general lesson is the one this file keeps re-learning**: a
+  loader's *server* behaviour is not evidence about its *client* behaviour, and a warning that a
+  dedicated server prints to a log may be a modal on the other dist. Grep a loader's universal jar
+  for the handler class rather than inferring the boundary from the neighbouring node.
+- **⚠️ `--args=` means opposite things to loom and to MDG, and getting it wrong looks like a mod
+  crash.** On a **loom** node (every Fabric and every Forge node here) `runClient` carries an *empty*
+  program-args list — the real arguments live in
+  `.gradle/loom-cache/projects/<node>/launch.cfg`'s `clientArgs` section (only `--assetIndex` and
+  `--assetsDir`) — so `--args=…` is purely **additive** and appending `--quickPlayMultiplayer
+  localhost:<port>` just works. On an **MDG** node (every NeoForge node) the whole invocation,
+  *including the main class*, is read from `versions/<node>/build/moddev/clientRunProgramArgs.txt`,
+  and `--args=` **replaces that entire list** — so passing only the quick-play flags makes
+  `net.neoforged.devlaunch.Main` treat `--quickPlayMultiplayer` as the main class and die with
+  *"Could not find main class or main method"*, `GRADLE_EXIT=1`, with no Minecraft log at all. The
+  fix is to re-read that file and prepend it: `A=$(grep -v '^#' …/clientRunProgramArgs.txt | grep -v
+  '^$' | tr '\n' ' ')` then `"--args=${A}--quickPlayMultiplayer localhost:25597"`.
+- **A dev client with a fresh run directory stops on the accessibility onboarding screen, and
+  quick-play does NOT skip it.** *"Welcome to Minecraft! Would you like to enable the Narrator…"*
+  blocks before the title screen and therefore before the auto-join, so the server sits at 0 players
+  while the client log looks perfectly healthy — `Sound engine started` present, zero bad markers, and
+  simply no `Connecting to` line. It is `onboardAccessibility:true` in `versions/<node>/run/options.txt`,
+  which the client itself writes on that very screen; flip it to `false` and relaunch. Same family as
+  `eula.txt` for a dev server: **a per-node run directory needs seeding once, and the symptom of not
+  seeding it is silence rather than an error.**
+- **⚠️ GUI automation of the dev client is impossible on this box, and the workaround is better than
+  the thing it replaces.** The client is an XWayland surface: neither XTEST (`python-xlib`) nor
+  `ydotool`/uinput delivers a click or a keystroke to it, and `xdotool` is not installed. What works
+  instead is to **drive everything from the server**: run a persistent dev server with RCON enabled,
+  join it from the dev client with `--quickPlayMultiplayer`, and then trigger every code path with
+  `execute as <player> run <cmd>` plus `op`/`deop` over RCON, reading the result off a **window-only**
+  screenshot (`xwd -id <winid>` → `magick`; never a full-desktop capture). That exercises the real
+  client-server pair — packets, menu sync, permission revocation — which no amount of clicking a
+  single-player world would.
+- **`/execute as <player> run …` changes the executing ENTITY but NOT the `CommandSourceStack`'s
+  output target.** Anything the command emits with `source.sendSuccess` goes back to the **RCON
+  caller**, never to that player's chat, so an `execute as` probe proves the command ran and proves
+  nothing about what the player saw. Only code that resolves `source.getPlayer()` and sends to it
+  directly — `CodxNotify.toPlayer(...)`, which is what `/acc version`'s async update-check callback
+  uses — is verifiable client-side this way. Budget a human step for anything whose output is
+  ordinary command feedback.
 
 ### Gotchas the runtime shakedown found (client boots, 2026-08-18)
 

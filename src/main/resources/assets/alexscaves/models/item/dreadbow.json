@@ -1,5 +1,6 @@
 {
   "parent": "builtin/entity",
+  "textures": {"particle": "alexscaves:item/dreadbow"},
   "gui_light": "front",
   "ambientocclusion": true,
   "display": {

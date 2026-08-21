@@ -1,5 +1,6 @@
 {
   "parent": "builtin/entity",
+  "textures": {"particle": "alexscaves:item/polymer_plate"},
   "gui_light": "front",
   "ambientocclusion": true,
   "display": {
