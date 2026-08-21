@@ -1996,6 +1996,222 @@ object DataPackMigration {
 		else -> null
 	}
 
+	/**
+	 * The vanilla post *vertex* shaders 1.21.9 deleted, and the one it kept.
+	 *
+	 * Up to 1.21.8 every generic post pass drew a quad from a real vertex buffer, so each named a
+	 * `.vsh` under `minecraft:post/` that read an `in vec4 Position` attribute, scaled it by `OutSize`
+	 * under `ProjMat`, and handed the fragment stage both `texCoord` and a precomputed `oneTexel`.
+	 * 1.21.9 replaced the whole convention with **`minecraft:core/screenquad`**, which takes no
+	 * attributes at all — it builds the fullscreen triangle-strip from `gl_VertexID` — and outputs
+	 * only `texCoord`. Every one of those vertex files under `minecraft:post` is gone from the jar,
+	 * except
+	 * `rotscale.vsh`, which the spider pass still uses and which therefore must never be rewritten.
+	 */
+	private val deadPostVertexShaders1219 =
+		setOf("blit", "sobel", "invert", "blur", "box_blur", "entity_sobel", "screenquad")
+
+	/** The one vertex shader under `minecraft:post` that survives 1.21.9. */
+	private const val survivingPostVertexShader1219 = "rotscale"
+
+	private const val screenQuadVertexShader1219 = "minecraft:core/screenquad"
+
+	/**
+	 * Rewrites this mod's post chains and post shaders onto the 1.21.9 screen-quad convention.
+	 *
+	 * **This is the silent kind of break, and it had been live since the 1.21.9 wave.** A chain naming
+	 * a `.vsh` that no longer exists fails to compile; `ShaderManager#getPostChain` catches the
+	 * `CompilationException`, logs *"Couldn't find source for VERTEX shader (minecraft:post/sobel)"*
+	 * and returns null, so on 1.21.9–1.21.11 the effect merely never appears. From 26.2 the failed
+	 * pipeline blanks the frame it was queued into, which is what turned it into a black main menu.
+	 *
+	 * Three halves, because dropping the vertex stage moves work into the fragment stage:
+	 *
+	 *  * **Chains.** Every pass whose `vertex_shader` is one of [deadPostVertexShaders1219] — or one of
+	 *    this mod's own, all three of which are byte-for-byte the old `sobel.vsh` body — is re-pointed
+	 *    at [screenQuadVertexShader1219]. A pass naming [survivingPostVertexShader1219] is left alone,
+	 *    and an unknown one under `minecraft:post` is an error rather than a silent pass-through.
+	 *  * **This mod's `.vsh` files are deleted.** There is nothing left for them to do: `screenquad`
+	 *    computes the same `texCoord` from `gl_VertexID`, and a vertex stage that declares
+	 *    `in vec4 Position` cannot link at all now that no attribute is bound.
+	 *  * **`.fsh` files lose the `oneTexel` varying.** It was the vertex stage's second output; vanilla
+	 *    moved the identical `1.0 / InSize` into each fragment shader's `main()`, read off the
+	 *    `SamplerInfo` block the pipeline supplies to any pass with an input named `In`. A shader that
+	 *    only *declared* the varying (`hologram.fsh`) just loses the declaration.
+	 *
+	 * `#version 150` is bumped to `330` to match the vertex stage it is now linked against, which is
+	 * what vanilla did to its own post shaders in the same version.
+	 *
+	 * Keyed off what it removes, so re-running is a no-op.
+	 */
+	fun migratePostShadersTo1219(resourcesRoot: File, modId: String): Int {
+		val assets = resourcesRoot.resolve("assets/$modId")
+		if (!assets.isDirectory) return 0
+		var changed = 0
+
+		val post = assets.resolve("shaders/post")
+		val retired = mutableSetOf<String>()
+		post.listFiles().orEmpty().filter { it.isFile && it.extension == "vsh" }.forEach { file ->
+			val source = file.readText()
+			// The whole point of deleting these is that screenquad already does what they do; a stage
+			// that did anything else would silently lose it, so say so instead.
+			val equivalent = source.contains("Position.xy * OutSize") &&
+				source.contains("texCoord = Position.xy;") &&
+				usesPostUniform(source, "oneTexel")
+			if (!equivalent) {
+				error(
+					"${file.name} is not the screen-quad vertex stage 1.21.9 replaced — port it by " +
+						"hand rather than letting migratePostShadersTo1219 drop it"
+				)
+			}
+			retired += file.nameWithoutExtension
+			file.delete()
+			changed++
+		}
+
+		post.listFiles().orEmpty().filter { it.isFile && it.extension == "fsh" }.forEach { file ->
+			val source = file.readText()
+			val out = rewritePostFragmentTo1219(source, file.name)
+			if (out != source) {
+				file.writeText(out)
+				changed++
+			}
+		}
+
+		assets.resolve("post_effect").listFiles().orEmpty().filter { it.isFile && it.extension == "json" }
+			.forEach { file ->
+				val root = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }
+					.getOrNull() ?: return@forEach
+				val migrated = screenQuadPostChainTo1219(root, file.name, modId, retired)
+				if (migrated != root) {
+					file.writeText(json.encodeToString(JsonObject.serializer(), migrated))
+					changed++
+				}
+			}
+
+		return changed
+	}
+
+	private fun rewritePostFragmentTo1219(source: String, file: String): String {
+		var lines = source.lines()
+		val declaration = Regex("""^\s*in\s+vec2\s+oneTexel\s*;\s*$""")
+		val declared = lines.any { declaration.matches(it) }
+		lines = lines.filterNot { declaration.matches(it) }
+		var out = lines.joinToString("\n")
+
+		if (declared && usesPostUniform(out, "oneTexel")) {
+			if (!out.contains("uniform SamplerInfo")) {
+				// Sits where the varying used to, i.e. above the remaining `in`/`out` declarations,
+				// which is also where vanilla's own entity_sobel.fsh puts it.
+				val body = out.lines().toMutableList()
+				val anchor = body.indexOfFirst { it.trimStart().startsWith("in ") || it.trimStart().startsWith("out ") }
+				if (anchor < 0) error("$file reads oneTexel but has no declaration block to add SamplerInfo to")
+				body.addAll(anchor, samplerInfoBlock.lines() + "")
+				out = body.joinToString("\n")
+			}
+			val main = Regex("""(?m)^(\s*)void\s+main\s*\(\s*\)\s*\{[ \t]*$""")
+			val match = main.find(out) ?: error("$file reads oneTexel but has no main() to compute it in")
+			val indent = match.groupValues[1] + "    "
+			out = out.replaceRange(
+				match.range.last + 1,
+				match.range.last + 1,
+				"\n$indent" + "vec2 oneTexel = 1.0 / InSize;\n",
+			)
+		}
+
+		out = out.replaceFirst(Regex("""^#version\s+150\b"""), "#version 330")
+		return out.replace(Regex("\n{3,}"), "\n\n")
+	}
+
+	private fun screenQuadPostChainTo1219(
+		chain: JsonObject,
+		file: String,
+		modId: String,
+		retired: Set<String>,
+	): JsonObject {
+		val passes = (chain["passes"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+		if (passes.isEmpty()) return chain
+
+		val migrated = passes.map { pass ->
+			val vertex = (pass["vertex_shader"] as? JsonPrimitive)?.content ?: return@map pass
+			val (namespace, path) = vertex.substringBefore(':', "minecraft") to vertex.substringAfter(':')
+			val name = path.removePrefix("post/")
+			val dead = when {
+				namespace == modId -> name in retired
+				namespace == "minecraft" && !path.startsWith("post/") -> false
+				name == survivingPostVertexShader1219 -> false
+				name in deadPostVertexShaders1219 -> true
+				else -> error(
+					"$file names post vertex shader $vertex, which is neither one 1.21.9 deleted nor " +
+						"one it kept — check the jar before assuming"
+				)
+			}
+			if (!dead) return@map pass
+			JsonObject(LinkedHashMap(pass).also { it["vertex_shader"] = JsonPrimitive(screenQuadVertexShader1219) })
+		}
+
+		val out = LinkedHashMap(chain)
+		out["passes"] = JsonArray(migrated)
+		return JsonObject(out)
+	}
+
+	/**
+	 * Removes the chain-level `Globals` uniform declaration from every post pass, for 26.2 and up.
+	 *
+	 * **The same declaration is load-bearing below 26.2 and fatal at it, which is why this is a
+	 * separate gated pass rather than an edit to [migrateShadersTo1216].** A post shader that reads
+	 * `GameTime` reads it out of the `Globals` std140 block, and the block has to be bound to the
+	 * pipeline before the program will link:
+	 *
+	 *  * **1.21.6 → 26.1.x.** `PostChain.createPass` builds one flat pipeline with
+	 *    `RenderPipeline$Builder.withUniform(name, UniformType)` per key of `Pass.uniforms()`, and
+	 *    `RenderPipelines.POST_PROCESSING_SNIPPET` declares no `Globals` of its own (javap'd on
+	 *    1.21.6, 1.21.9 and 26.1.2 — 1.21.6's snippet names only `Projection`, 1.21.9's and 26.1.2's
+	 *    name nothing but the vertex format). So the chain's own `"Globals": []` is the *only* thing
+	 *    binding it, and dropping it there would break every one of those nodes.
+	 *  * **26.2.** The snippet is built from `GLOBALS_SNIPPET`, so `Globals` is already bound in bind
+	 *    group 0, and `createPass` puts each `Pass.uniforms()` key into a *second* `BindGroupLayout`.
+	 *    `BindGroupLayout.ensureCompatible` walks every group with one name set and throws
+	 *    *"Duplicate bind name 'Globals' in bind group layout 1"* — a `CompilationException` that
+	 *    `ShaderManager#getPostChain` catches, logs and nulls, leaving the frame the pass was queued
+	 *    into blank. That is the 26.2 black main menu.
+	 *
+	 * Vanilla declares `Globals` on no chain at all on 1.21.6, 1.21.8, 1.21.9, 1.21.11 or 26.2, so
+	 * there is no version where naming it is the documented shape — it is simply how the pre-26.2
+	 * builder happened to expose the binding.
+	 *
+	 * Keyed off what it removes, so re-running is a no-op.
+	 */
+	fun dropPostChainGlobalsTo1262(resourcesRoot: File, modId: String): Int {
+		val chains = resourcesRoot.resolve("assets/$modId/post_effect")
+		if (!chains.isDirectory) return 0
+		var changed = 0
+
+		chains.listFiles().orEmpty().filter { it.isFile && it.extension == "json" }.forEach { file ->
+			val root = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }
+				.getOrNull() ?: return@forEach
+			val passes = (root["passes"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+			if (passes.isEmpty()) return@forEach
+
+			val migrated = passes.map { pass ->
+				val uniforms = pass["uniforms"] as? JsonObject ?: return@map pass
+				if ("Globals" !in uniforms) return@map pass
+				val kept = uniforms.filterKeys { it != "Globals" }
+				val out = LinkedHashMap(pass)
+				if (kept.isEmpty()) out.remove("uniforms") else out["uniforms"] = JsonObject(kept)
+				JsonObject(out)
+			}
+			if (migrated == passes) return@forEach
+
+			val out = LinkedHashMap(root)
+			out["passes"] = JsonArray(migrated)
+			file.writeText(json.encodeToString(JsonObject.serializer(), JsonObject(out)))
+			changed++
+		}
+
+		return changed
+	}
+
 	private val ingredientFields = listOf("ingredient", "ingredients", "base", "addition", "template")
 
 	private fun migrateRecipeIngredients(recipe: JsonObject): JsonObject {
@@ -2120,6 +2336,118 @@ object DataPackMigration {
 			}
 		}
 		else -> node
+	}
+
+	/**
+	 * MC 1.20.5 rebuilt `LocationPredicate` and the advancement `BlockPredicate` the same way it
+	 * rebuilt `ItemPredicate` — singular id fields became holder sets — and it is the same silent
+	 * failure, one layer deeper than [migrateItemPredicateFields] can reach.
+	 *
+	 * Read out of the Mojmap bytecode, node by node, because the boundary is not guessable (1.20.2,
+	 * 1.20.3 and 1.20.4 all still spell them singular):
+	 *
+	 * | class | <=1.20.4 | >=1.20.5 |
+	 * |---|---|---|
+	 * | `LocationPredicate` | `biome`, `structure` | `biomes`, `structures` |
+	 * | `advancements` `BlockPredicate` | `blocks`, `tag` | `blocks` only |
+	 *
+	 * Both records are built entirely from `optionalFieldOf`, so an unknown key is DROPPED rather
+	 * than rejected and what survives decodes as a predicate with **no** conditions — which matches
+	 * everywhere. The `minecraft:location` trigger polls the player, so on every node >=1.20.5 the
+	 * four structure advancements and the six `discover_*` biome advancements granted the instant a
+	 * world was entered, and `alexscaves:root` granting pops the whole tab. `walk_on_rock_candy`'s
+	 * `stepping_on.block.tag` is the same bug on the block half: it granted on any block at all.
+	 *
+	 * Nothing logs it, no gate can see it, and a green boot proves nothing — the advancement loads
+	 * and fires, it just fires on the wrong thing. Same family as `alexsmobs:banana` (report #31).
+	 *
+	 * A bare id string is a legal single-element holder set, so the values need no reshaping: only
+	 * the key moves. `#tag` is how a holder set spells a tag, hence the `"#"` on the block half.
+	 *
+	 * Expect **11** files: 4 structure + 6 biome + 1 `stepping_on`. `fluid` is the third field
+	 * 1.20.5 reshaped inside a `LocationPredicate` and is deliberately not handled — no file in
+	 * this tree uses one, and an unexercised branch is worth less than the count above.
+	 *
+	 * Idempotent: every rewrite is skipped when the modern key is already present.
+	 */
+	fun migrateAdvancementPredicatesTo1205(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		data.walkTopDown().filter { it.isFile && it.extension == "json" }.forEach { file ->
+			val dirs = file.invariantSeparatorsPath
+			if (!dirs.contains("/advancement/") && !dirs.contains("/advancements/")) return@forEach
+			val original = runCatching { json.parseToJsonElement(file.readText()) }.getOrNull()
+				?: return@forEach
+			val migrated = rewriteLocationPredicateHosts(original)
+			if (migrated != original) {
+				file.writeText(json.encodeToString(JsonElement.serializer(), migrated))
+				changed++
+			}
+		}
+		return changed
+	}
+
+	/**
+	 * Walks a whole document, migrating every location predicate it can positively identify.
+	 *
+	 * The host has to be identified rather than the predicate: `location` also names the list of
+	 * loot conditions on `item_used_on_block`, and `block` names plenty of things that are not a
+	 * `BlockPredicate`. An `entity_properties` loot condition is the only place this tree's
+	 * location predicates live — `player` is a *list* of them in every affected file, which is why
+	 * this is a document walk and not a pass over `conditions`' top-level keys.
+	 */
+	private fun rewriteLocationPredicateHosts(node: JsonElement): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map(::rewriteLocationPredicateHosts))
+		is JsonObject -> {
+			val mapped = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				node.forEach { (key, value) -> out[key] = rewriteLocationPredicateHosts(value) }
+			})
+			when {
+				mapped.idOf("condition") == "minecraft:entity_properties" ->
+					(mapped["predicate"] as? JsonObject)
+						?.let { mapped.replacing("predicate", migrateEntityPredicateLocations(it)) } ?: mapped
+				mapped.idOf("condition") == "minecraft:location_check" ->
+					(mapped["predicate"] as? JsonObject)
+						?.let { mapped.replacing("predicate", migrateLocationPredicate(it)) } ?: mapped
+				else -> mapped
+			}
+		}
+		else -> node
+	}
+
+	/** The three `EntityPredicate` fields whose value is a `LocationPredicate`. */
+	private val locationPredicateFields = setOf("location", "stepping_on", "movement_affected_by")
+
+	private fun migrateEntityPredicateLocations(predicate: JsonObject): JsonObject =
+		JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			predicate.forEach { (key, value) ->
+				out[key] = when {
+					key in locationPredicateFields && value is JsonObject -> migrateLocationPredicate(value)
+					key in nestedEntityPredicateKeys && value is JsonObject ->
+						migrateEntityPredicateLocations(value)
+					else -> value
+				}
+			}
+		})
+
+	private fun migrateLocationPredicate(location: JsonObject): JsonObject =
+		JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			location.forEach { (key, value) ->
+				when (key) {
+					"biome" -> out[if (location.containsKey("biomes")) key else "biomes"] = value
+					"structure" -> out[if (location.containsKey("structures")) key else "structures"] = value
+					"block" -> out[key] =
+						if (value is JsonObject) migrateAdvancementBlockPredicate(value) else value
+					else -> out[key] = value
+				}
+			}
+		})
+
+	private fun migrateAdvancementBlockPredicate(block: JsonObject): JsonObject {
+		val tag = (block["tag"] as? JsonPrimitive)?.takeIf { it.isString } ?: return block
+		if (block.containsKey("blocks")) return block
+		return block.without("tag").replacing("blocks", JsonPrimitive("#" + tag.content))
 	}
 
 	/** Items vanilla renamed in 1.20.5. Only the ones this mod's data actually references. */

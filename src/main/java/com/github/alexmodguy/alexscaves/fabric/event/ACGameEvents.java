@@ -3,7 +3,9 @@ package com.github.alexmodguy.alexscaves.fabric.event;
 import com.github.alexmodguy.alexscaves.fabric.forge.common.MinecraftForge;
 import com.github.alexmodguy.alexscaves.fabric.forge.event.TickEvent;
 import com.github.alexmodguy.alexscaves.fabric.forge.event.entity.EntityTravelToDimensionEvent;
+import com.github.alexmodguy.alexscaves.fabric.forge.event.RegisterCommandsEvent;
 import com.github.alexmodguy.alexscaves.fabric.forge.event.entity.player.PlayerEvent;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 
@@ -43,6 +45,12 @@ public final class ACGameEvents {
         // (which declares the getter) on every version in it.
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
                 MinecraftForge.EVENT_BUS.post(new PlayerEvent.PlayerLoggedInEvent(handler.getPlayer())));
+
+        // The /acc command tree. Fabric fires this from Commands' own constructor, i.e. the same
+        // moment Forge and NeoForge post their event, so the three loaders build the identical tree
+        // from the identical CommonEvents handler.
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                MinecraftForge.EVENT_BUS.post(new RegisterCommandsEvent(dispatcher, environment, registryAccess)));
 
         registerDimensionChange();
     }

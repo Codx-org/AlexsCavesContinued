@@ -191,6 +191,62 @@ Spawn eggs are the fast route; natural spawning is the real check.
       *(their `onDataPacket` signature has four different shapes across the range)*
 - [ ] `/codxlib versions` lists the mod with the right version
 
+### 10. `/acc` — the command tree and the admin menu
+
+New in this release, and so tested by nothing before it. **The menu is served entirely from the
+server**, so the whole of this section is worth doing once from a *vanilla* client connected to a
+dev server as well as in singleplayer — that is the property it exists for.
+
+Permissions first, because everything else assumes them:
+
+- [ ] As a **non-operator** (`/deop <you>` on a server, or a second account): `/acc version` and
+      `/acc help` work; `/acc menu`, `/acc config`, `/acc biomes`, `/acc reload` and `/acc reset`
+      are **not suggested by tab-completion and are refused if typed**
+- [ ] As an **operator**, every subcommand above is offered by tab-completion
+
+The tree:
+
+- [ ] `/acc` on its own prints the help, it does not error
+- [ ] `/acc version` names the mod version, the Minecraft version, the loader and the CodxLib
+      version, and reports the update check
+- [ ] `/acc biomes` lists all six cave biomes with their rarity, and the count matches what
+      `alexscaves-general.toml` says
+- [ ] `/acc config` prints an index of the six option groups; `/acc config all` prints all **39**
+      options; `/acc config 3` prints only that group; `/acc config 0` and `/acc config 99` are
+      refused by the argument parser with a readable range message, not a stack trace
+- [ ] `/acc reload` reports success and does not deadlock the server
+- [ ] `/acc reset` **without** `confirm` refuses and explains; `/acc reset confirm` restores every
+      option to its default *(do this last — it undoes the menu edits below)*
+- [ ] `/acc menu` **from the server console** answers "only a player can open this", cleanly
+
+The menu:
+
+- [ ] `/acc menu` opens a 6-row chest GUI titled *Alex's Caves*
+- [ ] The bottom row navigates: **Reset**, **Prev**, the page title, **Next**, **Close**, evenly
+      spaced. Next/Prev cycle all **seven** pages and neither runs off into an empty one
+- [ ] **Page 1 (Status)** is read-only — mod / Minecraft / loader / CodxLib versions, the enabled
+      cave-biome count, how many options are non-default, and players online. Clicking a status
+      line does nothing
+- [ ] Its three buttons work: **reload biome settings**, **save now**, **check for updates**
+- [ ] **Pages 2–7** are World Generation, Mobs, Blocks, Items & Potions, Cave Tablet Loot and
+      Vanilla Changes, holding **5 / 9 / 4 / 10 / 7 / 4** options — 39 in all. Every one has an
+      icon, a name, its current value, and a description in the tooltip
+- [ ] Toggling a boolean flips it, and the item in the slot changes to match
+- [ ] Left-click steps a number up, right-click steps it down, and both **stop at the min and max**
+      rather than wrapping or going out of range
+- [ ] The **Reset** button resets only the **page you are on**, not the whole config
+
+Persistence — the part that a menu makes easy to get wrong:
+
+- [ ] Change three options on three different pages, close the menu, then `/acc config all` —
+      all three read back changed
+- [ ] `config/alexscaves-general.toml` on disk now holds those three values
+- [ ] Restart the server and reopen the menu: the three are still changed
+- [ ] Open the menu and close it **without touching anything**, then diff the `.toml` — it must be
+      **byte-identical**. *(Every number in the menu is a scaled integer; a rounding error would
+      show up here and nowhere else.)*
+- [ ] A change that affects worldgen (e.g. a biome's rarity) is reflected by `/acc biomes` at once
+
 ---
 
 ## Smoke pass — six more nodes
@@ -268,8 +324,100 @@ row above is the proof of the last two on Forge *above* both of their version bo
 ### Still not covered by this
 
 - `1.21.1-neoforge` and `26.2-fabric` (the other two full-pass nodes) and the six-node smoke pass.
-- **Everything client-side and everything interactive.** No GUI, no rendering, no armour, no mob
-  behaviour, no crafting, no cave book, no cave map. A summon that succeeds proves the entity
+- **Almost everything client-side and everything interactive.** ~~No GUI, no rendering~~ — a dev
+  client now joins a dev server on three nodes and one GUI (the `/acc` menu) has been seen to render
+  and to close on a permission change; see *"Results — `/acc`, and the first client+server pass"*
+  below. Still untouched: no armour, no mob behaviour, no crafting, no cave book, no cave map, and no
+  rendering verdict beyond "the frame is not black". A summon that succeeds proves the entity
   constructs and survives its first ticks — nothing about what it then does.
-- **18 of the 20 `CommonEvents` handlers are still dead on all 22 Fabric nodes** (only the two
-  server-lifecycle events are posted). `serverTick` is among them, so cave maps never resolve there.
+- ~~**18 of the 20 `CommonEvents` handlers are still dead on all 22 Fabric nodes.**~~ **Closed
+  2026-08-20** — the whole Fabric dispatch layer now exists and `scripts/event_audit.py` reports no
+  gap. It has never been exercised *in a world*, though, so §5–§8 on a Fabric node are the real
+  test of it, and `serverTick` (which drives cave-map resolution) is the one to watch.
+- ~~**`/acc` and the admin menu (§10) have had no interactive test at all.**~~ **Partly closed
+  2026-08-21** — the command tree is green on three nodes (one per loader) and the menu has been
+  opened by a real player on three nodes and seen to close the instant they were deopped. **Nothing
+  has ever clicked a slot**, so every widget's *click* behaviour — toggle, cycle, slider drag, page
+  Next/Prev, Reset — is still untested, and §10.4–§10.6 are the part of this plan that most needs a
+  human. GUI input cannot be automated on the dev box (the client is an XWayland surface and neither
+  XTEST nor uinput reaches it), so this one will not close by itself.
+
+---
+
+## Results — `/acc`, and the first client+server pass (2026-08-21)
+
+Everything above this line was verified with a server **or** a client booted alone. This pass is the
+first that ran the two **together**: a persistent dev server with RCON enabled, joined by a dev
+client over `--quickPlayMultiplayer`, so a command typed into RCON is executed by a real player with
+a real connection behind them.
+
+### `/acc` command tree — automated, 3 nodes, one per loader
+
+21 commands per node over RCON (`/tmp/acc-cmd/`: `battery.py`, `run_node.sh`, `all.sh`; game port
+25597, RCON 25596). The three nodes are deliberately one per loader and both ends of the range.
+
+| | `1.20.1-forge` | `1.21.11-neoforge` | `26.2-fabric` |
+|---|---|---|---|
+| dev server boot | `Done (2.428s)` | `Done (0.226s)` | `Done (0.271s)` |
+| fatal log markers (all six) | 0 | 0 | 0 |
+| `/acc` battery | 21/21 | 21/21 | 21/21 |
+
+The 21 cover the bare root, `help`, `version`, `biomes`, `config`, `config all`, `config 0` through
+`config 7` (i.e. both out-of-range ends of a 1–6 argument), `config 99`, `reload`, `reset` without
+`confirm`, `menu`, an invented subcommand, and `/codxlib versions`. Representative replies, identical
+in shape on all three:
+
+- `/acc version` → `Alex's Caves Continued 1.0.0` / `Minecraft <ver> on <loader>, with CodxLib 1.3.6`
+  / `Checking Modrinth for a newer build...`
+- `/acc biomes` → all six listed enabled, then `6 of 6 will generate. Changes need /acc reload and
+  fresh chunks.`
+- `/acc config` → `39 server settings, in 6 groups:` with per-group counts **5 / 9 / 4 / 10 / 7 / 4**,
+  then `Everything is at its default.`
+- `/acc menu` **from the console** → `The settings panel is a chest menu, so only a player can open
+  it. Use /acc config from the console.` — the console has no player, and the command says so rather
+  than throwing.
+- an invented subcommand → Brigadier's own `Incorrect argument for command`, not a stack trace.
+
+### Client + server, 3 nodes
+
+Each node: boot the dev server, join it from the dev client, then `op` / `execute as Dev run acc …`
+/ `deop` over RCON, reading the result off a window-only screenshot.
+
+| | `1.20.1-forge` | `1.21.11-neoforge` | `26.2-fabric` |
+|---|---|---|---|
+| client reaches `Sound engine started` | ✅ | ✅ | ✅ |
+| auto-joins the dev server | ✅ | ✅ | ✅ |
+| `/acc version` reaches the **player's** chat | ✅ | ✅ | ✅ |
+| `/acc menu` renders | ✅ | ✅ | ✅ |
+| `deop` closes the open menu | ✅ | ✅ | ✅ |
+| client / server exceptions | 0 / 0 | 0 / 0 | 0 / 0 |
+
+What each row is actually evidence of, since three ticks in a table hide it:
+
+- **The menu renders as authored.** Gold `Alex's Caves` title, the seven-column page grid filled with
+  real item icons (not barrier/missing-model cubes), the `Status (1/7)` page tooltip, and the nav
+  strip in the bottom row at slots 45 / 47 / 49 / 51 / 53. Captures:
+  `menu_1201.png`, `menu_nf.png` and the 26.2-fabric one.
+- **`deop` closes the menu the same tick**, on all three. That is codxlib's `canUse(...)` predicate
+  being enforced live through `AbstractContainerMenu#stillValid`, not merely checked once at open —
+  i.e. a demoted player cannot keep a settings panel on screen.
+- **`/acc version`'s async result reaches the player, not the caller.** `/execute as <player>` changes
+  the executing entity but **not** the command source's output target, so ordinary `sendSuccess`
+  output goes back to RCON. The `[Alex's Caves] You are on the latest version.` line appearing *in
+  the client's chat* is therefore specifically evidence that the update-check callback resolves the
+  player and sends to them directly.
+
+### Two client-side blockers found and fixed by this pass
+
+Both are launch-time, both were invisible to every green server boot, and both are written up in
+`DEVELOPMENT.md` under *"Gotchas the `/acc` + interactive client/server pass found"*:
+
+- **NeoForge ≥ build `21.7.25-beta` (MC 1.21.7) turns `@OnlyIn` in mod code into a blocking modal**,
+  not the log line this project had assumed — *"Warning while loading mods"*, naming this mod, on
+  every single launch for every player, on **nine** nodes (1.21.7 → 26.2). Fixed with a second
+  replacement rule, `!mc2117-onlyin-neoforge`, mirroring the Forge one; the generated tree now holds
+  0 annotations and 53 `/* client-only */` markers and the client log 0 `OnlyInWarningsHandler` lines.
+- **A fresh per-node client run directory stops on the accessibility onboarding screen**, which
+  quick-play does not skip — the client looks perfectly healthy and simply never connects. Seed
+  `versions/<node>/run/options.txt` with `onboardAccessibility:false`, the same way a dev server needs
+  its `eula.txt` flipped once.

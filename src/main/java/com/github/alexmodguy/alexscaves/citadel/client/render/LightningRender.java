@@ -2,7 +2,6 @@ package com.github.alexmodguy.alexscaves.citadel.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -25,7 +24,12 @@ public class LightningRender {
     private final Random random = new Random();
     private final Minecraft minecraft = Minecraft.getInstance();
 
-    private final Map<Object, BoltOwnerData> boltOwners = new Object2ObjectOpenHashMap<>();
+    // Keyed by IDENTITY, never by hashCode. Owners include PartEntity multiparts, which are
+    // built in their parent's constructor and never added to a level, so they never get an
+    // entity id assigned - and Entity#hashCode goes through Entity#getId, which THROWS
+    // "Tried to access entity ID before ID assignment" rather than returning 0. Hashing a
+    // Magnetron's limb crashed the client the first frame one was on screen.
+    private final Map<Object, BoltOwnerData> boltOwners = new IdentityHashMap<>();
 
     public void render(float partialTicks, PoseStack PoseStackIn, MultiBufferSource bufferIn) {
         VertexConsumer buffer = bufferIn.getBuffer(RenderType.lightning());

@@ -1,5 +1,6 @@
 {
   "parent": "builtin/entity",
+  "textures": {"particle": "alexscaves:item/ortholance"},
   "gui_light": "front",
   "ambientocclusion": true,
   "display": {

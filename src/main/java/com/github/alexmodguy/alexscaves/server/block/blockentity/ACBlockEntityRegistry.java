@@ -2,11 +2,12 @@ package com.github.alexmodguy.alexscaves.server.block.blockentity;
 
 import com.github.alexmodguy.alexscaves.AlexsCaves;
 import com.github.alexmodguy.alexscaves.server.block.ACBlockRegistry;
-import com.google.common.collect.ImmutableSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.registries.DeferredRegister;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
 public class ACBlockEntityRegistry {
@@ -54,20 +55,24 @@ public class ACBlockEntityRegistry {
         //?}
     }
 
+    // The set is rebuilt MUTABLE on purpose. Fabric API hands other mods BlockEntityType
+    // #addValidBlock, which adds straight to this field, and Farmer's Delight uses it for its
+    // canvas signs. Assigning an ImmutableSet here made whichever of the two initialised second
+    // die on UnsupportedOperationException - and Fabric orders mod initialisers by discovery, so
+    // it crashed on some installs and not others. A LinkedHashSet keeps the iteration order the
+    // builder gave and leaves the field open for everyone downstream.
     public static void expandVanillaDefinitions() {
-        ImmutableSet.Builder<Block> validSignBlocks = new ImmutableSet.Builder<>();
-        validSignBlocks.addAll(vanillaSign().validBlocks);
+        Set<Block> validSignBlocks = new LinkedHashSet<>(vanillaSign().validBlocks);
         validSignBlocks.add(ACBlockRegistry.PEWEN_SIGN.get());
         validSignBlocks.add(ACBlockRegistry.PEWEN_WALL_SIGN.get());
         validSignBlocks.add(ACBlockRegistry.THORNWOOD_SIGN.get());
         validSignBlocks.add(ACBlockRegistry.THORNWOOD_WALL_SIGN.get());
-        vanillaSign().validBlocks = validSignBlocks.build();
-        ImmutableSet.Builder<Block> validHangingSignBlocks = new ImmutableSet.Builder<>();
-        validHangingSignBlocks.addAll(vanillaHangingSign().validBlocks);
+        vanillaSign().validBlocks = validSignBlocks;
+        Set<Block> validHangingSignBlocks = new LinkedHashSet<>(vanillaHangingSign().validBlocks);
         validHangingSignBlocks.add(ACBlockRegistry.PEWEN_HANGING_SIGN.get());
         validHangingSignBlocks.add(ACBlockRegistry.PEWEN_WALL_HANGING_SIGN.get());
         validHangingSignBlocks.add(ACBlockRegistry.THORNWOOD_HANGING_SIGN.get());
         validHangingSignBlocks.add(ACBlockRegistry.THORNWOOD_WALL_HANGING_SIGN.get());
-        vanillaHangingSign().validBlocks = validHangingSignBlocks.build();
+        vanillaHangingSign().validBlocks = validHangingSignBlocks;
     }
 }

@@ -39,6 +39,10 @@ public class QuarrySmasherRenderer extends EntityRenderer<QuarrySmasherEntity> {
     private static final ResourceLocation TEXTURE_CHAIN = ResourceLocation.withDefaultNamespace("textures/block/chain.png");
     private static final Map<UUID, LightningRender> lightningRenderMap = new HashMap<>();
     private static final LightningBoltData.BoltRenderInfo LIGHTNING_BOLT_INFO = new LightningBoltData.BoltRenderInfo(0.0F, 0.01F, 0.3F, 0.6F, new Vector4f(0.71F, 0.76F, 0.95F, 0.3F), 0);
+    private static final Object CORNER_1 = new Object();
+    private static final Object CORNER_2 = new Object();
+    private static final Object CORNER_3 = new Object();
+    private static final Object CORNER_4 = new Object();
 
 
     public QuarrySmasherRenderer(EntityRendererProvider.Context renderManagerIn) {
@@ -110,10 +114,13 @@ public class QuarrySmasherRenderer extends EntityRenderer<QuarrySmasherEntity> {
                     .spawn(LightningBoltData.SpawnFunction.CONSECUTIVE)
                     .fade(LightningBoltData.FadeFunction.NONE);
             if (!Minecraft.getInstance().isPaused()) {
-                lightningRender.update(1, bolt1, partialTicks);
-                lightningRender.update(2, bolt2, partialTicks);
-                lightningRender.update(3, bolt3, partialTicks);
-                lightningRender.update(4, bolt4, partialTicks);
+                // Interned constants, not boxed ints: LightningRender keys its owners by
+                // identity now, and relying on the Integer cache to make that work would be
+                // a trap for whoever writes the fifth corner.
+                lightningRender.update(CORNER_1, bolt1, partialTicks);
+                lightningRender.update(CORNER_2, bolt2, partialTicks);
+                lightningRender.update(CORNER_3, bolt3, partialTicks);
+                lightningRender.update(CORNER_4, bolt4, partialTicks);
             }
         }
 

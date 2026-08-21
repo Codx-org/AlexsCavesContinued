@@ -56,21 +56,54 @@ public final class ACFabricAttributes {
     public static final Attribute ENTITY_GRAVITY =
             new RangedAttribute("attribute.name.alexscaves.entity_gravity", 0.08D, -8.0D, 8.0D).setSyncable(true);
 
-    private ACFabricAttributes() {
-    }
-
     /**
      * Puts the pair into the game registry, which is what lets an attribute instance be written to
      * a client — {@code ClientboundUpdateAttributesPacket} sends the registry id, so an unregistered
      * attribute would throw the first time a modified entity came into view.
      *
-     * <p>Called from the Fabric entrypoint rather than from a register in {@code AlexsCaves}'s
-     * constructor: these two are not the mod's content, they are a loader gap being filled, and
-     * nothing in the mod's own flush order depends on them.
+     * <p><b>⚠️ This is a class initialiser, and it has to be.</b> It used to be the body of
+     * {@link #register()}, called from the Fabric entrypoint — and that is one class load too late.
+     * From 1.20.5 an {@code AttributeSupplier} is a {@code Map} keyed by <b>{@code Holder}</b>, and
+     * {@code ACCompat#attribute} answers with {@code BuiltInRegistries.ATTRIBUTE.wrapAsHolder(…)},
+     * which returns the bound {@code Holder.Reference} for a registered attribute and a fresh
+     * {@code Holder.direct(…)} for an unregistered one. A Direct and a Reference can never be equal,
+     * so if the supplier is built <i>before</i> registration the map is keyed by a Direct and every
+     * later lookup — which by then gets the Reference — misses:
+     * {@code IllegalArgumentException: Can't find attribute alexscaves:swim_speed}. Note the message
+     * names the attribute, because it is the <i>lookup</i> holder that is printed
+     * ({@code Holder#getRegisteredName}, which a Direct answers {@code [unregistered]}); a message
+     * that reads correctly is therefore <b>not</b> evidence that registration was missed.
+     *
+     * <p>And the supplier really is built first. A dev run calls {@code Bootstrap.validate()} →
+     * {@code DefaultAttributes.validate()}, which forces {@code DefaultAttributes}' own initialiser
+     * and so runs {@code createLivingAttributes} for every vanilla entity — in this tree's
+     * {@code 26.1.2-fabric} log that whole entity class-load cascade is stamped four seconds before
+     * {@code Alex's Caves Continued: Fabric common init}. Touching {@code SWIM_SPEED} from the
+     * mixin is what initialises this class, so putting the registration here makes it happen at
+     * exactly the moment the first holder is wrapped, whichever of the two comes first.
+     *
+     * <p>The symptom is narrow enough to have survived the whole version walk: the three call sites
+     * only run when a living entity is <i>in a fluid</i>, so a boot, a summon and a loot roll all
+     * pass. It took a vanilla bat swimming.
      */
-    public static void register() {
+    static {
         Registry.register(BuiltInRegistries.ATTRIBUTE, ACIdFactories.of(AlexsCaves.MODID, "swim_speed"), SWIM_SPEED);
         //? if <1.20.5
         Registry.register(BuiltInRegistries.ATTRIBUTE, ACIdFactories.of(AlexsCaves.MODID, "entity_gravity"), ENTITY_GRAVITY);
+    }
+
+    private ACFabricAttributes() {
+    }
+
+    /**
+     * Forces this class's initialiser, and so the registration above, at a known point.
+     *
+     * <p>Kept as an explicit call from the Fabric entrypoint rather than left to whoever touches
+     * {@link #SWIM_SPEED} first: mod init is where the registry is unambiguously open, so on a
+     * production run — where {@code Bootstrap.validate()} does not run and nothing loads
+     * {@code DefaultAttributes} this early — the pair still lands at the same point in the boot it
+     * always did.
+     */
+    public static void register() {
     }
 }

@@ -6,6 +6,7 @@ import com.github.alexmodguy.alexscaves.server.misc.ACPlatform;
 
 import codx.codxlib.api.CodxLib;
 import com.github.alexmodguy.alexscaves.AlexsCaves;
+import com.github.alexmodguy.alexscaves.server.command.ACCommands;
 import com.github.alexmodguy.alexscaves.server.block.ACBlockRegistry;
 import com.github.alexmodguy.alexscaves.server.enchantment.ACEnchantmentRegistry;
 import com.github.alexmodguy.alexscaves.server.entity.ACEntityRegistry;
@@ -72,6 +73,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.AnvilUpdateEvent;
+import net.minecraftforge.event.RegisterCommandsEvent;
 // Fabric keeps this on every version. The gate is about NeoForge, which folded the tick events
 // into per-target ones at 1.20.5; Fabric's TickEvent is this tree's own vendored stub, fired by
 // its own bus, so there is nothing there to fold and every listener below takes the else arm.
@@ -94,6 +96,15 @@ import java.util.Optional;
 import com.github.alexmodguy.alexscaves.server.misc.ACFluids;
 
 public class CommonEvents {
+
+    // The one command this mod has. RegisterCommandsEvent's three getters are identical on every
+    // Forge build from 47.4.21 and every NeoForge build from 20.4.251, and on Fabric the event is
+    // this tree's own stand-in, posted from CommandRegistrationCallback -- so no gate is needed.
+    @SubscribeEvent
+    public void registerCommands(RegisterCommandsEvent event) {
+        ACCommands.register(event.getDispatcher());
+    }
+
     @SubscribeEvent
     public void livingDie(LivingDeathEvent event) {
         if (event.getEntity().getType() == EntityType.MAGMA_CUBE && event.getSource() != null && event.getSource().getEntity() instanceof Frog frog) {

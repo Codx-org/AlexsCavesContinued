@@ -645,7 +645,7 @@
       }
     ]
   },
-  "abyssal_chasm_mood": {
+  "abyssal_chasm_ambience_mood": {
     "sounds": [
       "alexscaves:ambient/abyssal_chasm/mood/mood_0",
       "alexscaves:ambient/abyssal_chasm/mood/mood_1",
@@ -1885,9 +1885,7 @@
     "sounds": [
       "alexscaves:block/purple_soda/purple_soda_swim_0",
       "alexscaves:block/purple_soda/purple_soda_swim_1",
-      "alexscaves:block/purple_soda/purple_soda_swim_2",
-      "alexscaves:block/purple_soda/purple_soda_swim_3",
-      "alexscaves:block/purple_soda/purple_soda_swim_4"
+      "alexscaves:block/purple_soda/purple_soda_swim_2"
     ],
     "subtitle": "alexscaves.sound.subtitle.purple_soda_swim"
   },
@@ -2430,9 +2428,9 @@
   },
   "luxtructosaurus_snort": {
     "sounds": [
-      "alexscaves:mob/luxtructosaurus/luxtructosaurus_snort_0",
-      "alexscaves:mob/luxtructosaurus/luxtructosaurus_snort_1",
-      "alexscaves:mob/luxtructosaurus/luxtructosaurus_snort_2"
+      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breath_0",
+      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breath_1",
+      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breath_2"
     ],
     "subtitle": "alexscaves.sound.subtitle.luxtructosaurus_snort"
   },
@@ -2470,13 +2468,13 @@
     ],
     "subtitle": "alexscaves.sound.subtitle.luxtructosaurus_tail"
   },
-  "luxtructosaurus_breathe": {
+  "luxtructosaurus_breath": {
     "sounds": [
-      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breathe_0",
-      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breathe_1",
-      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breathe_2"
+      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breath_0",
+      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breath_1",
+      "alexscaves:mob/luxtructosaurus/luxtructosaurus_breath_2"
     ],
-    "subtitle": "alexscaves.sound.subtitle.luxtructosaurus_breathe"
+    "subtitle": "alexscaves.sound.subtitle.luxtructosaurus_breath"
   },
   "luxtructosaurus_roar": {
     "sounds": [
@@ -3952,7 +3950,7 @@
       "alexscaves:mob/gingerbread_man/gingerbread_man_talk_1",
       "alexscaves:mob/gingerbread_man/gingerbread_man_talk_2"
     ],
-    "subtitle": "alexscaves.sound.subtitle.gingerbread_man_talk"
+    "subtitle": "alexscaves.sound.subtitle.gingerbread_man_talks"
   },
   "cave_book_open": {
     "sounds": [

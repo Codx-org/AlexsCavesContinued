@@ -69,6 +69,13 @@ MOD_BUS = re.compile(
     r"RegisterShadersEvent|RegisterClientReloadListenersEvent|.*ClientSetupEvent)$"
 )
 
+# ...but ``Register\w*Event`` is a name-shaped guess, and one game-bus event answers to it.
+# RegisterCommandsEvent is posted on the GAME bus by both loaders (Forge fires it from
+# Commands' constructor, not from mod loading), so Fabric genuinely has to produce it or
+# /acc does not exist there — exactly the silent gap this script was written for.  Checked
+# before MOD_BUS so the pattern cannot exempt it.
+GAME_BUS_OVERRIDE = {"RegisterCommandsEvent"}
+
 SUBSCRIBE = re.compile(
     r"@SubscribeEvent[^\n]*\n(?:\s*@[\w.]+[^\n]*\n)*"
     r"\s*(?:public|private|protected)\s+\w+\s+\w+\s*\(\s*(?:final\s+)?([\w.$]+)\s+\w+"
@@ -148,7 +155,7 @@ def main() -> int:
     missing: dict[str, set[str]] = {}
     offloader: dict[str, set[str]] = {}
     for ev, srcs in consumed.items():
-        if ev in EXEMPT or MOD_BUS.match(ev):
+        if ev not in GAME_BUS_OVERRIDE and (ev in EXEMPT or MOD_BUS.match(ev)):
             continue
         target = resolve(ev, known)
         if target is None:

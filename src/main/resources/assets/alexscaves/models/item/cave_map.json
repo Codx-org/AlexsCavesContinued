@@ -1,5 +1,6 @@
 {
   "parent": "builtin/entity",
+  "textures": {"particle": "alexscaves:item/cave_map"},
   "gui_light": "front",
   "ambientocclusion": true,
   "display": {

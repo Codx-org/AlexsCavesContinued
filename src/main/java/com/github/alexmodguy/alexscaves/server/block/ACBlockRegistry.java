@@ -449,32 +449,52 @@ public class ACBlockRegistry {
     // which BuiltInRegistries runs after MOB_EFFECT.
     private static Supplier<Block> registerBlockAndItemEdible(String name, Supplier<Block> block, Supplier<FoodProperties> foodProperties) {
         Supplier<Block> blockObj = DEF_REG.register(name, block);
-        ACItemRegistry.DEF_REG.register(name, () -> new BlockItemWithSupplier(blockObj, ACFoodBuilder.food(new Item.Properties(), foodProperties.get())));
+        ACItemRegistry.DEF_REG.register(name, () -> new BlockItemWithSupplier(blockObj, ACFoodBuilder.food(blockItemProperties(), foodProperties.get())));
         return blockObj;
+    }
+
+    /**
+     * The {@code Item.Properties} every one of this mod's BlockItems is built from.
+     *
+     * <p>1.21.2 stopped deriving a BlockItem's name from its block. {@code BlockItem} used to
+     * override {@code getDescriptionId()} to return {@code getBlock().getDescriptionId()}; now the
+     * name comes off {@code Properties} like any other item's, and an item that does not ask for
+     * the block prefix is called {@code item.<ns>.<path>}. Every lang key this mod ships for a
+     * block is {@code block.alexscaves.*}, so all ~360 of them displayed as raw keys on 1.21.2 and
+     * up — icons and models were unaffected, which is why it survived a client boot test.
+     *
+     * <p>Below 1.21.2 the method does not exist and the old override is still doing the work.
+     */
+    private static Item.Properties blockItemProperties() {
+        //? if >=1.21.2 {
+        /*return new Item.Properties().useBlockDescriptionPrefix();
+        *///?} else {
+        return new Item.Properties();
+        //?}
     }
 
     private static Supplier<? extends BlockItemWithSupplier> getBlockSupplier(int itemType, Supplier<Block> blockObj) {
         switch (itemType) {
             default:
-                return () -> new BlockItemWithSupplier(blockObj, new Item.Properties());
+                return () -> new BlockItemWithSupplier(blockObj, blockItemProperties());
             case 1:
-                return () -> new BlockItemWithSupplierLore(blockObj, new Item.Properties());
+                return () -> new BlockItemWithSupplierLore(blockObj, blockItemProperties());
             case 2:
-                return () -> new BlockItemWithScaffolding(blockObj, new Item.Properties());
+                return () -> new BlockItemWithScaffolding(blockObj, blockItemProperties());
             case 3:
-                return () -> new BlockItemWithISTER(blockObj, new Item.Properties());
+                return () -> new BlockItemWithISTER(blockObj, blockItemProperties());
             case 4:
-                return () -> new RadioactiveBlockItem(blockObj, new Item.Properties(), 0.001F);
+                return () -> new RadioactiveBlockItem(blockObj, blockItemProperties(), 0.001F);
             case 5:
-                return () -> new RadioactiveOnDestroyedBlockItem(blockObj, new Item.Properties(), 0.01F);
+                return () -> new RadioactiveOnDestroyedBlockItem(blockObj, blockItemProperties(), 0.01F);
             case 6:
-                return () -> new BlockItemWithSupplier(blockObj, new Item.Properties().rarity(Rarity.UNCOMMON));
+                return () -> new BlockItemWithSupplier(blockObj, blockItemProperties().rarity(Rarity.UNCOMMON));
             case 7:
-                return () -> new BlockItemWithSupplier(blockObj, new Item.Properties().rarity(Rarity.UNCOMMON).fireResistant());
+                return () -> new BlockItemWithSupplier(blockObj, blockItemProperties().rarity(Rarity.UNCOMMON).fireResistant());
             case 8:
-                return () -> new BlockItemWithSupplier(blockObj, new Item.Properties().rarity(Rarity.UNCOMMON).fireResistant().rarity(ACItemRegistry.RARITY_NUCLEAR));
+                return () -> new BlockItemWithSupplier(blockObj, blockItemProperties().rarity(Rarity.UNCOMMON).fireResistant().rarity(ACItemRegistry.RARITY_NUCLEAR));
             case 9:
-                return () -> new BlockItemWithISTER(blockObj, new Item.Properties().rarity(Rarity.UNCOMMON));
+                return () -> new BlockItemWithISTER(blockObj, blockItemProperties().rarity(Rarity.UNCOMMON));
         }
     }
 
