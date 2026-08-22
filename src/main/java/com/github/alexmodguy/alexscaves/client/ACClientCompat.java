@@ -1438,9 +1438,9 @@ public class ACClientCompat {
     @javax.annotation.Nullable
     public static net.minecraft.world.entity.Entity displayEntity(net.minecraft.world.entity.EntityType<?> type, net.minecraft.world.level.Level level) {
         //? if >=1.21.2 {
-        /*return type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+        /*return com.github.alexmodguy.alexscaves.server.misc.ACCompat.markDisplayEntity(type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD));
         *///?} else {
-        return type.create(level);
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.markDisplayEntity(type.create(level));
         //?}
     }
 

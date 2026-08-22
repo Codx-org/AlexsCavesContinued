@@ -10,6 +10,7 @@
     "AbstractMinecartMixin",
     "BiomeSourceMixin",
     "BlockPropertiesMixin",
+    "ChunkGeneratorValidateMixin",
     "ChunkStatusMixin",
     "CoralFeatureMixin",
     "DecoratedPotPatternsMixin",

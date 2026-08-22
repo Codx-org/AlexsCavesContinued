@@ -14,15 +14,24 @@ jar instead, so it's one less thing to keep in step.
 
 Fabric and NeoForge work, which the original never supported.
 
-CodxLib is required: https://modrinth.com/mod/codxlib. Grab the file for your exact Minecraft
-version and loader and drop it in alongside this one.
+CodxLib is required, 1.3.6 or newer: https://modrinth.com/mod/codxlib. Grab the file for your exact
+Minecraft version and loader and drop it in alongside this one. Without it the game won't start.
 
-Install it on the client and the server both. It's a content mod, so both sides need it.
+Install both mods on the client and the server. It's a content mod, so both sides need it.
+
+There's a `/acc` command now, for server owners. It opens a chest menu over the general config, so
+the options can be changed in game instead of by editing a toml and restarting.
 
 ## Bugs fixed
 
-These were all in the original. Some of them only started showing up on newer Minecraft versions,
-which is how I found them.
+Most of these were in the original. Some only started showing up on newer Minecraft versions, which
+is how I found them.
+
+Every advancement fired the moment you loaded a world, on 1.20.5 and up. The mod's advancements ask
+"are you standing in this biome" and "are you inside this structure", and 1.20.5 renamed the fields
+that carry the answer. Minecraft doesn't complain about a field it doesn't recognise, it just drops
+it — which left the question empty, and an empty question is true everywhere. Since one of the ones
+firing was the root advancement, the whole tab popped at once.
 
 The licowitch and the tremorzilla couldn't be summoned at all on 1.20.5 and up. One wrong class name
 in the original source had the two mobs fighting over the same slot of synced data, and newer
@@ -31,6 +40,29 @@ Minecraft versions turn that into a hard error instead of quietly coping. Both s
 Eleven mobs crashed the server the first tick after they spawned, on 1.21.2 and up. That's the
 version where Minecraft moved the "notices a player holding food" range onto an entity attribute,
 and those eleven never declared it.
+
+Every block's item was named `item.alexscaves.something` instead of its real name, on 1.21.2 and up.
+Icons and models were fine, so it only showed if you hovered over one.
+
+Opening the creative inventory crashed the client. Galena bricks were listed twice in the Magnetic
+Caves tab and Minecraft refuses to build a tab with a duplicate in it. That one has been in the mod
+since 1.19.3.
+
+The Magnetron crashed the client the first frame you could see one, because of how the lightning
+bolts kept track of who they belonged to.
+
+Finding one of the mod's cave biomes and teleporting into it froze the game, on 26.1 and up, in
+singleplayer only. Minecraft added a check that runs before the world has finished opening and
+freezes the list of things each biome is allowed to generate; the mod adds its biomes a moment
+later, so they weren't on the list, and the first chunk that tried to decorate one died with the
+world already loaded. Servers were never affected, which is why it took this long to find.
+
+On 26.2, an Amber Monolith crashed the client the first frame it came into view, and the hologram
+projector would have done the same. Both show a mob that isn't really in the world, and 26.2 started
+refusing to answer a question about mobs like that.
+
+Installing this next to Farmer's Delight crashed the game at startup, sometimes — it depended on
+which of the two loaded first. Both add signs to the same list and this mod was sealing it shut.
 
 A pile of recipes were silently uncraftable. They pointed at shared convention tags that the loader
 in question had never actually defined, and a missing ingredient tag doesn't error on older
@@ -42,6 +74,20 @@ Magnets did nothing to iron on a few Fabric builds. Same cause.
 
 The primordial, hazmat, diving and gingerbread armour sets rendered as nothing at all from 1.20.5
 onward. They were relying on a Forge hook that stopped existing.
+
+On NeoForge 1.21.7 and up, the game stopped on a warning screen naming this mod every single launch,
+and you had to click past it to reach the menu. Gone.
+
+On Fabric 1.21.5 and up, the game crashed the first time anything walked into water.
+
+51 faces across 13 block models were reaching outside their own texture, which means they've been
+drawing whatever pixels happened to sit next to it on the sheet since 1.20.1. On 26.1 that stopped
+being a cosmetic problem and started failing the model outright. Another 48 faces had no texture
+assigned at all. Both fixed, geometry untouched.
+
+Two sound effects were spelled one way where they were registered and another way in the sound
+list, so they never played. The abyssal chasm has an ambient track now, which it always shipped and
+never used.
 
 A structure exclusion zone that had never once applied, and a spear model pointing at the wrong
 file. Fixed where fixing it was clearly right, left alone and written down where it wasn't.
