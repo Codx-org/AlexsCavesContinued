@@ -306,7 +306,7 @@ public class AmberMonolithBlockEntity extends BlockEntity implements ACUpdatePac
 
     public Entity getDisplayEntity(Level level) {
         if (displayEntity == null && spawnType != null || displayEntity != null && displayEntity.getType() != spawnType) {
-            displayEntity = ACCompat.createEntity(spawnType, level);
+            displayEntity = ACCompat.markDisplayEntity(ACCompat.createEntity(spawnType, level));
         }
         return displayEntity;
     }

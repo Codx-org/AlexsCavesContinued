@@ -1122,6 +1122,26 @@ public class ACCompat {
         //?}
     }
 
+    // 26.2 stopped handing an entity its id at construction. Entity#getId throws
+    // "Tried to access entity ID before ID assignment" while the field is still 0, and the field is
+    // only filled in when the entity is added to a level. A display entity is never added to one --
+    // it exists purely to be drawn -- while 26.x's living render-state extraction reads the id
+    // unconditionally (ItemModelResolver#updateForLiving uses it as the seed that picks an item
+    // model variant), so drawing one threw out of the block entity renderer. Stamping a negative id
+    // keeps every display entity distinct from every other and from every real, level-assigned id,
+    // which are always positive.
+    private static final java.util.concurrent.atomic.AtomicInteger DISPLAY_ENTITY_IDS =
+            new java.util.concurrent.atomic.AtomicInteger(-1);
+
+    public static <T extends net.minecraft.world.entity.Entity> T markDisplayEntity(T entity) {
+        //? if >=26.2 {
+        /*if (entity != null) {
+            entity.setId(DISPLAY_ENTITY_IDS.getAndDecrement());
+        }
+        *///?}
+        return entity;
+    }
+
     // ── Block interaction ──────────────────────────────────────────────────────
     // 1.20.5 split BlockBehaviour#use into useItemOn — item in hand, new ItemInteractionResult
     // return — and useWithoutItem. Every block here branches on the held item, so each keeps one

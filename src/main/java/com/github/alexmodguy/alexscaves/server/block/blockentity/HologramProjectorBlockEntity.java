@@ -196,6 +196,7 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
             *///?} else {
             displayEntity = EntityType.loadEntityRecursive(entityTag, level, Function.identity());
             //?}
+            ACCompat.markDisplayEntity(displayEntity);
         }
         if (displayEntity == null && prevDisplayEntity != null) {
             return prevDisplayEntity;

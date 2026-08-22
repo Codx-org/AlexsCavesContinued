@@ -118,6 +118,34 @@ would be a large diff with no payoff on Forge/NeoForge.
 
 ## Gotchas already hit
 
+- ⚠️⚠️ **MC 26.1 added `ChunkGenerator#validate()`, and on a SINGLEPLAYER world it makes this mod's
+  biomes crash chunk decoration.** The whole body is `this.featuresPerStep.get(); return;` — it does
+  nothing but *force* the per-step feature index that `FeatureSorter` builds from the generator's
+  current biome set — and the **client** calls it before the integrated server exists:
+  `WorldOpenFlows#openWorldLoadLevelStem` loops over every `LevelStem` of the freshly-loaded
+  `WorldStem` and validates its generator (offset 87) before `Minecraft#doWorldLoad`, and
+  `WorldCreationContext#validate` does the same on world creation. This mod adds its six biomes from
+  `ServerAboutToStartEvent`, so the index memoises **without** them and is never rebuilt; decoration
+  then asks `stepFeatureData.indexMapping()` for an AC placed feature, gets the identity map's `-1`
+  default (there is no guard) and dies in `applyBiomeDecoration` with `IndexOutOfBoundsException:
+  Index -1 out of bounds for length N`, killing the chunk worker the instant a player reaches an AC
+  biome — *"I look for a biome, TP to it and the game freezes"*. Fixed 2026-08-21 by
+  `mixin/ChunkGeneratorValidateMixin`, a HEAD cancel of `validate()` gated `>=26.1`, which lets the
+  index memoise lazily inside the first `applyBiomeDecoration` — on a chunk worker, long after the
+  event. Three things to carry forward. **(1) The blast radius is a version boundary, not a loader
+  one**: `validate()` is absent on every cached jar 1.20.1 → 1.21.11 and byte-identical on 26.1,
+  26.1.1, 26.1.2 and 26.2, so it is 12 nodes. **(2) Forge is NOT shielded by its own patch.** Forge
+  retypes the field to `ClearableLazy` and adds `public void refreshFeaturesPerStep()`, which reads
+  like a repair path — but `grep -rl refreshFeaturesPerStep` over the patched jar matches only
+  `ChunkGenerator.class` itself, i.e. **nothing ever calls it**, and Forge's `validate()` forces the
+  lazy exactly as vanilla's does. *A loader shipping the API to fix a problem is not the same as the
+  loader fixing it.* **(3) No dedicated server ever calls `validate()`** — neither `MinecraftServer`
+  nor `ServerLevel` does — which is precisely why the whole RCON in-world battery and all 58 green
+  `runServer` boots said nothing about it. The only thing given up by cancelling is vanilla's early
+  feature-order-cycle diagnosis at the load screen; the same throw still arrives at the first
+  decorated chunk. Verified by re-opening the very world that crashed twice, with
+  `--quickPlaySingleplayer` so the client loads straight to the player's position inside the biome:
+  chunks generate, no crash report.
 - ⚠️⚠️ **1.20.5 turned `LocationPredicate`'s `structure`/`biome` and the advancement
   `BlockPredicate`'s `tag` into holder sets, and because every field of both records is an
   `optionalFieldOf` the old keys were DROPPED IN SILENCE — leaving an empty predicate that matches
@@ -180,6 +208,26 @@ would be a large diff with no payoff on Forge/NeoForge.
   entity-keyed collections here are all typed `LivingEntity`, which no part entity is, so they
   are safe. **Anything typed `Entity` or `Object` that hashes is not.**
 
+- ⚠️ **…and the same 26.2 throw has a second, unrelated source: a DISPLAY entity, read directly
+  rather than through a hash.** `getId()` is harmless on every node 1.20.1 → 26.1.2 (javap'd: it
+  simply returns the field); **26.2 alone** made it throw while the id is still 0, and 26.2's
+  `ItemModelResolver#updateForLiving` reads it *unconditionally* — the id plus
+  `ItemDisplayContext.ordinal()` is the seed that picks an item-model variant — so
+  `LivingEntityRenderer#extractRenderState` on any entity that was never added to a level dies.
+  This mod builds exactly that on purpose in three places: the amber monolith's encased mob, the
+  hologram projector's projection, and the cave book's `EntityWidget` / nocked arrow. The amber
+  one is the loud one, because `AmberMonolithBlockRenderer.renderEntityInAmber` wraps its body in
+  `catch (Throwable) → ReportedException("Rendering entity in world")` — an instant hard crash the
+  first frame a monolith is on screen, which is what the user hit on `26.2-fabric`. Fixed
+  2026-08-21 with `ACCompat.markDisplayEntity(T)`, a `>=26.2`-gated `setId()` of a **negative,
+  decrementing** id: every real, level-assigned id is positive, so a negative one can collide with
+  nothing, and since the id is only a model-variant seed any non-zero value is behaviour-neutral.
+  All three sites funnel through that helper. Two lessons. **(1) Read `getId`'s bytecode, not its
+  reputation** — the throw is one version wide and the neighbouring nodes give a false all-clear.
+  **(2) Grep for the *direct* read as well as for the hashing one**: the `PartEntity` bullet above
+  fixed every `Entity`-keyed collection in the tree and this bug was still live, because nothing
+  here hashed a display entity — vanilla just read its id.
+
 - ⚠️ **A duplicate `add(output, …)` in a creative tab is a client crash, and no boot test finds it.**
   `ACCreativeTabRegistry` listed `GALENA_BRICKS` twice in the Magnetic Caves tab (once before
   `GALENA_WALL`, once in its right place). Vanilla's `CreativeModeTab$ItemDisplayBuilder.accept`
@@ -205,7 +253,8 @@ would be a large diff with no payoff on Forge/NeoForge.
   2026-08-21 by rebuilding both sets as a `LinkedHashSet`: same contents, same iteration order,
   still open for whoever comes third. Found while testing **AlexsCavesContinuedDelight**, which
   requires both mods and so would have shipped the coin toss to every player.
-  ⚠️ **Only `26.2-fabric` has been rebuilt with these four fixes — the other 57 nodes still carry all of them.**
+  ✅ All 58 nodes were rebuilt with these fixes on 2026-08-21 (`MOD_IS_RELEASE=true`), so the shipped
+  `1.0.0` jars carry them everywhere.
 - **`"Loaded 7 recipes"` on a 1.20.1 dev server is NORMAL, not a broken data pack.** AMC's
   known-good 1.20.1-forge node prints the same line in every one of its archived logs. 1.20.1's
   initial `WorldLoader` pass loads a reduced pack set; the advancement count on the same line
@@ -251,6 +300,17 @@ would be a large diff with no payoff on Forge/NeoForge.
     exactly like a 1.21.10 API break. **The tell is the count going UP** — 261 where 1.21.9 has
     249/246 — since a stale config can only add entries. After `processResources` both nodes report
     249/246, i.e. not one target moved.
+  - ⚠️ **The ACTIVE node has no live generated tree, so never diagnose a gate from it.**
+    `stonecutter.gradle.kts` sets `stonecutter active "1.20.1-forge"`, and the active node compiles
+    from `src/` directly — its `versions/1.20.1-forge/build/generated/stonecutter/` is whatever was
+    last written there and is never refreshed (`:1.20.1-forge:compileJava` comes back `UP-TO-DATE`
+    and touches nothing). A newly-added gate is therefore *absent* from that tree while being
+    perfectly correct in `src/`, which reads exactly like a rule that failed to register. Check the
+    gate on any **inactive** node instead.
+  - ⚠️ **A bare `grep` of a generated tree cannot tell an active arm from a disabled one** — an arm
+    that is gated off survives as commented text (`/*if (…) {` … `*///?}`), so the line you are
+    looking for matches on the nodes where it is *switched off*. Always read it with context
+    (`grep -B2` / `sed -n`) and look for the `/*` before it.
 - **1.20.4-forge has no underground-cabin map marker.** `MapDecoration.render(int)` is a loader
   patch, not vanilla; Forge dropped it when `MapDecoration` became a record in 1.20.2 while NeoForge
   kept it, so `MapDecorationMixin#ac_render` is gated `<1.20.2 || (neoforge && <1.20.5)` and the
@@ -1355,7 +1415,7 @@ absent from **all 12** NeoForge nodes ≥1.21.4 with `registered item model defi
 closing build was re-run as a *release* build so it doubles as the artifact build rather than costing
 a second pass, and all four checks are green against those artifacts rather than against snapshots:
 `BUILD SUCCESSFUL`, `GRADLE_EXIT=0`, 727 actionable tasks, **zero** task failures across all 58;
-`verify_mixins.py` **15307 injection points, all targets resolve**; `aw_check.py` **problems=0** on
+`verify_mixins.py` **16433 injection points, all targets resolve**; `aw_check.py` **problems=0** on
 all 22 MC versions (83 entries at 1.20.1 falling to 70 at 26.2); `convaudit.py` **missing=0** on all
 22 Fabric versions. `versions/*/build/libs/` holds **58** mod jars, every one
 `alexscaves-1.0.0-<loader>+<mc>.jar`, with **zero** `-SNAPSHOT` — plus 58 sources and 58 javadoc jars
@@ -1366,7 +1426,7 @@ that any uploader must filter out (see the release-build gotchas above).
 zero task failures across all 58
 (`TASKS=(${(f)"$(ls versions/ | sed 's|^|:|; s|$|:build|')"})` then `./gradlew "${TASKS[@]}" --continue`
 — zsh does not word-split, so this has to be an array, and it has to be **one** invocation).
-`python3 scripts/verify_mixins.py` with no arguments resolves **15307 injection points across all 58
+`python3 scripts/verify_mixins.py` with no arguments resolves **16433 injection points across all 58
 nodes**, and `python3 scripts/aw_check.py` with no arguments reports **problems=0** on every one of
 the 22 MC versions (83 entries at 1.20.1–1.20.4 falling to 70 at 26.2, as gated arms drop out).
 ⚠️ **`aw_check.py` takes MC VERSIONS, not node names** — handed `26.1-fabric` it prints "no cached
@@ -2361,6 +2421,31 @@ has been exercised at runtime.
 - ⚠️ **The repo is still PRIVATE** (`"private": true`). Shipping LGPL binaries to Modrinth/CurseForge
   obliges offering the corresponding source to recipients, so it has to go public — or a source offer
   has to exist — **before** the first upload, not after.
+
+## 1.0.0 shipped (2026-08-21)
+
+Both stores carry all **58** files, built from one `MOD_IS_RELEASE=true` pass
+(`BUILD SUCCESSFUL in 24m 52s`, `GRADLE_EXIT=0`, 727 tasks, 0 failures, 0 `-SNAPSHOT`) and gated by
+`verify_mixins.py` at **16433 injection points across 58 nodes, all resolving**.
+
+- **Modrinth** `cO2CvXug` / `alexs-caves-continued`: 58 versions, each re-read individually with
+  `GET /v2/version/{id}` — one file, correct loader, correct MC, and the project-level required
+  dependency on codxlib `6oyMM4yX` on every one. Nine featured
+  (`1.0.0+{fabric,forge,neoforge}-{1.21.11,26.1.2,26.2}`), confirmed per version, never off the
+  cached project listing. Submitted for review (`status: processing`, `requested_status: approved`).
+- **CurseForge** `1645389`: 58 files, each with a returned file id, ledgered in
+  `scripts/.cf_uploaded.json` (22 fabric / 18 forge / 18 neoforge). ⚠️ `api.cfwidget.com` reported
+  **0 files** for the whole upload window — expected, it is a caching proxy in front of CF's own
+  approval scan. Do not read it as a failure.
+- ⚠️ **`client_side`/`server_side` cannot be set on a Modrinth project with ZERO versions.** The
+  same `PATCH {"client_side":"required","server_side":"required"}` returned 204 and left both
+  `unknown` before the first upload, and took immediately after. Patch sides *after* the versions land.
+- ⚠️ **Still owed by hand: the CurseForge CodxLib relation.** CF relations carry no version and the
+  upload API has no field for them, so `{slug: codxlib, type: requiredDependency}` has to be added in
+  the web UI. The runtime floor (`>=1.3.6`) is enforced by each jar's own manifest regardless.
+- ⚠️ **`Codx-org/AlexsCavesContinued` was still private at upload time.** LGPL-3.0 obliges offering
+  corresponding source to whoever receives the binaries; make the repo public (or post a written
+  source offer on both project pages).
 
 ## Standing workspace rules that bite here
 
