@@ -47,7 +47,7 @@ public abstract class BookWidget {
         return scale;
     }
 
-    public abstract void render(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, float partialTicks, boolean onFlippingPage);
+    public abstract void render(PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, boolean onFlippingPage);
 
     public enum Type {
 

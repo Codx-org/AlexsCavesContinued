@@ -136,6 +136,7 @@ public class SeaPigEntity extends WaterAnimal implements Bucketable {
         return SoundEvents.FISH_SWIM;
     }
 
+    @Override
     protected void handleAirSupply(int prevAir) {
         if (this.isAlive() && !ACCompat.isInWaterOrBubble(this)) {
             this.setAirSupply(prevAir - 1);

@@ -153,7 +153,21 @@ public class FissurePrimalMagmaBlock extends Block implements ACBurningBlock, AC
         }
     }
 
+    // getCloneItemStack moved twice: 1.20.3 swapped BlockGetter for LevelReader, and 1.21.4 moved it
+    // onto BlockBehaviour with a trailing "include data" flag. A shape that is not the band's own
+    // overrides nothing, and pick-block on primal magma silently hands back the wrong item.
+    // ⚠ The lower boundary is 1.20.3, NOT 1.20.4 -- javap'd out of both jars. override_audit.py
+    // could not see 1.20.3-fabric (see scripts/mcjavap.py) so the band read one version too high.
+    //? if >=1.21.4 {
+    /*@Override
+    public ItemStack getCloneItemStack(net.minecraft.world.level.LevelReader levelReader, BlockPos blockPos, BlockState blockState, boolean includeData) {
+    *///?} elif >=1.20.3 {
+    /*@Override
+    public ItemStack getCloneItemStack(net.minecraft.world.level.LevelReader levelReader, BlockPos blockPos, BlockState blockState) {
+    *///?} else {
+    @Override
     public ItemStack getCloneItemStack(BlockGetter blockGetter, BlockPos blockPos, BlockState blockState) {
+    //?}
         return new ItemStack(ACBlockRegistry.PRIMAL_MAGMA.get());
     }
 

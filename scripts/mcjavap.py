@@ -30,6 +30,28 @@ def jar_for(mc):
     """
     pat = "-minecraft-merged-deobf" if mc.startswith("26.") else "-minecraft-merged"
     dirs = [d for d in glob.glob(f"{CACHE}/*{pat}") if f"-{mc}-" in d]
+    # Loom writes a Forge/NeoForge node's jar under `<loader>-<mc>-<build>-minecraft-merged/`,
+    # but a plain Fabric node's under the SHARED `minecraft-merged/` directory, one level down
+    # in a `<mc>-loom.mappings…` folder. Without this fallback the four MC versions this matrix
+    # reaches on Fabric ONLY -- 1.20.3, 1.20.5, 1.21.2 (and so 1.21.2-neoforge, which has no
+    # Forge sibling either) -- resolve to nothing, and every caller that treats a miss as "skip"
+    # silently stops covering them. That is exactly how the getCloneItemStack and
+    # getBaseExperienceReward bands were both recorded one MC version too high.
+    if not dirs:
+        shared = f"{CACHE}/minecraft-merged-deobf" if mc.startswith("26.") else f"{CACHE}/minecraft-merged"
+        dirs = [
+            d
+            for d in glob.glob(f"{shared}/{mc}-*")
+            if os.path.basename(d).split("-", 1)[0] == mc
+        ]
+        jars = sorted(
+            j
+            for d in dirs
+            for j in glob.glob(f"{d}/*.jar")
+            if "sources" not in j and "backup" not in j
+        )
+        if jars:
+            return jars[-1]
     jars = sorted(
         j
         for d in dirs

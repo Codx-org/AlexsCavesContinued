@@ -61,7 +61,7 @@ public class MagnetLightningParticle extends ACCustomParticle {
     }
 
     private boolean canSeeBlock(Vec3 from, Vec3 to) {
-        BlockHitResult result = this.level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, (net.minecraft.world.entity.Entity) null));
+        BlockHitResult result = this.level.clip(ownerlessClip(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE));
         return Vec3.atCenterOf(result.getBlockPos()).distanceTo(to) < 3.0F;
     }
 

@@ -44,7 +44,7 @@ public class CraftingRecipeWidget extends BookWidget {
         this.sepia = sepia;
     }
 
-    public void render(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, float partialTicks, boolean onFlippingPage) {
+    public void render(PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, boolean onFlippingPage) {
         if (recipe == null && recipeId != null) {
             recipe = getRecipeByName(recipeId);
             if(recipe instanceof AbstractCookingRecipe){

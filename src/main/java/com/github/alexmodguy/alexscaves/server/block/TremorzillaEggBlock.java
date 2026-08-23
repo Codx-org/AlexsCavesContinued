@@ -25,6 +25,7 @@ public class TremorzillaEggBlock extends DinosaurEggBlock {
     public void stepOn(Level worldIn, BlockPos pos, BlockState state, Entity entityIn) {
     }
 
+    @Override
     public void fallOn(Level worldIn, BlockState state, BlockPos pos, Entity entityIn, float fallDistance) {
         entityIn.causeFallDamage(fallDistance, 1.0F, entityIn.damageSources().fall());
     }

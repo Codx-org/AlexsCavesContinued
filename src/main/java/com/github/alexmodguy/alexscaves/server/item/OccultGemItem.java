@@ -140,16 +140,22 @@ public class OccultGemItem extends Item implements ACTickingItem {
             ItemStack itemstack = context.getItemInHand();
             boolean flag = !player.getAbilities().instabuild && itemstack.getCount() == 1;
             if (flag) {
-                this.addBeholderTags(level.dimension(), blockpos, ACCompat.getOrCreateTag(itemstack));
+                // From 1.20.5 getOrCreateTag hands back a COPY of the custom_data component, so the
+                // beholder position addBeholderTags writes has to be put back on the stack explicitly
+                // or the gem forgets it the instant this method returns. Same for setTag below: it
+                // copies too (CustomData.of calls CompoundTag.copy), so it must run AFTER the write.
+                CompoundTag gemTag = ACCompat.getOrCreateTag(itemstack);
+                this.addBeholderTags(level.dimension(), blockpos, gemTag);
+                ACCompat.setTag(itemstack, gemTag);
             } else {
                 ItemStack itemstack1 = new ItemStack(ACItemRegistry.OCCULT_GEM.get(), 1);
                 CompoundTag compoundtag = ACCompat.hasTag(itemstack) ? ACCompat.getTag(itemstack).copy() : new CompoundTag();
-                ACCompat.setTag(itemstack1, compoundtag);
                 if (!player.getAbilities().instabuild) {
                     itemstack.shrink(1);
                 }
 
                 this.addBeholderTags(level.dimension(), blockpos, compoundtag);
+                ACCompat.setTag(itemstack1, compoundtag);
                 if (!player.getInventory().add(itemstack1)) {
                     player.drop(itemstack1, false);
                 }

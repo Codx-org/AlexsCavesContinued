@@ -2029,13 +2029,6 @@ public class ACClientCompat {
     }
 
     /**
-     * The particle sprite of a block's model — what {@code getBlockModelShaper().getBlockModel(state)
-     * .getParticleIcon()} answered before 26. Used to average a block's colour for the cave map.
-     *
-     * <p>26 hoisted it onto the model set itself as a {@code Material.Baked}, which is the sprite
-     * plus a translucency flag; only the sprite is wanted here.
-     */
-    /**
      * {@code Font#drawInBatch(String, …)}, which 26.2 deleted along with the rest of immediate-mode
      * drawing. See {@link #submitTextTo} for what replaces it.
      */
@@ -2044,8 +2037,14 @@ public class ACClientCompat {
                                    net.minecraft.client.renderer.MultiBufferSource bufferSource,
                                    net.minecraft.client.gui.Font.DisplayMode displayMode,
                                    int backgroundColor, int packedLight) {
+        color = com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(color);
         //? if >=26.2 {
-        /*submitTextTo(net.minecraft.util.FormattedCharSequence.forward(text, net.minecraft.network.chat.Style.EMPTY),
+        /*// Not FormattedCharSequence.forward: that is StringDecomposer.iterate, which walks the
+        // string verbatim. Font's own String path is iterateFormatted, after bidirectionalShaping --
+        // i.e. legacy section-sign codes are STYLE, not characters. Forward them and every "\u00A7l"
+        // in a book page prints as two literal glyphs instead of turning the line bold.
+        String shaped = font.isBidirectional() ? font.bidirectionalShaping(text) : text;
+        submitTextTo(sink -> net.minecraft.util.StringDecomposer.iterateFormatted(shaped, net.minecraft.network.chat.Style.EMPTY, sink),
                 x, y, color, dropShadow, pose, bufferSource, displayMode, backgroundColor, packedLight, 0);
         *///?} else {
         font.drawInBatch(text, x, y, color, dropShadow, pose, bufferSource, displayMode, backgroundColor, packedLight);
@@ -2059,6 +2058,7 @@ public class ACClientCompat {
                                    net.minecraft.client.renderer.MultiBufferSource bufferSource,
                                    net.minecraft.client.gui.Font.DisplayMode displayMode,
                                    int backgroundColor, int packedLight) {
+        color = com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(color);
         //? if >=26.2 {
         /*submitTextTo(text.getVisualOrderText(), x, y, color, dropShadow, pose, bufferSource, displayMode,
                 backgroundColor, packedLight, 0);
@@ -2072,15 +2072,17 @@ public class ACClientCompat {
      * {@code outlineColor} on the one submitted node — {@code TextFeatureRenderer} branches to
      * {@code Font#prepare8xTextOutline} on exactly that, so the two spellings render identically.
      *
-     * <p>⚠️ Which means an outline colour of 0 silently loses the outline. None of this mod's three
-     * call sites can pass one: two are opaque constants and the crucible's is built by
-     * {@code ACColors.argb} with an alpha floor of 4.
+     * <p>⚠️ Which means an outline colour of 0 would silently lose the outline — except that
+     * {@code ACColors.opaque} runs first and turns a 0 into opaque black, which is exactly what
+     * vanilla's {@code adjustColor} did to the same value below 1.21.6.
      */
     public static void drawInBatch8xOutline(net.minecraft.client.gui.Font font,
                                             net.minecraft.util.FormattedCharSequence text,
                                             float x, float y, int color, int outlineColor, org.joml.Matrix4f pose,
                                             net.minecraft.client.renderer.MultiBufferSource bufferSource,
                                             int packedLight) {
+        color = com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(color);
+        outlineColor = com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(outlineColor);
         //? if >=26.2 {
         /*submitTextTo(text, x, y, color, false, pose, bufferSource,
                 net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, packedLight, outlineColor);
@@ -2135,6 +2137,13 @@ public class ACClientCompat {
         //?}
     }
 
+    /**
+     * The particle sprite of a block's model — what {@code getBlockModelShaper().getBlockModel(state)
+     * .getParticleIcon()} answered before 26. Used to average a block's colour for the cave map.
+     *
+     * <p>26 hoisted it onto the model set itself as a {@code Material.Baked}, which is the sprite
+     * plus a translucency flag; only the sprite is wanted here.
+     */
     public static net.minecraft.client.renderer.texture.TextureAtlasSprite blockParticleSprite(net.minecraft.world.level.block.state.BlockState state) {
         //? if >=26 {
         /*return net.minecraft.client.Minecraft.getInstance().getModelManager().getBlockStateModelSet()

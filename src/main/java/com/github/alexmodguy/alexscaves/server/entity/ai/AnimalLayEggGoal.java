@@ -14,6 +14,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+import com.github.alexmodguy.alexscaves.server.misc.ACTagRegistry;
 
 public class AnimalLayEggGoal extends MoveToBlockGoal {
     private final Animal mob;
@@ -62,7 +63,7 @@ public class AnimalLayEggGoal extends MoveToBlockGoal {
                 this.laysEggs.setHasEgg(false);
                 this.mob.setInLoveTime(600);
                 this.mob.level().broadcastEntityEvent(this.mob, (byte) 78);
-                if (this.mob instanceof DinosaurEntity dinosaur && level.getBlockState(this.blockPos).is(BlockTags.DIRT)) {
+                if (this.mob instanceof DinosaurEntity dinosaur && level.getBlockState(this.blockPos).is(ACTagRegistry.DIRT_LIKE)) {
                     level.setBlockAndUpdate(this.blockPos, dinosaur.createEggBeddingBlockState());
                 }
             }

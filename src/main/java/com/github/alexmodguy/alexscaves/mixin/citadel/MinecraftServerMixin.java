@@ -3,6 +3,7 @@ package com.github.alexmodguy.alexscaves.mixin.citadel;
 import com.github.alexmodguy.alexscaves.citadel.CitadelConstants;
 import com.github.alexmodguy.alexscaves.citadel.CitadelProxy;
 import com.github.alexmodguy.alexscaves.citadel.server.world.ModifiableTickRateServer;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.mojang.datafixers.DataFixer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.Services;
@@ -12,9 +13,7 @@ import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.net.Proxy;
@@ -105,10 +104,10 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
     // the loop get rewritten; from 1.20.3 on, asking vanilla is both simpler and better behaved,
     // since the tick-rate manager also tells joining clients about the changed rate.
     //? if <1.20.3 {
-    @ModifyConstant(
+    @ModifyExpressionValue(
             method = {"Lnet/minecraft/server/MinecraftServer;runServer()V"},
             remap = CitadelConstants.REMAPREFS,
-            constant = @Constant(longValue = 50L),
+            at = @At(value = "CONSTANT", args = "longValue=50"),
             expect = 4)
     private long citadel_serverMsPerTick(long value) {
         return modifiedMsPerTick == -1 ? value : modifiedMsPerTick;

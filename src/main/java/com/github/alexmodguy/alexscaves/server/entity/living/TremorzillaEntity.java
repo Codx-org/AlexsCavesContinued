@@ -1458,6 +1458,7 @@ public class TremorzillaEntity extends DinosaurEntity implements KeybindUsingMou
         }
     }
 
+    @Override
     public int getExperienceReward() {
         return 70;
     }

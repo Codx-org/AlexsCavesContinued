@@ -12,8 +12,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.WritableLevelData;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.Constant;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 import java.util.function.Supplier;
 
@@ -35,10 +33,10 @@ public abstract class ClientLevelMixin extends Level {
     }
     //?}
 
-    @ModifyConstant(
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(
             method = "Lnet/minecraft/client/multiplayer/ClientLevel;tickTime()V",
             remap = CitadelConstants.REMAPREFS,
-            constant = @Constant(longValue = 1L),
+            at = @org.spongepowered.asm.mixin.injection.At(value = "CONSTANT", args = "longValue=1"),
             //? if (neoforge && >=1.21) || >=26 {
             /*expect = 1)
             *///?} else {

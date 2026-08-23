@@ -35,7 +35,7 @@ public class CoveredBlockBlobFeature extends Feature<CoveredBlockBlobConfigurati
                 // loader — which is also what the Fabric nodes will want. Inline rather than an
                 // ACCompat shim because Feature#isStone is protected: only a subclass can call it.
                 //? if >=26 {
-                /*if (blockstate.is(net.minecraft.tags.BlockTags.DIRT) || blockstate.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD)) {
+                /*if (blockstate.is(com.github.alexmodguy.alexscaves.server.misc.ACTagRegistry.DIRT_LIKE) || blockstate.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD)) {
                 *///?} else {
                 if (isDirt(blockstate) || isStone(blockstate)) {
                 //?}

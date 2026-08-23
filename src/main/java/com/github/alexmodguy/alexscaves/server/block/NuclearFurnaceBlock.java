@@ -73,7 +73,27 @@ public class NuclearFurnaceBlock extends BaseEntityBlock {
         return super.updateShape(state, direction, state1, levelAccessor, blockPos, blockPos1);
     }
 
+    // 1.20.5 split BlockBehaviour#use into useItemOn and useWithoutItem. Vanilla calls useItemOn
+    // for every hand and every stack -- the empty one included -- and only falls through to
+    // useWithoutItem when it answers "did nothing", so hanging the whole rule off useItemOn keeps
+    // this block reachable with a full hotbar exactly as it was below 1.20.5. The body is shared;
+    // only the entry point and the "we did nothing" return differ. See ACCompat#itemResult.
+    //? if >=1.21.2 {
+    /*protected net.minecraft.world.InteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState state, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult result) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(state, level, blockPos, player, hand, result));
+    }
+    *///?} elif >=1.20.5 {
+    /*protected net.minecraft.world.ItemInteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState state, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult result) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(state, level, blockPos, player, hand, result));
+    }
+    *///?} else {
     public InteractionResult use(BlockState state, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult result) {
+        InteractionResult acResult = acUse(state, level, blockPos, player, hand, result);
+        return acResult == InteractionResult.PASS ? super.use(state, level, blockPos, player, hand, result) : acResult;
+    }
+    //?}
+
+    private InteractionResult acUse(BlockState state, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult result) {
         if(!player.isShiftKeyDown()){
             if (level.isClientSide()) {
                 return InteractionResult.SUCCESS;

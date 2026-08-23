@@ -148,13 +148,19 @@ public class RemoteDetonatorItem extends Item implements ACTickingItem {
             ItemStack itemstack = context.getItemInHand();
             boolean flag = !player.getAbilities().instabuild && itemstack.getCount() == 1;
             if (flag) {
-                this.addBombTags(level.dimension(), blockpos, ACCompat.getOrCreateTag(itemstack));
+                // From 1.20.5 getOrCreateTag hands back a COPY of the custom_data component, so the
+                // bomb position addBombTags writes has to be put back on the stack explicitly or the
+                // detonator forgets it the instant this method returns. Same for setTag below: it
+                // copies too (CustomData.of calls CompoundTag.copy), so it must run AFTER the write.
+                CompoundTag detonatorTag = ACCompat.getOrCreateTag(itemstack);
+                this.addBombTags(level.dimension(), blockpos, detonatorTag);
+                ACCompat.setTag(itemstack, detonatorTag);
             } else {
                 ItemStack itemstack1 = new ItemStack(ACItemRegistry.REMOTE_DETONATOR.get(), 1);
                 CompoundTag compoundtag = ACCompat.hasTag(itemstack) ? ACCompat.getTag(itemstack).copy() : new CompoundTag();
-                ACCompat.setTag(itemstack1, compoundtag);
                 itemstack.shrink(1);
                 this.addBombTags(level.dimension(), blockpos, compoundtag);
+                ACCompat.setTag(itemstack1, compoundtag);
                 if (!player.getInventory().add(itemstack1)) {
                     player.drop(itemstack1, false);
                 }

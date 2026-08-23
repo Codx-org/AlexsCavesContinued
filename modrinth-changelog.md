@@ -1,103 +1,131 @@
-# 1.0.0
+# 1.0.1
 
-First release. This is AlexModGuy's Alex's Caves, ported forward and out sideways: every Minecraft
-version from 1.20.1 to 26.2, on Fabric, NeoForge and Forge. 58 files in all.
+Bug fixes. Two of them stopped the game from starting, so this is worth updating for even if
+nothing below sounds familiar.
 
-The content is untouched. Same six biomes, same 43 mobs, same 14 structures, same 354 blocks and 575
-items, same recipes and advancements. Nothing rebalanced, nothing added, nothing cut. If you played
-the original, this is it.
+## It runs alongside Alex's Mobs Continued and Citadel now
 
-## What changed around it
+If you installed this next to Alex's Mobs Continued, both mods failed at launch with
+`MixinTransformerError` and the game never reached the menu. Same story if you had the original
+Citadel installed for something else, Rats for instance.
 
-Citadel is bundled now. The original needed it as a separate download; that code lives inside this
-jar instead, so it's one less thing to keep in step.
+EinfachZ0ckt worked out the cause and posted it, which saved me a lot of time, so: Alex's Caves
+bundles the parts of Citadel it needs, and six of those bundled hooks patched Minecraft in a way
+that only one mod is allowed to do per spot. Whichever mod got there second failed, and a mixin
+that fails hard takes the whole class down with it, which is why both mods died and not just one.
+It was never really Alex's Mobs against Alex's Caves. Alex's Mobs is just the mod most people have
+that brings Citadel along.
 
-Fabric and NeoForge work, which the original never supported.
+Those six hooks are rewritten to a kind that stacks instead of competing. I tested it both ways
+round: on 1.0.0 the game dies at launch exactly as reported, and on this build it goes straight to
+the title screen, with Alex's Mobs Continued and with real Citadel 2.6.3. Nothing needs updating on
+the Alex's Mobs side.
 
-CodxLib is required, 1.3.6 or newer: https://modrinth.com/mod/codxlib. Grab the file for your exact
-Minecraft version and loader and drop it in alongside this one. Without it the game won't start.
+For the same reason, the "incompatible with BadOptimizations" report is almost certainly this bug
+too. I ran BadOptimizations 2.4.1 with this build and it loads fine, and BadOptimizations is
+written so its patches skip quietly rather than crash, so it can't have been the thing killing your
+launch on its own.
 
-Install both mods on the client and the server. It's a content mod, so both sides need it.
+## The magnetic caves and the smithing table no longer crash
 
-There's a `/acc` command now, for server owners. It opens a chest menu over the general config, so
-the options can be changed in game instead of by editing a toml and restarting.
+Walking up to a Teletor crashed the client on 1.21.5 and up. The model was undoing a transform it
+had never applied, which older Minecraft versions shrugged off and newer ones throw on. It happened
+for any Teletor with a trail or a levitating weapon, so in practice, all of them.
 
-## Bugs fixed
+There was a second, separate magnetic caves crash underneath that one, in the lightning particles
+the magnets and tesla bulbs give off. They asked Minecraft to trace a line through the world without
+saying who was tracing it, which was allowed until 1.21.2 and has thrown ever since. Nothing in the
+code looked wrong; the method it calls still takes exactly the same arguments.
 
-Most of these were in the original. Some only started showing up on newer Minecraft versions, which
-is how I found them.
+Opening a smithing table crashed the client on 1.21.9 and up. The mod hooks entity rendering to do
+its own effects, and the little armour stand preview in that screen is not a real entity, so the
+hook had nothing to look at and fell over. Anvils and enchanting tables were fine because they
+don't render one.
 
-Every advancement fired the moment you loaded a world, on 1.20.5 and up. The mod's advancements ask
-"are you standing in this biome" and "are you inside this structure", and 1.20.5 renamed the fields
-that carry the answer. Minecraft doesn't complain about a field it doesn't recognise, it just drops
-it — which left the question empty, and an empty question is true everywhere. Since one of the ones
-firing was the root advancement, the whole tab popped at once.
+## Acid no longer crashes the game on newer NeoForge
 
-The licowitch and the tremorzilla couldn't be summoned at all on 1.20.5 and up. One wrong class name
-in the original source had the two mobs fighting over the same slot of synced data, and newer
-Minecraft versions turn that into a hard error instead of quietly coping. Both spawn fine now.
+Some people couldn't get into a world at all on NeoForge for 26.1.2, with a crash naming acid.
+NeoForge changed how it handles modded fluids partway through 26.1.2 without the Minecraft version
+changing, so two builds of the same NeoForge are out there behaving differently, and one of them
+refuses to answer the question the mod was asking about acid. There is no way to pick the right
+answer at build time when both are called 26.1.2.
 
-Eleven mobs crashed the server the first tick after they spawned, on 1.21.2 and up. That's the
-version where Minecraft moved the "notices a player holding food" range onto an entity attribute,
-and those eleven never declared it.
+So the mod stops asking. It now works out for itself how deep you are in acid or soda by looking at
+the blocks around you, using the part of Minecraft that hasn't changed in any version it supports.
+That is the same code on all 58 builds now instead of two versions of it, and as a side effect it
+notices fluids from other mods again.
 
-Every block's item was named `item.alexscaves.something` instead of its real name, on 1.21.2 and up.
-Icons and models were fine, so it only showed if you hovered over one.
+## Soda and acid behave like liquids again
 
-Opening the creative inventory crashed the client. Galena bricks were listed twice in the Magnetic
-Caves tab and Minecraft refuses to build a tab with a duplicate in it. That one has been in the mod
-since 1.19.3.
+You can swim in them. Boats float. Fish don't suffocate the moment they enter soda.
 
-The Magnetron crashed the client the first frame you could see one, because of how the lightning
-bolts kept track of who they belonged to.
+Radgills, lanternfish and sea pigs still die in it, and that is deliberate. They're the acid and
+water mobs, soda isn't their fluid.
 
-Finding one of the mod's cave biomes and teleporting into it froze the game, on 26.1 and up, in
-singleplayer only. Minecraft added a check that runs before the world has finished opening and
-freezes the list of things each biome is allowed to generate; the mod adds its biomes a moment
-later, so they weren't on the list, and the first chunk that tried to decorate one died with the
-world already loaded. Servers were never affected, which is why it took this long to find.
+## The compendium and the spelunkery table work
 
-On 26.2, an Amber Monolith crashed the client the first frame it came into view, and the hologram
-projector would have done the same. Both show a mob that isn't really in the world, and 26.2 started
-refusing to answer a question about mobs like that.
+The Cave Compendium opened as a blank page that swallowed your clicks. Four separate things were
+wrong with it and each one hid the next, which is why it looked completely dead rather than partly
+broken. The worst of them turned out to affect the whole mod: Minecraft 1.21.6 stopped filling in a
+missing transparency value on text, and every piece of text in Alex's Caves was written without one.
+On 1.21.6 and up that draws nothing at all. The spelunkery table was blank for exactly the same
+reason, on top of its buttons not registering clicks.
 
-Installing this next to Farmer's Delight crashed the game at startup, sometimes — it depended on
-which of the two loaded first. Both add signs to the same list and this mod was sealing it shut.
+That was 22 of the 58 builds drawing invisible text and never logging a word about it.
 
-A pile of recipes were silently uncraftable. They pointed at shared convention tags that the loader
-in question had never actually defined, and a missing ingredient tag doesn't error on older
-versions, it just empties the ingredient and the recipe stops matching. Concrete and iron nuggets
-were the worst of it. The mod owns those tags itself now, so the recipes work everywhere, and other
-mods' equivalent items still count toward them.
+## Other things that did nothing when you used them
 
-Magnets did nothing to iron on a few Fabric builds. Same cause.
+The remote detonator never armed. Linking it to a bomb wrote the position onto a copy of the item
+that was thrown away, so it always thought it was unlinked. The occult gem had the identical bug and
+never bound to a beholder.
 
-The primordial, hazmat, diving and gingerbread armour sets rendered as nothing at all from 1.20.5
-onward. They were relying on a Forge hook that stopped existing.
+Burrowing and seeking arrows fired plain arrows. The mod's own arrow was being asked for through a
+method Minecraft changed the shape of, so the game just used a normal one.
 
-On NeoForge 1.21.7 and up, the game stopped on a warning screen naming this mod every single launch,
-and you had to click past it to reach the menu. Gone.
+Rusty barrels couldn't be opened, same cause.
 
-On Fabric 1.21.5 and up, the game crashed the first time anything walked into water.
+Most primordial caves mobs never spawned. They spawn on dirt, and 26.1 quietly took several blocks
+out of Minecraft's dirt list, including the ones down there. The mod carries its own list now.
 
-51 faces across 13 block models were reaching outside their own texture, which means they've been
-drawing whatever pixels happened to sit next to it on the sheet since 1.20.1. On 26.1 that stopped
-being a cosmetic problem and started failing the model outright. Another 48 faces had no texture
-assigned at all. Both fixed, geometry untouched.
+## Visual
 
-Two sound effects were spelled one way where they were registered and another way in the sound
-list, so they never played. The abyssal chasm has an ambient track now, which it always shipped and
-never used.
+On 26.2, things showed through solid rock. Ambersol shine came through stone walls and the
+primordial caves were full of white starbursts visible from anywhere. Minecraft 26.2 reversed the
+direction of its depth test and the mod was still comparing the old way. It was easy to prove: I
+put the bug back on purpose and the screenshots matched the reports.
 
-A structure exclusion zone that had never once applied, and a spear model pointing at the wrong
-file. Fixed where fixing it was clearly right, left alone and written down where it wasn't.
+Frogs in the primordial caves were a magenta and black checkerboard on 1.21.5 and up. Minecraft
+moved frog skins into a data file in that version and the mod's entry pointed one folder short of
+where its texture actually is.
+
+Some creative tab entries showed their internal name instead of a real one — pewen and thornwood
+doors and signs, and the bioluminescent torch. Minecraft 1.21.2 stopped giving an item its block's
+name automatically and made it something an item has to ask for; those seven never asked. Six other
+names were simply missing from the language file, including the polarity armour trim template. All
+of it is checked automatically now, 455 names, so it can't drift again.
+
+The primordial, hazmat, diving and gingerbread armour trims render again on 1.21.4 and up. The trim
+textures had to move, twice, and the mod was also re-listing sixteen vanilla trims at paths that no
+longer exist.
+
+## Not fixed
+
+Two things were reported that I couldn't turn into a bug.
+
+The raycat glow looks identical on 1.20.1, 1.21.5 and 26.2 when I capture it side by side on the
+same frame, so whatever was reported there, I'm not seeing it. If it's still wrong for you, a
+screenshot and your Minecraft version would help.
+
+The "star artifacts" in primordial caves are the Ambersol's shine, and it renders the same here as
+it does in the original on 1.20.1. It's meant to look like that. The see-through part of it was
+real, and that's fixed above.
 
 ## Testing
 
-All 58 files boot, client and server, on the Minecraft version and loader they're built for. Three
-of them got a full in-world pass over RCON on a fixed seed: every biome located, every structure
-placed, every block set, every mob summoned, every loot table rolled. Those three agree with each
-other down to the coordinates.
+All 58 files rebuilt from one pass and checked the same way as 1.0.0: every mixin in every file
+resolved against the actual Minecraft it's built for, 16433 of them, before anything was booted. The
+detonator, the arrows, the compendium, the spelunkery table and the smithing table were each
+verified in a real world rather than just in the code.
 
-Alex's Caves is AlexModGuy's work and this project claims none of it. LGPL-3.0, same as the
-original.
+Still LGPL-3.0, still AlexModGuy's mod underneath. CodxLib 1.3.6 or newer is required, same as
+before.

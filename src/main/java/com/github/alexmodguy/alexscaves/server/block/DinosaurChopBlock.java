@@ -140,7 +140,27 @@ public class DinosaurChopBlock extends Block implements SimpleWaterloggedBlock {
         return super.updateShape(state, direction, state1, levelAccessor, blockPos, blockPos1);
     }
 
+    // 1.20.5 split BlockBehaviour#use into useItemOn and useWithoutItem. Vanilla calls useItemOn
+    // for every hand and every stack -- the empty one included -- and only falls through to
+    // useWithoutItem when it answers "did nothing", so hanging the whole rule off useItemOn keeps
+    // this block reachable with a full hotbar exactly as it was below 1.20.5. The body is shared;
+    // only the entry point and the "we did nothing" return differ. See ACCompat#itemResult.
+    //? if >=1.21.2 {
+    /*protected net.minecraft.world.InteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult blockHitResult) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(blockState, level, blockPos, player, hand, blockHitResult));
+    }
+    *///?} elif >=1.20.5 {
+    /*protected net.minecraft.world.ItemInteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult blockHitResult) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(blockState, level, blockPos, player, hand, blockHitResult));
+    }
+    *///?} else {
     public InteractionResult use(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult blockHitResult) {
+        InteractionResult acResult = acUse(blockState, level, blockPos, player, hand, blockHitResult);
+        return acResult == InteractionResult.PASS ? super.use(blockState, level, blockPos, player, hand, blockHitResult) : acResult;
+    }
+    //?}
+
+    private InteractionResult acUse(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult blockHitResult) {
         ItemStack itemstack = player.getItemInHand(hand);
         if (level.isClientSide()) {
             if (eat(level, blockPos, blockState, player).consumesAction()) {
@@ -193,7 +213,15 @@ public class DinosaurChopBlock extends Block implements SimpleWaterloggedBlock {
         }
     }
 
+    // 1.21.9 gave getAnalogOutputSignal the Direction the comparator reads from. Neither arm uses
+    // it, but the three-argument shape overrides nothing from 1.21.9 up, so the comparator reads 0.
+    //? if >=1.21.9 {
+    /*@Override
+    public int getAnalogOutputSignal(BlockState blockState, Level level, BlockPos blockPos, net.minecraft.core.Direction direction) {
+    *///?} else {
+    @Override
     public int getAnalogOutputSignal(BlockState blockState, Level level, BlockPos blockPos) {
+    //?}
         return getOutputSignal(blockState.getValue(BITES));
     }
 

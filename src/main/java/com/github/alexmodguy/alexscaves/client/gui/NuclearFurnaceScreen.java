@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import com.github.alexmodguy.alexscaves.server.misc.ACColors;
 
 public class NuclearFurnaceScreen extends AbstractContainerScreen<NuclearFurnaceMenu> {
 
@@ -22,8 +23,8 @@ public class NuclearFurnaceScreen extends AbstractContainerScreen<NuclearFurnace
     }
 
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.drawString(this.font, this.title, this.titleLabelX - (this.font.width(this.title) / 2), this.titleLabelY, 4210752, false);
-        guiGraphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, 4210752, false);
+        guiGraphics.drawString(this.font, this.title, this.titleLabelX - (this.font.width(this.title) / 2), this.titleLabelY, ACColors.opaque(4210752), false);
+        guiGraphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, ACColors.opaque(4210752), false);
     }
 
     // 26 draws the container's tooltip from AbstractContainerScreen#extractRenderState itself

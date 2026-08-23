@@ -751,6 +751,12 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				// piece renders invisible, silently. Runs after the ≥1.21.2 pass that writes them.
 				val requipped = DataPackMigration.relocateEquipmentTo1214(destinationDir, ctx.modId)
 				logger.lifecycle("Moved $requipped equipment definitions into the 1.21.4 equipment/ folder")
+				// ...and it moved the armour-TRIM textures at the same time, splitting one folder
+				// into two named for the layer type. Same silent failure mode: the polarity trim is
+				// looked up under trims/entity/humanoid[_leggings]/ and simply does not draw.
+				// Expect 3: the two PNGs plus this mod's armor_trims.json source list.
+				val retextured = DataPackMigration.relocateTrimTexturesTo1214(destinationDir, ctx.modId)
+				logger.lifecycle("Moved $retextured armour-trim assets into the 1.21.4 trims/entity/ layout")
 			}
 			// 1.21.5 deleted item/template_spawn_egg and its two greyscale layers, which every one
 			// of this mod's 43 spawn-egg models parents to — see DataPackMigration.retemplateSpawnEggs.

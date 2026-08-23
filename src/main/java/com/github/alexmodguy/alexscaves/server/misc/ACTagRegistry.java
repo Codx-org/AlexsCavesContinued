@@ -23,6 +23,11 @@ public class ACTagRegistry {
     public static final TagKey<Block> MAGNETRON_WEAPONS = registerBlockTag("magnetron_weapons");
     public static final TagKey<Block> RESISTS_MAGNETRON_BODY_BUILDING = registerBlockTag("resists_magnetron_body_building");
     public static final TagKey<Block> SCAFFOLDING = registerBlockTag("scaffolding");
+    // Vanilla narrowed #minecraft:dirt at MC 26.1 (grass_block, podzol, mycelium, the moss blocks
+    // and the muds all left it), which silently stopped dinosaurs spawning and cave trees
+    // generating on this mod's own cave floors. DIRT_LIKE is what Alex's Caves means by "dirt",
+    // owned by the mod so it means the same thing on every supported version.
+    public static final TagKey<Block> DIRT_LIKE = registerBlockTag("dirt_like");
     public static final TagKey<Block> DINOSAURS_SPAWNABLE_ON = registerBlockTag("dinosaurs_spawnable_on");
     public static final TagKey<Block> TURNS_INTO_CAVE_PAINTINGS = registerBlockTag("turns_into_cave_paintings");
     public static final TagKey<Block> STOPS_DINOSAUR_EGGS = registerBlockTag("stops_dinosaur_eggs");

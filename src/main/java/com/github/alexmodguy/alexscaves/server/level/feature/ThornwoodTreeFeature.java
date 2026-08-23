@@ -91,7 +91,7 @@ public class ThornwoodTreeFeature extends Feature<NoneFeatureConfiguration> {
 
     private boolean checkCanTreePlace(WorldGenLevel level, BlockPos treeBottom, int height) {
         BlockState below = level.getBlockState(treeBottom.below());
-        if (!below.is(BlockTags.DIRT) && !below.is(ACBlockRegistry.GUANOSTONE.get()) && !below.is(ACBlockRegistry.COPROLITH.get()) && !below.is(Blocks.PACKED_MUD)) {
+        if (!below.is(ACTagRegistry.DIRT_LIKE) && !below.is(ACBlockRegistry.GUANOSTONE.get()) && !below.is(ACBlockRegistry.COPROLITH.get()) && !below.is(Blocks.PACKED_MUD)) {
             return false;
         }
         for (int i = 0; i < height; i++) {
@@ -155,6 +155,6 @@ public class ThornwoodTreeFeature extends Feature<NoneFeatureConfiguration> {
     }
 
     private static boolean canReplace(BlockState state) {
-        return (state.isAir() || state.canBeReplaced() || state.is(ACBlockRegistry.THORNWOOD_BRANCH.get()) || state.is(BlockTags.DIRT) || state.is(Blocks.PACKED_MUD)) && !state.is(ACTagRegistry.UNMOVEABLE);
+        return (state.isAir() || state.canBeReplaced() || state.is(ACBlockRegistry.THORNWOOD_BRANCH.get()) || state.is(ACTagRegistry.DIRT_LIKE) || state.is(Blocks.PACKED_MUD)) && !state.is(ACTagRegistry.UNMOVEABLE);
     }
 }

@@ -3,6 +3,8 @@ package com.github.alexmodguy.alexscaves.client.particle;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Base class for the Alex's Caves particles that draw themselves rather than a sprite quad — the
@@ -40,6 +42,31 @@ public abstract class ACCustomParticle extends net.minecraft.client.particle.Par
      */
     protected boolean acNoRender() {
         return false;
+    }
+
+
+    // A raycast that belongs to no entity. Upstream spelled that `new ClipContext(from, to, block,
+    // fluid, (Entity) null)` and vanilla tolerated it: CollisionContext.of(null) simply produced an
+    // EntityCollisionContext with a null entity, and every shape query it fed was null-safe.
+    //
+    // ⚠️ 1.21.2 put an Objects.requireNonNull in CollisionContext.of(Entity) (javap'd across the
+    // whole matrix: absent 1.20.1…1.21.1, present 1.21.2…26.2), so that same call now throws an NPE
+    // from inside the constructor. It is a *runtime* break with no compile-time tell at all — the
+    // Entity overload still exists on every node — and it lands on the two lightning particles, i.e.
+    // on approaching a magnetic cave or a tesla bulb, which is where it was found: the whole client
+    // died with "Exception while adding particle" the moment the magnetic-caves ambient particle
+    // spawned its first arc.
+    //
+    // CollisionContext.empty() is what null always meant, and the ClipContext overload taking one
+    // exists from 1.21.1 (checked, not assumed) — comfortably below the 1.21.2 boundary, so the two
+    // arms meet with a version to spare. The live arm is the pre-1.21.2 spelling because the active
+    // node is 1.20.1-forge.
+    protected static ClipContext ownerlessClip(Vec3 from, Vec3 to, ClipContext.Block block, ClipContext.Fluid fluid) {
+        //? if >=1.21.2 {
+        /*return new ClipContext(from, to, block, fluid, net.minecraft.world.phys.shapes.CollisionContext.empty());
+        *///?} else {
+        return new ClipContext(from, to, block, fluid, (net.minecraft.world.entity.Entity) null);
+        //?}
     }
 
     //? if >=1.21.9 {

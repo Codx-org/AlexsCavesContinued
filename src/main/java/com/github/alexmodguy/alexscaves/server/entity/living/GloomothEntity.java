@@ -234,7 +234,11 @@ public class GloomothEntity extends PathfinderMob implements UnderzealotSacrific
         return (prevFlightRoll + (flightRoll - prevFlightRoll) * partialTick);
     }
 
-    public boolean causeFallDamage(float distance, float damageMultiplier) {
+    // Two arguments override nothing on any version in the range -- Entity#causeFallDamage has
+    // always carried a trailing DamageSource -- so these five flew, fell and took the damage anyway.
+    // The 1.21.5 float -> double widening of the first parameter is the !mc2105-causefalldamage rule.
+    @Override
+    public boolean causeFallDamage(float distance, float damageMultiplier, DamageSource damageSource) {
         return false;
     }
 

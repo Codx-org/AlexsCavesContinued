@@ -51,7 +51,7 @@ public class ImageWidget extends BookWidget {
     }
 
 
-    public void render(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, float partialTicks, boolean onFlippingPage) {
+    public void render(PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, boolean onFlippingPage) {
         if(this.actualTexture == null){
             this.actualTexture = ResourceLocation.parse(image);
         }

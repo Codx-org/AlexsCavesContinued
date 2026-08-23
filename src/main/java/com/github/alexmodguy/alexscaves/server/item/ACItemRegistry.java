@@ -126,15 +126,15 @@ public class ACItemRegistry {
     *///?} else {
     public static final Supplier<Item> POLARITY_ARMOR_TRIM_SMITHING_TEMPLATE = DEF_REG.register("polarity_armor_trim_smithing_template", () -> SmithingTemplateItem.createArmorTrimTemplate(ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "polarity")));
     //?}
-    public static final Supplier<Item> PEWEN_DOOR = DEF_REG.register("pewen_door", () -> new DoubleHighBlockItem(ACBlockRegistry.PEWEN_DOOR.get(), (new Item.Properties())));
+    public static final Supplier<Item> PEWEN_DOOR = DEF_REG.register("pewen_door", () -> new DoubleHighBlockItem(ACBlockRegistry.PEWEN_DOOR.get(), blockItemProperties()));
     // SignItem and StandingAndWallBlockItem both moved their Properties to last, matching every
     // other item constructor. Same three arguments, same order otherwise.
     //? if >=1.21.2 {
-    /*public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new SignItem(ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get(), (new Item.Properties()).stacksTo(16)));
+    /*public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new SignItem(ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get(), blockItemProperties().stacksTo(16)));
     *///?} else {
-    public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new SignItem((new Item.Properties()).stacksTo(16), ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get()));
+    public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new SignItem(blockItemProperties().stacksTo(16), ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get()));
     //?}
-    public static final Supplier<Item> PEWEN_HANGING_SIGN = DEF_REG.register("pewen_hanging_sign", () -> new HangingSignItem(ACBlockRegistry.PEWEN_HANGING_SIGN.get(), ACBlockRegistry.PEWEN_WALL_HANGING_SIGN.get(), (new Item.Properties()).stacksTo(16)));
+    public static final Supplier<Item> PEWEN_HANGING_SIGN = DEF_REG.register("pewen_hanging_sign", () -> new HangingSignItem(ACBlockRegistry.PEWEN_HANGING_SIGN.get(), ACBlockRegistry.PEWEN_WALL_HANGING_SIGN.get(), blockItemProperties().stacksTo(16)));
     public static final Supplier<Item> PEWEN_BOAT = DEF_REG.register("pewen_boat", () -> new CaveBoatItem(false, AlexsCavesBoat.Type.PEWEN, new Item.Properties().stacksTo(1)));
     public static final Supplier<Item> PEWEN_CHEST_BOAT = DEF_REG.register("pewen_chest_boat", () -> new CaveBoatItem(true, AlexsCavesBoat.Type.PEWEN, new Item.Properties().stacksTo(1)));
     public static final Supplier<Item> TRILOCARIS_BUCKET = DEF_REG.register("trilocaris_bucket", () -> new ModFishBucketItem(ACEntityRegistry.TRILOCARIS, () -> Fluids.WATER, new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
@@ -228,9 +228,9 @@ public class ACItemRegistry {
     public static final Supplier<Item> HERO_POTTERY_SHERD = DEF_REG.register("hero_pottery_sherd", () -> new Item(new Item.Properties()));
     // See PEWEN_SIGN.
     //? if >=1.21.2 {
-    /*public static final Supplier<Item> BIOLUMINESCENT_TORCH = DEF_REG.register("bioluminescent_torch", () -> new StandingAndWallBlockItem(ACBlockRegistry.BIOLUMINESCENT_TORCH.get(), ACBlockRegistry.BIOLUMINESCENT_WALL_TORCH.get(), Direction.DOWN, new Item.Properties()));
+    /*public static final Supplier<Item> BIOLUMINESCENT_TORCH = DEF_REG.register("bioluminescent_torch", () -> new StandingAndWallBlockItem(ACBlockRegistry.BIOLUMINESCENT_TORCH.get(), ACBlockRegistry.BIOLUMINESCENT_WALL_TORCH.get(), Direction.DOWN, blockItemProperties()));
     *///?} else {
-    public static final Supplier<Item> BIOLUMINESCENT_TORCH = DEF_REG.register("bioluminescent_torch", () -> new StandingAndWallBlockItem(ACBlockRegistry.BIOLUMINESCENT_TORCH.get(), ACBlockRegistry.BIOLUMINESCENT_WALL_TORCH.get(), new Item.Properties(), Direction.DOWN));
+    public static final Supplier<Item> BIOLUMINESCENT_TORCH = DEF_REG.register("bioluminescent_torch", () -> new StandingAndWallBlockItem(ACBlockRegistry.BIOLUMINESCENT_TORCH.get(), ACBlockRegistry.BIOLUMINESCENT_WALL_TORCH.get(), blockItemProperties(), Direction.DOWN));
     //?}
     public static final Supplier<Item> GAME_CONTROLLER = DEF_REG.register("game_controller", () -> new Item(new Item.Properties().rarity(Rarity.RARE)));
     public static final Supplier<Item> STINKY_FISH = DEF_REG.register("stinky_fish", () -> new Item(ACFoodBuilder.food(new Item.Properties().rarity(Rarity.RARE), ACFoods.STINKY_FISH)));
@@ -256,14 +256,14 @@ public class ACItemRegistry {
     public static final Supplier<Item> DREADBOW_PULLING_0_SPRITE = DEF_REG.register("dreadbow_pulling_0_inventory", () -> new Item(new Item.Properties()));
     public static final Supplier<Item> DREADBOW_PULLING_1_SPRITE = DEF_REG.register("dreadbow_pulling_1_inventory", () -> new Item(new Item.Properties()));
     public static final Supplier<Item> DREADBOW_PULLING_2_SPRITE = DEF_REG.register("dreadbow_pulling_2_inventory", () -> new Item(new Item.Properties()));
-    public static final Supplier<Item> THORNWOOD_DOOR = DEF_REG.register("thornwood_door", () -> new DoubleHighBlockItem(ACBlockRegistry.THORNWOOD_DOOR.get(), (new Item.Properties())));
+    public static final Supplier<Item> THORNWOOD_DOOR = DEF_REG.register("thornwood_door", () -> new DoubleHighBlockItem(ACBlockRegistry.THORNWOOD_DOOR.get(), blockItemProperties()));
     // See PEWEN_SIGN.
     //? if >=1.21.2 {
-    /*public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new SignItem(ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get(), (new Item.Properties()).stacksTo(16)));
+    /*public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new SignItem(ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get(), blockItemProperties().stacksTo(16)));
     *///?} else {
-    public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new SignItem((new Item.Properties()).stacksTo(16), ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get()));
+    public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new SignItem(blockItemProperties().stacksTo(16), ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get()));
     //?}
-    public static final Supplier<Item> THORNWOOD_HANGING_SIGN = DEF_REG.register("thornwood_hanging_sign", () -> new HangingSignItem(ACBlockRegistry.THORNWOOD_HANGING_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_HANGING_SIGN.get(), (new Item.Properties()).stacksTo(16)));
+    public static final Supplier<Item> THORNWOOD_HANGING_SIGN = DEF_REG.register("thornwood_hanging_sign", () -> new HangingSignItem(ACBlockRegistry.THORNWOOD_HANGING_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_HANGING_SIGN.get(), blockItemProperties().stacksTo(16)));
     public static final Supplier<Item> THORNWOOD_BOAT = DEF_REG.register("thornwood_boat", () -> new CaveBoatItem(false, AlexsCavesBoat.Type.THORNWOOD, new Item.Properties().stacksTo(1)));
     public static final Supplier<Item> THORNWOOD_CHEST_BOAT = DEF_REG.register("thornwood_chest_boat", () -> new CaveBoatItem(true, AlexsCavesBoat.Type.THORNWOOD, new Item.Properties().stacksTo(1)));
     public static final Supplier<Item> PURPLE_SODA_BUCKET = DEF_REG.register("purple_soda_bucket", () -> ACPlatform.bucketItem(ACFluidRegistry.PURPLE_SODA_FLUID_SOURCE, new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
@@ -400,6 +400,26 @@ public class ACItemRegistry {
         }
     }
     *///?}
+
+    /**
+     * Properties for an item registered here that names a BLOCK.
+     *
+     * <p>⚠️ Through 1.21.1 {@code BlockItem} overrode {@code getDescriptionId()} to return the
+     * block's, so a door or a sign item was named {@code block.alexscaves.<id>} for free. <b>1.21.2
+     * deleted that override</b> — the prefix became an {@code Item.Properties} flag — so the seven
+     * block-backed items registered in this class (they do not go through
+     * {@code ACBlockRegistry#registerBlockAndItem}, which already asks for it) fell back to
+     * {@code item.alexscaves.<id>}, a key the language file has never had, and rendered as the raw
+     * key in the creative tab on every node from 1.21.2 up. Nothing logs; the block, its model and
+     * its recipe are all fine.
+     */
+    private static Item.Properties blockItemProperties() {
+        //? if >=1.21.2 {
+        /*return new Item.Properties().useBlockDescriptionPrefix();
+        *///?} else {
+        return new Item.Properties();
+        //?}
+    }
 
     private static void spawnEgg(String entityName, Supplier type, int color1, int color2, ResourceKey<Biome> biomeTab) {
         // NeoForge deleted DeferredSpawnEggItem (Forge's ForgeSpawnEggItem, renamed) in 21.3, and the

@@ -276,6 +276,34 @@ public abstract class EntityMixin implements MagneticEntityAccessor {
             at = @At(value = "HEAD")
     )
     public void ac_isInWater(CallbackInfoReturnable<Boolean> cir) {
+        // Acid and purple soda are the mod's two swimmable fluids, and on Forge they swim because of a
+        // loader patch: LivingEntity's travel branch asks the fluid's type to move the entity, and a type
+        // that declines (PurpleSodaFluidType does not override that method, so it declines by default)
+        // falls through to vanilla's own water travel. AcidFluidType does override it — with a verbatim
+        // copy of vanilla's water branch plus one swim-speed multiply, which is exactly what this tree's
+        // fabric LivingEntityAttributesMixin already applies inside vanilla water travel. So on a loader
+        // with no such patch, answering "yes, I am in water" reproduces both fluids' physics faithfully.
+        //
+        // Two loaders have no patch to fall back on. Fabric never had one — fabric/forge/fluids/FluidType
+        // is compiled and dormant, nothing dispatches to it. And NeoForge DELETED the call site at 26.1:
+        // the FluidType class and its move/motionScale/canSwim all still ship on 26.2, but the patched
+        // LivingEntity's travel gate is vanilla-shaped there (isInWater / isInLava / isAffectedByFluids /
+        // canStandOnFluid) with no isInFluidType left in it. Every cached NeoForge build below 26 has two
+        // or three isInFluidType call sites in that class; all four 26.x builds have none. Probe the CALL
+        // SITE in the patched class, never the API type — the type outlived its only caller here.
+        //
+        // The heights this reads are populated on every node: >=26 by widening EntityFluidInteraction's
+        // tracked set (ac_trackModFluids below), below it by ac_pushInModFluids. Two things this
+        // deliberately does not reproduce, neither of them reported and both of them cosmetic-adjacent:
+        // the eye check stays keyed on the water tag, so a submerged head neither drowns nor draws the
+        // underwater overlay in soda.
+        //? if fabric || (neoforge && >=26.1) {
+        /*if (com.github.alexmodguy.alexscaves.server.misc.ACFluids.purpleSodaHeight((Entity) (Object) this) > 0.0D
+                || com.github.alexmodguy.alexscaves.server.misc.ACFluids.acidHeight((Entity) (Object) this) > 0.0D) {
+            cir.setReturnValue(true);
+            return;
+        }
+        *///?}
         if ((Object) this instanceof LivingEntity living && living.getActiveEffectsMap() != null && living.hasEffect(ACCompat.effect(ACEffectRegistry.BUBBLED.get())) && (living.canBreatheUnderwater() || ACCompat.isAquatic(living)) && !living.getType().builtInRegistryHolder().is(ACTagRegistry.RESISTS_BUBBLED)) {
             cir.setReturnValue(true);
         }

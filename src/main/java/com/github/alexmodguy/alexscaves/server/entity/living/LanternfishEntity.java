@@ -165,6 +165,7 @@ public class LanternfishEntity extends WaterAnimal implements Bucketable {
         return (prevFishPitch + (fishPitch - prevFishPitch) * partialTick);
     }
 
+    @Override
     protected void handleAirSupply(int prevAir) {
         if (this.isAlive() && !ACCompat.isInWaterOrBubble(this)) {
             this.setAirSupply(prevAir - 1);

@@ -79,6 +79,7 @@ public class SundropBlock extends DirectionalBlock {
         }
     }
 
+    @Override
     public void fallOn(Level level, BlockState blockState, BlockPos blockPos, Entity entity, float fallAmount) {
         if (entity.isSuppressingBounce()) {
             super.fallOn(level, blockState, blockPos, entity, fallAmount);

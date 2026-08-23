@@ -56,7 +56,7 @@ public class ItemWidget extends BookWidget {
         this.sepia = sepia;
     }
 
-    public void render(PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, float partialTicks, boolean onFlippingPage) {
+    public void render(PoseStack poseStack, MultiBufferSource bufferSource, float partialTicks, boolean onFlippingPage) {
         if (actualItem == null && item != null) {
             actualItem = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(item)));
             if (nbt != null && !nbt.isEmpty()) {
@@ -79,7 +79,7 @@ public class ItemWidget extends BookWidget {
 
     }
 
-    public static void renderItem(ItemStack itemStack, PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, boolean sepia, float scale){
+    public static void renderItem(ItemStack itemStack, PoseStack poseStack, MultiBufferSource bufferSource, boolean sepia, float scale){
         if(itemStack == null){
             return;
         }
@@ -114,7 +114,7 @@ public class ItemWidget extends BookWidget {
     // no longer reachable, so the same effect comes from letting the render state draw itself while
     // the two standard item sheets are redirected. The display transform and the -0.5 recentre are
     // applied by the state on the newer path, which is why only the older one does them by hand.
-    public static void renderSepiaItem(PoseStack poseStack, ItemStack itemStack, MultiBufferSource.BufferSource bufferSource){
+    public static void renderSepiaItem(PoseStack poseStack, ItemStack itemStack, MultiBufferSource bufferSource){
         //? if >=1.21.4 {
         /*com.github.alexmodguy.alexscaves.client.render.item.ACItemRenderCompat.renderSepia(itemStack, Minecraft.getInstance().level, ItemDisplayContext.GUI, poseStack, bufferSource, SEPIA_ITEM_RENDER_TYPE, 240, OverlayTexture.NO_OVERLAY);
         *///?} else {

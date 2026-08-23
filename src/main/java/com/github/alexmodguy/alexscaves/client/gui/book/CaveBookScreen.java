@@ -327,6 +327,7 @@ public class CaveBookScreen extends Screen {
     // Declared on the interface rather than on BufferSource because the only thing it does with the
     // argument is ask for a buffer, and from 26.2 the picture-in-picture caller has no BufferSource
     // to give — it wraps the frame's SubmitNodeCollector in an ACSubmitBuffers instead.
+
     void renderBookModel(PoseStack poseStack, MultiBufferSource bufferSource, int mouseX, int mouseY, float partialTick) {
         float ageInTicks = tickCount + partialTick;
         float openGuiAmount = Math.min(ageInTicks, 5F) / 5F;
@@ -347,40 +348,45 @@ public class CaveBookScreen extends Screen {
         BOOK_MODEL.setupAnim(null, openBookAmount, pageAngle, pageUp, -20 * (openBookAmount) - 10 * pageFlipBump, 0);
         BOOK_MODEL.mouseOver(mouseLeanX, mouseLeanY, ageInTicks, flip, canGoLeft(), canGoRight());
         BOOK_MODEL.renderToBuffer(poseStack, bufferSource.getBuffer(ForgeRenderTypes.getUnlitTranslucent(BOOK_TEXTURE)), 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
-        renderBookContents(poseStack, mouseX, mouseY, partialTick);
+        renderBookContents(poseStack, bufferSource, mouseX, mouseY, partialTick);
         poseStack.popPose();
     }
 
-    private void renderBookContents(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
+    // The page contents draw into the SAME buffer source the book model was given, rather than
+    // fetching one. Below 26.2 those are the same object either way; on 26.2 the one fetched from
+    // the game is the level pass's, whose collector is null while the book is being rasterised into
+    // its picture-in-picture texture — so every page glyph, item and widget was silently discarded
+    // and the book opened with blank pages.
+    private void renderBookContents(PoseStack poseStack, MultiBufferSource bufferSource, int mouseX, int mouseY, float partialTick) {
         boolean left = hoveringPageLeft || decrementingPage;
         boolean right = hoveringPageRight || incrementingPage;
         float flip = prevFlipProgress + (flipProgress - prevFlipProgress) * partialTick;
         if (left) {
-            renderForPageType(leftPageRenderer, 2, poseStack, mouseX, mouseY, partialTick);
+            renderForPageType(leftPageRenderer, 2, poseStack, bufferSource, mouseX, mouseY, partialTick);
         } else if (flip < 0.9F) {
-            renderForPageType(leftPageRenderer, 0, poseStack, mouseX, mouseY, partialTick);
+            renderForPageType(leftPageRenderer, 0, poseStack, bufferSource, mouseX, mouseY, partialTick);
         }
         if (right) {
-            renderForPageType(rightPageRenderer, 3, poseStack, mouseX, mouseY, partialTick);
+            renderForPageType(rightPageRenderer, 3, poseStack, bufferSource, mouseX, mouseY, partialTick);
         } else if (flip < 0.9F) {
-            renderForPageType(rightPageRenderer, 1, poseStack, mouseX, mouseY, partialTick);
+            renderForPageType(rightPageRenderer, 1, poseStack, bufferSource, mouseX, mouseY, partialTick);
         }
         if (incrementingPage) {
-            renderForPageType(nextLeftPageRenderer, 2, poseStack, mouseX, mouseY, partialTick);
+            renderForPageType(nextLeftPageRenderer, 2, poseStack, bufferSource, mouseX, mouseY, partialTick);
             if(flip > 0.1F){
-                renderForPageType(nextRightPageRenderer, 1, poseStack, mouseX, mouseY, partialTick);
+                renderForPageType(nextRightPageRenderer, 1, poseStack, bufferSource, mouseX, mouseY, partialTick);
             }
         }
         if (decrementingPage) {
-            renderForPageType(prevRightPageRenderer, 3, poseStack, mouseX, mouseY, partialTick);
+            renderForPageType(prevRightPageRenderer, 3, poseStack, bufferSource, mouseX, mouseY, partialTick);
             if(flip > 0.1F) {
-                renderForPageType(prevLeftPageRenderer, 0, poseStack, mouseX, mouseY, partialTick);
+                renderForPageType(prevLeftPageRenderer, 0, poseStack, bufferSource, mouseX, mouseY, partialTick);
             }
         }
     }
 
     //"kind" - what kind of transform. 0 = left page, 1 = right page, 2 = right side of flipping page, 3 = left side of flipping page
-    private void renderForPageType(PageRenderer contents, int kind, PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
+    private void renderForPageType(PageRenderer contents, int kind, PoseStack poseStack, MultiBufferSource bufferSource, int mouseX, int mouseY, float partialTick) {
         poseStack.pushPose();
         BOOK_MODEL.translateToPage(poseStack, Math.min(kind, 2));
         switch (kind) {
@@ -405,7 +411,7 @@ public class CaveBookScreen extends Screen {
             poseStack.mulPose(Axis.YP.rotationDegrees(180F));
         }
         poseStack.scale(1F, 1F, 0.01F);
-        contents.renderPage(this, poseStack, mouseX, mouseY, partialTick, kind >= 2);
+        contents.renderPage(this, poseStack, bufferSource, mouseX, mouseY, partialTick, kind >= 2);
         poseStack.popPose();
     }
 

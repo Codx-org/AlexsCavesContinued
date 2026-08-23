@@ -352,6 +352,7 @@ public class CaramelCubeEntity extends Monster implements PossessedByLicowitch {
         return 0.5F * ACCompat.height(dimensions);
     }
 
+    @Override
     public int getExperienceReward() {
         return 2;
     }

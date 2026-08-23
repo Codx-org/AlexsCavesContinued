@@ -46,8 +46,9 @@ public class CaveBookPipRenderer extends PictureInPictureRenderer<CaveBookRender
     /*@Override
     protected void renderToTexture(CaveBookRenderState state, PoseStack poseStack,
                                    net.minecraft.client.renderer.SubmitNodeCollector collector) {
-        net.minecraft.client.renderer.MultiBufferSource bufferSource =
+        com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers submit =
                 new com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers(collector);
+        net.minecraft.client.renderer.MultiBufferSource bufferSource = submit;
     *///?} else {
     @Override
     protected void renderToTexture(CaveBookRenderState state, PoseStack poseStack) {
@@ -64,6 +65,14 @@ public class CaveBookPipRenderer extends PictureInPictureRenderer<CaveBookRender
         // winding they had, rather than reversing the layering inside every page.
         poseStack.scale(1.0F, 1.0F, -1.0F);
         state.screen().renderBookModel(poseStack, bufferSource, state.mouseX(), state.mouseY(), state.partialTick());
+        // An ACSubmitBuffers records; it does not draw. Nothing reaches the frame until the recording
+        // is handed to the collector, and every other construction site in the tree flushes right
+        // after the legacy body returns. This one did not, so on 26.2 -- and only there, since the
+        // band below hands out a real immediate-mode BufferSource that the game ends itself -- the
+        // book rendered into an empty texture and the compendium opened blank.
+        //? if >=26.2 {
+        /*submit.flush();
+        *///?}
     }
 
     @Override

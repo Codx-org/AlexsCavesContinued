@@ -91,7 +91,15 @@ public class NuclearSirenBlock extends BaseEntityBlock implements SimpleWaterlog
         return true;
     }
 
+    // 1.21.9 gave getAnalogOutputSignal the Direction the comparator reads from. Neither arm uses
+    // it, but the three-argument shape overrides nothing from 1.21.9 up, so the comparator reads 0.
+    //? if >=1.21.9 {
+    /*@Override
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, net.minecraft.core.Direction direction) {
+    *///?} else {
+    @Override
     public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    //?}
         if(level.getBlockEntity(pos) instanceof NuclearSirenBlockEntity nuclearSirenBlock){
             return nuclearSirenBlock.isActivated(state) ? 15 : 0;
         }

@@ -67,7 +67,7 @@ public class PewenTreeFeature extends Feature<NoneFeatureConfiguration> {
 
     private boolean checkCanTreePlace(WorldGenLevel level, BlockPos treeBottom, int height, int penumbraLvls) {
         BlockState below = level.getBlockState(treeBottom.below());
-        if (!below.is(BlockTags.DIRT)) {
+        if (!below.is(ACTagRegistry.DIRT_LIKE)) {
             return false;
         }
         for (int i = 0; i < height; i++) {

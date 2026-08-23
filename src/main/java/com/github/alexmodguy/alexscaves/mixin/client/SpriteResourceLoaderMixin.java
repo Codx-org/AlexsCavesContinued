@@ -38,8 +38,19 @@ public abstract class SpriteResourceLoaderMixin {
             Object ret = cir.getReturnValue();
             for (SpriteSource source : ((SpriteResourceLoaderMixin) ret).getSources()) {
                 if (source instanceof PalettedPermutationsAccessor permutations && permutations.getPaletteKey().getPath().equals("trims/color_palettes/trim_palette")) {
+                    // 1.21.4 made the layer type the folder rather than a filename suffix:
+                    // trims/models/armor/<asset>[_leggings] became trims/entity/humanoid/<asset>
+                    // and trims/entity/humanoid_leggings/<asset>. The sprite the renderer asks for
+                    // moves with it, so appending the old ids from 1.21.4 up puts two sprites nobody
+                    // looks up into the atlas and the polarity trim silently does not draw.
+                    // DataPackMigration.relocateTrimTexturesTo1214 moves the PNGs to match.
+                    //? if >=1.21.4 {
+                    /*ResourceLocation trimLocation = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "trims/entity/humanoid/polarity");
+                    ResourceLocation leggingsTrimLocation = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "trims/entity/humanoid_leggings/polarity");
+                    *///?} else {
                     ResourceLocation trimLocation = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "trims/models/armor/polarity");
                     ResourceLocation leggingsTrimLocation = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "trims/models/armor/polarity").withSuffix("_leggings");
+                    //?}
                     permutations.setTextures(ImmutableList.<ResourceLocation>builder().addAll(permutations.getTextures()).add(trimLocation, leggingsTrimLocation).build());
                 }
             }

@@ -154,6 +154,7 @@ public class SweetishFishEntity extends WaterAnimal implements Bucketable, HasGu
         return ACFluids.purpleSodaHeight(this) > 0;
     }
 
+    @Override
     protected void handleAirSupply(int prevAir) {
         if (this.isAlive() && !isInBreathableFluid()) {
             this.setAirSupply(prevAir - 1);

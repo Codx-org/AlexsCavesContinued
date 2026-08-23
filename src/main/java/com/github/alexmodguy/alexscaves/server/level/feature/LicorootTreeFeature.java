@@ -160,6 +160,6 @@ public class LicorootTreeFeature extends Feature<NoneFeatureConfiguration> {
 
 
     private static boolean canReplace(BlockState state) {
-        return (state.isAir() || state.canBeReplaced() || state.is(ACBlockRegistry.LICOROOT_SPROUT.get()) || state.is(BlockTags.DIRT) || state.is(ACBlockRegistry.BLOCK_OF_CHOCOLATE.get()) || state.is(ACBlockRegistry.BLOCK_OF_FROSTED_CHOCOLATE.get()) || state.is(ACBlockRegistry.LICOROOT_VINE.get())) && !state.is(ACTagRegistry.UNMOVEABLE);
+        return (state.isAir() || state.canBeReplaced() || state.is(ACBlockRegistry.LICOROOT_SPROUT.get()) || state.is(ACTagRegistry.DIRT_LIKE) || state.is(ACBlockRegistry.BLOCK_OF_CHOCOLATE.get()) || state.is(ACBlockRegistry.BLOCK_OF_FROSTED_CHOCOLATE.get()) || state.is(ACBlockRegistry.LICOROOT_VINE.get())) && !state.is(ACTagRegistry.UNMOVEABLE);
     }
 }

@@ -185,6 +185,7 @@ public class RadgillEntity extends WaterAnimal implements Bucketable {
         return ACCompat.isInWaterOrBubble(this) || this.isInAcid();
     }
 
+    @Override
     protected void handleAirSupply(int prevAir) {
         if (this.isAlive() && !isInBreathableFluid()) {
             this.setAirSupply(prevAir - 1);

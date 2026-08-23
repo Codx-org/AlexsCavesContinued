@@ -36,6 +36,7 @@ PROJECT_ROOT = os.path.dirname(HERE)  # scripts/ -> repo root
 API = "https://api.modrinth.com/v2"
 PROJECT_ID = "cO2CvXug"  # modrinth.com/mod/alexs-caves-continued
 CODXLIB_PROJECT_ID = "6oyMM4yX"  # modrinth.com/mod/codxlib — required at runtime
+FABRIC_API_PROJECT_ID = "P7dR8mSH"  # modrinth.com/mod/fabric-api — required on fabric nodes only
 UA = "alexscaves-continued-publisher/1.0 (+https://github.com/Codx-org/AlexsCavesContinued)"
 
 
@@ -125,6 +126,21 @@ class HttpFail(Exception):
         super().__init__(f"HTTP {code}: {body}")
 
 
+def version_dependencies(loader):
+    """Required deps for one node, as Modrinth wants them.
+
+    CodxLib is a separately-distributed required dependency on every loader: without the
+    matching jar the mod fails at launch with NoClassDefFoundError. Fabric API is required
+    on **fabric nodes only** — the generated ``fabric.mod.json`` declares a hard
+    ``fabric-api`` floor there, and Forge/NeoForge jars declare no such thing. Both are
+    project-level (no ``version_id``) so pruning a dependency version can never orphan these.
+    """
+    deps = [{"project_id": CODXLIB_PROJECT_ID, "dependency_type": "required"}]
+    if loader == "fabric":
+        deps.append({"project_id": FABRIC_API_PROJECT_ID, "dependency_type": "required"})
+    return deps
+
+
 def post_version(node, cl):
     data = {
         "name": node["name"],
@@ -137,7 +153,7 @@ def post_version(node, cl):
         # CodxLib is a separately-distributed required dependency: without the matching
         # jar the mod fails at launch with NoClassDefFoundError. Project-level (no
         # version_id) so pruning a codxlib version can never orphan these.
-        "dependencies": [{"project_id": CODXLIB_PROJECT_ID, "dependency_type": "required"}],
+        "dependencies": version_dependencies(node["loader"]),
         "version_type": "release",
         "featured": False,
         "changelog": cl,

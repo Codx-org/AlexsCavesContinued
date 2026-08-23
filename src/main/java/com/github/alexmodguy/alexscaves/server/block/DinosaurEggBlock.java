@@ -70,6 +70,7 @@ public class DinosaurEggBlock extends Block {
         super.stepOn(worldIn, pos, state, entityIn);
     }
 
+    @Override
     public void fallOn(Level worldIn, BlockState state, BlockPos pos, Entity entityIn, float fallDistance) {
         if (!(entityIn instanceof Zombie)) {
             this.tryTrample(worldIn, pos, entityIn, 3);

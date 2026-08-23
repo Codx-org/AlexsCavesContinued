@@ -24,7 +24,7 @@ public class CycadFeature extends Feature<NoneFeatureConfiguration> {
         RandomSource randomsource = context.random();
         WorldGenLevel level = context.level();
         BlockPos treeBottom = context.origin();
-        if (!level.getBlockState(treeBottom.below()).is(BlockTags.DIRT)) {
+        if (!level.getBlockState(treeBottom.below()).is(ACTagRegistry.DIRT_LIKE)) {
             return false;
         }
         int height = 1 + (int) Math.ceil(randomsource.nextFloat() * 2.5F);

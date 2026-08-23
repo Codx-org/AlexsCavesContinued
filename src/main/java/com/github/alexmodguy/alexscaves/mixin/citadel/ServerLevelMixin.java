@@ -7,8 +7,6 @@ import net.minecraft.server.level.ServerLevel;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.Constant;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 @Mixin(ServerLevel.class)
 public class ServerLevelMixin {
@@ -17,10 +15,10 @@ public class ServerLevelMixin {
     @Final
     private MinecraftServer server;
 
-    @ModifyConstant(
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(
             method = "Lnet/minecraft/server/level/ServerLevel;tickTime()V",
             remap = CitadelConstants.REMAPREFS,
-            constant = @Constant(longValue = 1L),
+            at = @org.spongepowered.asm.mixin.injection.At(value = "CONSTANT", args = "longValue=1"),
             //? if (neoforge && >=1.21) || >=26 {
             /*expect = 1)
             *///?} else {

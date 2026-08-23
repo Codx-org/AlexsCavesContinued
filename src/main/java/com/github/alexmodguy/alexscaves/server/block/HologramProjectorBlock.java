@@ -67,7 +67,27 @@ public class HologramProjectorBlock extends BaseEntityBlock implements SimpleWat
         return state.canSurvive(levelAccessor, blockPos) ? super.updateShape(state, direction, state1, levelAccessor, blockPos, blockPos1) : Blocks.AIR.defaultBlockState();
     }
 
+    // 1.20.5 split BlockBehaviour#use into useItemOn and useWithoutItem. Vanilla calls useItemOn
+    // for every hand and every stack -- the empty one included -- and only falls through to
+    // useWithoutItem when it answers "did nothing", so hanging the whole rule off useItemOn keeps
+    // this block reachable with a full hotbar exactly as it was below 1.20.5. The body is shared;
+    // only the entry point and the "we did nothing" return differ. See ACCompat#itemResult.
+    //? if >=1.21.2 {
+    /*protected net.minecraft.world.InteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(state, worldIn, pos, player, handIn, hit));
+    }
+    *///?} elif >=1.20.5 {
+    /*protected net.minecraft.world.ItemInteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(state, worldIn, pos, player, handIn, hit));
+    }
+    *///?} else {
     public InteractionResult use(BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+        InteractionResult acResult = acUse(state, worldIn, pos, player, handIn, hit);
+        return acResult == InteractionResult.PASS ? super.use(state, worldIn, pos, player, handIn, hit) : acResult;
+    }
+    //?}
+
+    private InteractionResult acUse(BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
         ItemStack heldItem = player.getItemInHand(handIn);
         if (worldIn.getBlockEntity(pos) instanceof HologramProjectorBlockEntity projectorBlockEntity && !player.isShiftKeyDown() && heldItem.is(ACItemRegistry.HOLOCODER.get())) {
             CompoundTag entityTag = null;

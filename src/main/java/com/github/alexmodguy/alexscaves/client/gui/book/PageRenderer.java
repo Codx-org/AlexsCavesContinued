@@ -4,7 +4,6 @@ import com.github.alexmodguy.alexscaves.client.ACClientCompat;
 import com.github.alexmodguy.alexscaves.client.gui.book.widget.BookWidget;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
@@ -42,10 +41,12 @@ public class PageRenderer {
         this.entry = entry;
     }
 
-    protected void renderPage(CaveBookScreen screen, PoseStack poseStack, int mouseX, int mouseY, float partialTicks, boolean onFlippingPage) {
+    // ⚠️ bufferSource is the one the book model is being drawn into, handed down from
+    // CaveBookScreen#renderBookModel. Do not swap it back for renderBuffers().bufferSource(): on
+    // 26.2 that is the level pass's source, which has no collector during the book's
+    // picture-in-picture pass, so everything below would be dropped without a word.
+    protected void renderPage(CaveBookScreen screen, PoseStack poseStack, MultiBufferSource bufferSource, int mouseX, int mouseY, float partialTicks, boolean onFlippingPage) {
         int pgNumber = getDisplayPageNumber();
-        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
-
         if(entry != null){
             if(pgNumber == 1 && !entry.getTranslatableTitle().isEmpty()){
                 Component title = Component.translatable(entry.getTranslatableTitle());
@@ -75,7 +76,7 @@ public class PageRenderer {
         }
     }
 
-    private void printLinesFromEntry(Font font, PoseStack poseStack, MultiBufferSource.BufferSource bufferSource, BookEntry bookEntry, int startReadingAt) {
+    private void printLinesFromEntry(Font font, PoseStack poseStack, MultiBufferSource bufferSource, BookEntry bookEntry, int startReadingAt) {
         if (startReadingAt >= 0) {
             for (int i = startReadingAt; i < startReadingAt + CaveBookScreen.PAGE_SIZE_IN_LINES; i++) {
                 if (bookEntry.getEntryText().size() > i) {

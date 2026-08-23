@@ -156,6 +156,60 @@ object DataPackMigration {
 	}
 
 	/**
+	 * 1.21.4 also moved the armour-**trim** textures, and it split one folder into two.
+	 *
+	 * Up to 1.21.3 a trim's two layers lived side by side under `trims/models/armor/`, the leggings
+	 * one distinguished by a `_leggings` suffix on the file name. From 1.21.4 the layer type is the
+	 * *folder*: `trims/entity/humanoid/<asset>` and `trims/entity/humanoid_leggings/<asset>`, both
+	 * spelled with the bare asset name. Read straight out of the shipped client jars — 1.21.1 has
+	 * only `assets/minecraft/textures/trims/models/armor/`, 1.21.4 only the two `trims/entity/`
+	 * folders — and confirmed against each version's own `assets/minecraft/atlases/armor_trims.json`.
+	 *
+	 * The sprite the renderer asks for is built from the pattern's `asset_id` and the layer type, so
+	 * from 1.21.4 the polarity trim is looked up at `alexscaves:trims/entity/humanoid/polarity_<mat>`
+	 * while this mod still shipped `alexscaves:trims/models/armor/polarity_<mat>`. Like the equipment
+	 * move above, the miss is silent: the trim simply does not draw on the armour.
+	 *
+	 * Source keeps the oldest spelling (the standing rule), so the move happens here, and the atlas
+	 * source list that names the textures is rewritten to match. The `_leggings` rule has to be
+	 * applied first — `polarity_leggings` also matches the plain `polarity` prefix.
+	 */
+	fun relocateTrimTexturesTo1214(resourcesRoot: File, modId: String): Int {
+		val assets = resourcesRoot.resolve("assets/$modId")
+		val old = assets.resolve("textures/trims/models/armor")
+		var changed = 0
+		if (old.isDirectory) {
+			old.walkTopDown().filter { it.isFile }.toList().forEach { file ->
+				val name = file.nameWithoutExtension
+				val leggings = name.endsWith("_leggings")
+				val folder = if (leggings) "humanoid_leggings" else "humanoid"
+				val asset = if (leggings) name.removeSuffix("_leggings") else name
+				val destination = assets.resolve("textures/trims/entity/$folder/$asset.${file.extension}")
+				destination.parentFile.mkdirs()
+				file.copyTo(destination, overwrite = true)
+				file.delete()
+				changed++
+			}
+			old.walkBottomUp().filter { it.isDirectory }.forEach { it.delete() }
+		}
+		val atlases = resourcesRoot.resolve("assets").listFiles().orEmpty()
+			.mapNotNull { it.resolve("atlases").takeIf(File::isDirectory) }
+		atlases.forEach { folder ->
+			folder.walkTopDown().filter { it.isFile && it.extension == "json" }.forEach { file ->
+				val original = file.readText()
+				val migrated = original
+					.replace(Regex("""trims/models/armor/([A-Za-z0-9_.-]+?)_leggings""")) { m -> "trims/entity/humanoid_leggings/" + m.groupValues[1] }
+					.replace("trims/models/armor/", "trims/entity/humanoid/")
+				if (migrated != original) {
+					file.writeText(migrated)
+					changed++
+				}
+			}
+		}
+		return changed
+	}
+
+	/**
 	 * 1.21.5 changed how an advancement tab's background is addressed. It used to be the texture file
 	 * itself — `"minecraft:textures/gui/advancements/backgrounds/stone.png"` — and is now a bare id,
 	 * `"minecraft:gui/advancements/backgrounds/stone"`, which the client expands back into

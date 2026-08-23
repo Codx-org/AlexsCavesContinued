@@ -22,6 +22,14 @@ import net.minecraft.world.item.Tiers;
 public class DesolateDaggerItem extends SwordItem implements ACRepairableItem {
 //?}
     /**
+     * Upstream's durability. It used to be supplied by overriding {@code getMaxDamage(ItemStack)},
+     * which is a Forge/NeoForge {@code IItemExtension} method and therefore does not exist on
+     * Fabric -- so on all 22 Fabric nodes the dagger silently carried DIAMOND's 1561 instead.
+     * Carrying it in the item's properties is correct on every loader.
+     */
+    private static final int DURABILITY = 360;
+
+    /**
      * 1.20.5 moved a sword's damage and attack speed out of the constructor and into the item's
      * attribute modifiers ({@code SwordItem.createAttributes}); the {@code !mc205-swordctor}
      * replacement rule rewrites the call below into that shape. 1.21.2 undid it — the four-argument
@@ -35,17 +43,25 @@ public class DesolateDaggerItem extends SwordItem implements ACRepairableItem {
      */
     public DesolateDaggerItem() {
         //? if >=1.21.5 {
-        /*super((new Item.Properties()).sword(net.minecraft.world.item.ToolMaterial.DIAMOND, 0, -2F).rarity(ACItemRegistry.RARITY_DEMONIC));
+        /*super((new Item.Properties()).sword(net.minecraft.world.item.ToolMaterial.DIAMOND, 0, -2F).durability(DURABILITY).rarity(ACItemRegistry.RARITY_DEMONIC));
         *///?} elif >=1.21.2 {
-        /*super(net.minecraft.world.item.ToolMaterial.DIAMOND, 0, -2F, (new Item.Properties()).rarity(ACItemRegistry.RARITY_DEMONIC));
+        /*super(demonicDiamond(), 0, -2F, (new Item.Properties()).rarity(ACItemRegistry.RARITY_DEMONIC));
         *///?} else {
-        super(Tiers.DIAMOND, 0, -2F, (new Item.Properties()).rarity(ACItemRegistry.RARITY_DEMONIC));
+        super(Tiers.DIAMOND, 0, -2F, (new Item.Properties()).durability(DURABILITY).rarity(ACItemRegistry.RARITY_DEMONIC));
         //?}
     }
 
-    public int getMaxDamage(ItemStack stack) {
-        return 360;
+    // 1.21.2-1.21.4 apply the material INSIDE SwordItem's constructor, and applyCommonProperties
+    // calls Properties#durability unconditionally, so a durability handed in is overwritten again.
+    // The only way through on that band is a material that already carries it. (Below 1.21.2
+    // TieredItem uses defaultDurability, which only fires when nothing is set yet; from 1.21.5 the
+    // material is applied by the caller, so durability can simply be chained after it.)
+    //? if >=1.21.2 && <1.21.5 {
+    /*private static net.minecraft.world.item.ToolMaterial demonicDiamond() {
+        net.minecraft.world.item.ToolMaterial d = net.minecraft.world.item.ToolMaterial.DIAMOND;
+        return new net.minecraft.world.item.ToolMaterial(d.incorrectBlocksForDrops(), DURABILITY, d.speed(), d.attackDamageBonus(), d.enchantmentValue(), d.repairItems());
     }
+    *///?}
 
     // The orbiting daggers spawn on a landed hit. Up to 1.21.4 that is `hurtEnemy` returning true
     // — SwordItem's override always does, so the else branch was unreachable. 1.21.5 made

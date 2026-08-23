@@ -14,6 +14,26 @@ package com.github.alexmodguy.alexscaves.server.misc;
  */
 public class ACColors {
 
+    /**
+     * Force a colour opaque when its alpha byte is (effectively) empty — vanilla's own
+     * {@code Font#adjustColor}, which it deleted at 1.21.6.
+     *
+     * <p>⚠️ Until 1.21.5 every {@code Font#drawInBatch}, {@code drawInBatch8xOutline} and
+     * {@code GuiGraphics#drawString} ran the colour through {@code (color & 0xFC000000) == 0 ?
+     * ARGB.opaque(color) : color} first, so the {@code 0xRRGGBB} literals mods (and this one)
+     * have always written rendered as fully opaque. From 1.21.6 the game passes the colour
+     * straight to the glyph quads, and a missing alpha byte means alpha 0 — the text is
+     * submitted, batched and drawn completely transparent. Nothing is logged, nothing throws,
+     * and on 26.2 the deferred text path makes it look exactly like the node was never
+     * submitted. That is what blanked the Cave Compendium and the spelunkery table's labels.
+     *
+     * <p>Below 1.21.6 this is a no-op the game would have done anyway, so call sites need no
+     * {@code //?} gate — wrap the colour once, here, and it is right on all 58 nodes.
+     */
+    public static int opaque(int argb) {
+        return (argb & 0xFC000000) == 0 ? argb | 0xFF000000 : argb;
+    }
+
     /** Alpha, red, green, blue — the layout every {@code GuiGraphics} and font call wants. */
     public static int argb(int alpha, int red, int green, int blue) {
         return (alpha & 0xFF) << 24 | (red & 0xFF) << 16 | (green & 0xFF) << 8 | (blue & 0xFF);

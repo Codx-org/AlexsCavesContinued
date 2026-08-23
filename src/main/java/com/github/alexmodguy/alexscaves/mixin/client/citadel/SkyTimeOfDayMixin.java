@@ -2,12 +2,13 @@ package com.github.alexmodguy.alexscaves.mixin.client.citadel;
 
 import com.github.alexmodguy.alexscaves.citadel.Citadel;
 import com.github.alexmodguy.alexscaves.citadel.CitadelConstants;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Citadel's smoothed sky rotation: vanilla's own {@code ClientLevel#getTimeOfDay} steps once per
@@ -32,6 +33,26 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * number is per MC version, so every node in the 1.21.2–1.21.8 window needs its own checked — which
  * is exactly what {@code scripts/verify_mixins.py} reports, and why it is run before anything is
  * booted.
+ *
+ * <p>⚠⚠ Like {@link OutlineColorMixin} this is a {@code @WrapOperation} and was a
+ * {@code @Redirect} once, for the same reason and with the same evidence. <b>Original Citadel
+ * redirects this exact instruction too</b> — {@code citadel.mixins.json:client.LevelRendererMixin}'s
+ * {@code citadel_getTimeOfDay}, which is where this code came from — so a player who installs
+ * Citadel for some other mod (Rats, Ice and Fire, …) alongside this one used to get the
+ * {@code "@Redirect conflict. Skipping …"} / {@code Critical injection failure … (0/1) succeeded}
+ * crash at {@code Initializing game}, exactly as Alex's Mobs Continued did on {@code getTeamColor}.
+ * Those two instructions are the whole {@code @Redirect} overlap: Citadel 2.6.3 has only three
+ * {@code @Redirect}s in the mod, and the third ({@code SmithingMenuMixin}'s {@code getRecipesFor})
+ * is not one this tree vendors. ⚠ That is <b>not</b> the whole overlap, though —
+ * {@code @ModifyConstant} is a {@code RedirectInjector} subclass and collides identically, which is
+ * why {@code ServerLevelMixin}, {@code ClientLevelMixin}, {@code MinecraftServerMixin} and
+ * {@code SplashRendererMixin} are all {@code @ModifyExpressionValue} now. The Citadel repro in fact
+ * crashed at {@code ServerLevel#tickTime}'s {@code 1L}, before any render mixin ran. When adding a
+ * vendored-Citadel injector, assume every exclusive injector in the overlap conflicts.
+ *
+ * <p>The body deliberately does <i>not</i> call {@code original} — the lerped time of day is a
+ * total replacement, and Citadel's own redirect, which is what {@code original} would be, computes
+ * the identical value.
  */
 //? if >=1.21.9 {
 /*@Mixin(net.minecraft.client.renderer.SkyRenderer.class)
@@ -40,7 +61,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 //?}
 public class SkyTimeOfDayMixin {
 
-    @Redirect(
+    @WrapOperation(
             //? if >=1.21.9 {
             /*method = "Lnet/minecraft/client/renderer/SkyRenderer;extractRenderState(Lnet/minecraft/client/multiplayer/ClientLevel;FLnet/minecraft/world/phys/Vec3;Lnet/minecraft/client/renderer/state/SkyRenderState;)V",
             *///?} elif !neoforge && >=1.21.2 {
@@ -60,7 +81,7 @@ public class SkyTimeOfDayMixin {
             expect = 2
             //?}
     )
-    private float citadel_getTimeOfDay(ClientLevel instance, float partialTicks) {
+    private float citadel_getTimeOfDay(ClientLevel instance, float partialTicks, Operation<Float> original) {
         //default implementation does not lerp the time of day
         float lerpBy = Citadel.PROXY.isGamePaused() ? 0F : partialTicks;
         float lerpedDayTime = (instance.dimensionType().fixedTime().orElse(instance.dayTime()) + lerpBy) / 24000.0F;

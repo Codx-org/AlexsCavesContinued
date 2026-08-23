@@ -129,7 +129,27 @@ public class GingerbreadDoorBlock extends Block implements ACPathTypeBlock {
         }
     }
 
+    // 1.20.5 split BlockBehaviour#use into useItemOn and useWithoutItem. Vanilla calls useItemOn
+    // for every hand and every stack -- the empty one included -- and only falls through to
+    // useWithoutItem when it answers "did nothing", so hanging the whole rule off useItemOn keeps
+    // this block reachable with a full hotbar exactly as it was below 1.20.5. The body is shared;
+    // only the entry point and the "we did nothing" return differ. See ACCompat#itemResult.
+    //? if >=1.21.2 {
+    /*protected net.minecraft.world.InteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(blockState, level, blockPos, player, hand, hitResult));
+    }
+    *///?} elif >=1.20.5 {
+    /*protected net.minecraft.world.ItemInteractionResult useItemOn(net.minecraft.world.item.ItemStack usedStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        return com.github.alexmodguy.alexscaves.server.misc.ACCompat.itemResult(acUse(blockState, level, blockPos, player, hand, hitResult));
+    }
+    *///?} else {
     public InteractionResult use(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        InteractionResult acResult = acUse(blockState, level, blockPos, player, hand, hitResult);
+        return acResult == InteractionResult.PASS ? super.use(blockState, level, blockPos, player, hand, hitResult) : acResult;
+    }
+    //?}
+
+    private InteractionResult acUse(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         blockState = blockState.cycle(OPEN);
         level.setBlock(blockPos, blockState, 10);
         this.playSound(player, level, blockPos, blockState.getValue(OPEN));

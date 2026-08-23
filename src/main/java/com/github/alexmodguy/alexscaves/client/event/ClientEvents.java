@@ -148,10 +148,25 @@ public class ClientEvents {
     // deleted Event#setCanceled, so a cancelling handler returns its verdict instead. Each decision
     // is stated once in an ac-prefixed helper with two thin gated entry points around it.
 
-    /** A render this mod has claimed for itself is skipped, having already been drawn once. */
+    /**
+     * A render this mod has claimed for itself is skipped, having already been drawn once.
+     *
+     * <p>The entity can be {@code null} from 1.21.2 on. The event carries a render state rather than
+     * an entity there, and a state does not have to have come from one: 1.21.9 moved the GUI's entity
+     * previews onto picture-in-picture rendering, and {@code SmithingScreen} builds its armour-stand
+     * preview by allocating a bare {@code ArmorStandRenderState} in its constructor and assigning the
+     * fields by hand — {@code EntityRenderer#extractRenderState} never runs, so the duck in
+     * {@code mixin.renderstate.EntityRendererMixin} has nothing to stamp. Opening a smithing table
+     * then reaches this listener with no entity behind the state at all, which is not an error; there
+     * is simply nothing here that applies to a preview. (Reported against 1.0.0 as a crash on opening
+     * a smithing table, the anvil and the enchanting table being fine — they render no entity.)
+     */
     private boolean acPreRenderLiving(RenderLivingEvent.Pre event) {
         boolean cancel = false;
         LivingEntity rendered = ACClientCompat.renderedEntity(event);
+        if (rendered == null) {
+            return false;
+        }
         if (rendered instanceof HeadRotationEntityAccessor magnetic) {
             magnetic.setMagnetHeadRotation();
         }
@@ -231,6 +246,10 @@ public class ClientEvents {
     @SuppressWarnings("rawtypes")
     private void acPostRenderLiving(RenderLivingEvent.Post event, MultiBufferSource bufferSource, int packedLight) {
         LivingEntity entity = ACClientCompat.renderedEntity(event);
+        // Entity-less render states reach here too — see acPreRenderLiving.
+        if (entity == null) {
+            return;
+        }
         float partialTick = ACClientCompat.renderPartialTick(event);
         if (entity instanceof HeadRotationEntityAccessor magnetic) {
             magnetic.resetMagnetHeadRotation();

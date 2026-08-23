@@ -172,7 +172,10 @@ public class TeletorModel extends AdvancedEntityModel<TeletorEntity> {
         Vector4f bodyOffsetVec = new Vector4f((float) in.x, (float) in.y, (float) in.z, 1.0F);
         bodyOffsetVec.mul(modelTranslateStack.last().pose());
         Vec3 offset = new Vec3(bodyOffsetVec.x(), bodyOffsetVec.y(), bodyOffsetVec.z());
-        modelTranslateStack.popPose();
+        // ⚠ No popPose() here. This stack was never pushed, and from MC 1.21.5 popping the base
+        // pose throws NoSuchElementException (below that it was a Deque.removeLast() that silently
+        // emptied a one-element deque). The result is already read into `offset` above, so the pop
+        // was dead code on every version -- deleting it is behaviour-identical on all 58 nodes.
         return offset;
     }
 

@@ -1,6 +1,7 @@
 package com.github.alexmodguy.alexscaves.mixin.client.citadel;
 
 import com.github.alexmodguy.alexscaves.client.ACClientCompat;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 
 import com.github.alexmodguy.alexscaves.citadel.CitadelEvent;
 import com.github.alexmodguy.alexscaves.citadel.CitadelConstants;
@@ -15,9 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(SplashRenderer.class)
@@ -188,18 +187,18 @@ public class SplashRendererMixin {
     //? if >=1.21.11 {
     /*
     *///?} elif >=1.21.6 {
-    /*@ModifyConstant(
+    /*@ModifyExpressionValue(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;F)V"},
             remap = CitadelConstants.REMAPREFS,
-            constant = @Constant(intValue = -256))
+            at = @At(value = "CONSTANT", args = "intValue=-256"))
     private int citadel_splashTextColor(int value) {
         return splashTextColor == -1 ? value : splashTextColor;
     }
     *///?} else {
-    @ModifyConstant(
+    @ModifyExpressionValue(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;I)V"},
             remap = CitadelConstants.REMAPREFS,
-            constant = @Constant(intValue = 16776960))
+            at = @At(value = "CONSTANT", args = "intValue=16776960"))
     private int citadel_splashTextColor(int value) {
         return splashTextColor == -1 ? value : splashTextColor;
     }

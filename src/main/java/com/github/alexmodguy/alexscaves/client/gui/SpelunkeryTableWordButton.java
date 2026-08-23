@@ -64,29 +64,44 @@ public class SpelunkeryTableWordButton extends AbstractWidget {
     }
 
 
+    @Override
     public int getX() {
         return super.getX() + parent.getGuiLeft();
     }
 
+    @Override
     public void setX(int x) {
         super.setX(x - parent.getGuiLeft());
     }
 
+    @Override
     public int getY() {
         return super.getY() + parent.getGuiTop();
     }
 
+    @Override
     public void setY(int y) {
         super.setY(y - parent.getGuiTop());
     }
 
+    // 1.21.9 folded the click coordinates into one MouseButtonEvent record and added the
+    // double-click flag. Neither arm reads either, so only the header differs -- but without
+    // the gate the pre-1.21.9 shape silently overrides nothing from 1.21.9 up and every word
+    // in the spelunkery minigame becomes unclickable.
+    //? if >=1.21.9 {
+    /*@Override
+    public void onClick(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+    *///?} else {
+    @Override
     public void onClick(double x, double y) {
+    //?}
         if (parent.hasPaper()) {
             parent.onClickWord(this);
             this.active = false;
         }
     }
 
+    @Override
     public void playDownSound(SoundManager soundManager) {
     }
 
@@ -112,7 +127,7 @@ public class SpelunkeryTableWordButton extends AbstractWidget {
     private void drawEquidistantWord(Font font, GuiGraphics guiGraphics, Component component, int x, int y, int color) {
         int letterWidth = 6;
         StringDecomposer.iterateFormatted(component, Style.EMPTY, (position, style, j) -> {
-            guiGraphics.drawString(font, Component.literal(String.valueOf((char) j)).withStyle(style), x + letterWidth * position, y, color, false);
+            guiGraphics.drawString(font, Component.literal(String.valueOf((char) j)).withStyle(style), x + letterWidth * position, y, ACColors.opaque(color), false);
             return true;
         });
     }

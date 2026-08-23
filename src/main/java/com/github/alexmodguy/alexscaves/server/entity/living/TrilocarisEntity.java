@@ -108,6 +108,7 @@ public class TrilocarisEntity extends WaterAnimal implements Bucketable {
         return worldIn.getFluidState(pos.below()).isEmpty() && worldIn.getFluidState(pos).is(FluidTags.WATER) ? 10.0F : super.getWalkTargetValue(pos, worldIn);
     }
 
+    @Override
     protected void handleAirSupply(int air) {
 
     }

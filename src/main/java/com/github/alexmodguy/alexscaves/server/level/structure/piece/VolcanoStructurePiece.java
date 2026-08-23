@@ -19,6 +19,7 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import com.github.alexmodguy.alexscaves.server.misc.ACTagRegistry;
 
 public class VolcanoStructurePiece extends StructurePiece {
 
@@ -136,7 +137,7 @@ public class VolcanoStructurePiece extends StructurePiece {
     }
 
     private boolean volcanoReplacesBeneath(BlockState state) {
-        return state.is(Blocks.AIR) || state.is(BlockTags.DIRT);
+        return state.is(Blocks.AIR) || state.is(ACTagRegistry.DIRT_LIKE);
     }
 
     private double calcVolcanoCurve(double dist) {

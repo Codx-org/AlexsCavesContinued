@@ -48,7 +48,7 @@ public class ACPipelineState {
     }
 
     public static com.mojang.blaze3d.pipeline.RenderPipeline.Builder depth(com.mojang.blaze3d.pipeline.RenderPipeline.Builder builder, boolean write) {
-        return builder.withDepthStencilState(new com.mojang.blaze3d.pipeline.DepthStencilState(com.mojang.blaze3d.platform.CompareOp.LESS_THAN_OR_EQUAL, write));
+        return builder.withDepthStencilState(new com.mojang.blaze3d.pipeline.DepthStencilState(NEARER_OR_EQUAL, write));
     }
 
     public static com.mojang.blaze3d.pipeline.RenderPipeline.Builder depthEqual(com.mojang.blaze3d.pipeline.RenderPipeline.Builder builder, boolean write) {
@@ -82,6 +82,32 @@ public class ACPipelineState {
     public static com.mojang.blaze3d.pipeline.RenderPipeline.Builder noDepth(com.mojang.blaze3d.pipeline.RenderPipeline.Builder builder, boolean write) {
         return builder.withDepthTestFunction(com.mojang.blaze3d.platform.DepthTestFunction.NO_DEPTH_TEST).withDepthWrite(write);
     }
+    *///?}
+
+    // A third arm chain, for the same reason as the second: this moves at 26.2, where the state
+    // setters above moved at 26. It is one enum constant and it is the whole of this mod's
+    // depth-test semantics.
+    //
+    // ⚠️ 26.2 switched Minecraft to a REVERSED-Z depth buffer — near is 1.0 and far is 0.0 — and
+    // flipped every one of vanilla's own depth tests to match: RenderPipelines states
+    // LESS_THAN_OR_EQUAL 15 times on 26.1.2 and GREATER_THAN_OR_EQUAL 14 times on 26.2, and
+    // DepthStencilState.DEFAULT moved with them. Nothing about the API changed, so a pipeline
+    // that keeps naming LESS_THAN_OR_EQUAL still compiles, still has a depth state, still has a
+    // depth attachment, and passes for every fragment that is FARTHER away than what is already
+    // in the buffer — i.e. it draws through solid terrain, at any distance, with no log line.
+    // Since every render type in this mod is built through depth(), that is the whole mod
+    // x-raying on exactly one node.
+    //
+    // The projection is vanilla's (it arrives through the MATRICES_PROJECTION bind group), so the
+    // depth values themselves are already reversed for this mod's draws too; only the comparison
+    // was left behind. depthEqual and noDepth need no arm — EQUAL and ALWAYS_PASS mean the same
+    // thing whichever way the axis points.
+    //? if >=26.2 {
+    /*private static final com.mojang.blaze3d.platform.CompareOp NEARER_OR_EQUAL =
+            com.mojang.blaze3d.platform.CompareOp.GREATER_THAN_OR_EQUAL;
+    *///?} elif >=26 {
+    /*private static final com.mojang.blaze3d.platform.CompareOp NEARER_OR_EQUAL =
+            com.mojang.blaze3d.platform.CompareOp.LESS_THAN_OR_EQUAL;
     *///?}
 
     // A second, independent arm chain: the snippet below moves at a different version from the

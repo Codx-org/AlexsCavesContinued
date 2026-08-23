@@ -13,7 +13,7 @@ loomx.loom_version = "1.16-SNAPSHOT"
 mod.id = "alexscaves"
 mod.name = "Alex's Caves Continued"
 mod.group = "com.github.alexmodguy"
-mod.version = "1.0.0"
+mod.version = "1.0.1"
 mod.description = "Explore new rare cave biomes hidden under the surface of the Overworld."
 mod.authors = ["Alexthe668", "Noonyeyz", "Codx.io"]
 mod.license.name = "LGPL-3.0"
@@ -153,7 +153,7 @@ deps.jei-mc = "1.21"
 
 [neoforge."1.21.1"]
 deps.minecraft = "1.21.1"
-deps.neoforge = "21.1.216"
+deps.neoforge = "21.1.248"
 deps.jei = "19.39.0.370"
 deps.jei-mc = "1.21.1"
 
@@ -195,7 +195,7 @@ deps.neoforge = "21.10.64"
 
 [neoforge."1.21.11"]
 deps.minecraft = "1.21.11"
-deps.neoforge = "21.11.44"
+deps.neoforge = "21.11.45"
 
 # ---------------------------------------------------------------------------
 # MC 26.x — the unobfuscated line. Forge nodes here build on Architectury Loom's
@@ -229,17 +229,25 @@ deps.neoforge = "26.1.0.19-beta"
 deps.minecraft = "26.1.1"
 deps.neoforge = "26.1.1.15-beta"
 
+# ⚠️ Pin the LATEST build of each NeoForge point release, not the first one that worked.
+# NeoForge reintroduced FluidType into EntityFluidInteraction between 26.1.2.87 and 26.1.2.97 --
+# same MC version, both in players' hands -- and the .97 shape hard-throws for a modded fluid tag,
+# which crashed 1.0.0 at world join. Compiling against .87 gave no warning of it. A point release's
+# build number moves by dozens after MC freezes, so "the build we started on" is not the build
+# anyone runs. See docs/notes/gotchas-api.md.
 [neoforge."26.1.2"]
 deps.minecraft = "26.1.2"
-deps.neoforge = "26.1.2.87"
+deps.neoforge = "26.1.2.97"
 
 [forge."26.2"]
 deps.minecraft = "26.2"
 deps.forge = "65.1.0"
 
+# Bumped .35-beta -> .66 (2026-08-23) for the reason above: 31 builds of drift is exactly the gap
+# the 26.1.2 fluid change hid in, and .66 is what players have.
 [neoforge."26.2"]
 deps.minecraft = "26.2"
-deps.neoforge = "26.2.0.35-beta"
+deps.neoforge = "26.2.0.66"
 
 # ---------------------------------------------------------------------------
 # Fabric. Built newest-first (26.2) and back-filled downward.

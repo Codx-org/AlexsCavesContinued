@@ -37,6 +37,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import com.github.alexmodguy.alexscaves.server.misc.ACColors;
 
 public class SpelunkeryTableScreen extends AbstractContainerScreen<SpelunkeryTableMenu> {
 
@@ -149,22 +150,22 @@ public class SpelunkeryTableScreen extends AbstractContainerScreen<SpelunkeryTab
         int j = this.topPos;
         if (invalidTablet) {
             Component badTablet = Component.translatable("alexscaves.container.spelunkery_table.bad_tablet");
-            guiGraphics.drawString(font, badTablet, leftPos + 105 - (font.width(badTablet) / 2), j + 60, 0X000000, false);
+            guiGraphics.drawString(font, badTablet, leftPos + 105 - (font.width(badTablet) / 2), j + 60, ACColors.opaque(0X000000), false);
             CompoundTag badTag = ACCompat.getTag(menu.getSlot(0).getItem());
             if (badTag != null && !badTag.isEmpty()) {
                 int nbtLine = 0;
                 for (String key : ACCompat.getAllKeys(badTag)) {
                     Component badData = Component.literal(key + ": " + ACCompat.tagAsString(badTag.get(key)));
-                    guiGraphics.drawString(font, badData, leftPos + 105 - (font.width(badData) / 2), j + 75 + nbtLine, 0X000000, false);
+                    guiGraphics.drawString(font, badData, leftPos + 105 - (font.width(badData) / 2), j + 75 + nbtLine, ACColors.opaque(0X000000), false);
                     nbtLine = nbtLine + 9;
                 }
             }
         } else if (targetWordButton != null && hasTablet() && hasPaper()) {
             Component find = Component.translatable("alexscaves.container.spelunkery_table.find");
             Component attempts = Component.translatable("alexscaves.container.spelunkery_table.attempts");
-            guiGraphics.drawString(font, find, i + 20 - (font.width(find) / 2), j + 20, 0X99876C, false);
-            guiGraphics.drawString(font, targetWordButton.getNormalText(), i + 20 - (font.width(targetWordButton.getNormalText()) / 2), j + 35, highlightColor, false);
-            guiGraphics.drawString(font, attempts, i + 20 - (font.width(attempts) / 2), j + 60, 0X99876C, false);
+            guiGraphics.drawString(font, find, i + 20 - (font.width(find) / 2), j + 20, ACColors.opaque(0X99876C), false);
+            guiGraphics.drawString(font, targetWordButton.getNormalText(), i + 20 - (font.width(targetWordButton.getNormalText()) / 2), j + 35, ACColors.opaque(highlightColor), false);
+            guiGraphics.drawString(font, attempts, i + 20 - (font.width(attempts) / 2), j + 60, ACColors.opaque(0X99876C), false);
             int tallySpace = 0;
             for (int tally = 1; tally <= attemptsLeft; tally++) {
                 if (tally % 5 == 0) {
@@ -499,7 +500,7 @@ public class SpelunkeryTableScreen extends AbstractContainerScreen<SpelunkeryTab
     //?}
 
     protected void renderLabels(GuiGraphics guiGraphics, int x, int y) {
-        guiGraphics.drawString(font, this.title, this.titleLabelX - (font.width(title) / 2), this.titleLabelY, 4210752, false);
+        guiGraphics.drawString(font, this.title, this.titleLabelX - (font.width(title) / 2), this.titleLabelY, ACColors.opaque(4210752), false);
     }
 
     private ResourceLocation getWordsForItem(ItemStack stack) {

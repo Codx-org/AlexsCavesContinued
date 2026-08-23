@@ -1045,8 +1045,8 @@ stonecutter parameters {
 		// item's attribute modifiers, built by a static helper that takes the same two numbers.
 		string("!mc205-swordctor", true) {
 			replace(
-				"super(Tiers.DIAMOND, 0, -2F, (new Item.Properties()).rarity(ACItemRegistry.RARITY_DEMONIC));",
-				"super(Tiers.DIAMOND, (new Item.Properties()).rarity(ACItemRegistry.RARITY_DEMONIC).attributes(SwordItem.createAttributes(Tiers.DIAMOND, 0, -2F)));"
+				"super(Tiers.DIAMOND, 0, -2F, (new Item.Properties()).durability(DURABILITY).rarity(ACItemRegistry.RARITY_DEMONIC));",
+				"super(Tiers.DIAMOND, (new Item.Properties()).durability(DURABILITY).rarity(ACItemRegistry.RARITY_DEMONIC).attributes(SwordItem.createAttributes(Tiers.DIAMOND, 0, -2F)));"
 			)
 		}
 
@@ -1423,8 +1423,15 @@ stonecutter parameters {
 		// getExperienceReward became final and asks getBaseExperienceReward for the number, so the
 		// five entities that set their own XP move onto that. Both are protected on Mob, and none of
 		// the five is called from anywhere in this mod, so the rename is the whole change.
+		// ...and 1.21.2 then gave getBaseExperienceReward a ServerLevel. Rules do not chain and two
+		// rules may not share a target, so the second band is a version-dependent replacement of the
+		// SAME span. Without it the rename produced a no-arg method that overrode nothing from 1.21.2
+		// up and all five mobs silently dropped to the default XP.
+		// ⚠ The boundary is 1.21.2, NOT 1.21.3 -- javap'd out of the 1.21.2 jar. override_audit.py
+		// could not see either 1.21.2 node (see scripts/mcjavap.py) so the band read one too high.
+		val xpRewardParam = if (eval(current.version, ">=1.21.2")) "net.minecraft.server.level.ServerLevel serverLevel" else ""
 		string("!mc21-xpreward", true) {
-			replace("public int getExperienceReward() {", "protected int getBaseExperienceReward() {")
+			replace("public int getExperienceReward() {", "protected int getBaseExperienceReward($xpRewardParam) {")
 		}
 
 		string("!mc21-vc-vertex", true) { replace(".vertex(", ".addVertex(") }
@@ -2411,6 +2418,22 @@ stonecutter parameters {
 			replace("isControlledByLocalInstance()", "isLocalInstanceAuthoritative()")
 		}
 
+		// ── an air-supply tick belongs to a level ─────────────────────────
+		// WaterAnimal#handleAirSupply gained a leading ServerLevel. It is protected and it is
+		// CALLED BY VANILLA (from baseTick), so a mod override that keeps the old parameter list
+		// compiles on every node, overrides nothing from here up, and is simply never invoked —
+		// which drowned every Alex's Caves water mob, purple soda included, on 33 of the 58 nodes.
+		// The five declarations carry an @Override now so the compiler asserts this on both bands;
+		// scripts/override_audit.py is the standing check for the family. The parameter name is
+		// left out of the match so all five spellings ride one rule, and `(int ` cannot appear in
+		// a call site — vanilla's own caller passes a variable, not a declaration.
+		string("!mc2105-handleairsupply", true) {
+			replace(
+				"handleAirSupply(int ",
+				"handleAirSupply(net.minecraft.server.level.ServerLevel acAirLevel, int "
+			)
+		}
+
 		// ── the last player to hurt me became a reference ──────────────────
 		// LivingEntity#lastHurtByPlayer is an EntityReference<Player> now — it survives the player
 		// logging out — so reading it goes through the public resolver instead. The companion
@@ -2493,6 +2516,16 @@ stonecutter parameters {
 		}
 		string("!mc2105-calculatefalldamage", true) {
 			replace("calculateFallDamage(float", "calculateFallDamage(double")
+		}
+
+		// Block#fallOn's fall distance widened the same way, and all four overrides of it here were
+		// bare. Keyed on the whole "<entity param>, float <name>)" tail so the rule cannot fire on an
+		// unrelated float; the four sites are the only occurrences of either spelling in the tree.
+		string("!mc2105-fallon-distance", true) {
+			replace("Entity entityIn, float fallDistance)", "Entity entityIn, double fallDistance)")
+		}
+		string("!mc2105-fallon-amount", true) {
+			replace("Entity entity, float fallAmount)", "Entity entity, double fallAmount)")
 		}
 	}
 
