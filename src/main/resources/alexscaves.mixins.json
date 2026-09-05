@@ -76,6 +76,7 @@
     "fabric.PlayerAttackMixin",
     "fabric.PlayerDamageEventsMixin",
     "fabric.PlayerGameEventsMixin",
+    "fabric.PoiTypesInvoker",
     "fabric.PotionBrewingMixin",
     "fabric.ServerPlayerGameModeMixin",
     "fabric.ServerPlayerUseItemMixin",

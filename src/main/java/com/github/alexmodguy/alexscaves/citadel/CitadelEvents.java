@@ -76,9 +76,9 @@ public final class CitadelEvents {
             if (server instanceof ModifiableTickRateServer modifiableServer) {
                 long l = tickRateTracker.getServerTickLengthMs();
                 if (l == ACPlatform.MS_PER_TICK) {
-                    modifiableServer.resetGlobalTickLengthMs();
+                    modifiableServer.acResetGlobalTickLengthMs();
                 } else {
-                    modifiableServer.setGlobalTickLengthMs(l);
+                    modifiableServer.acSetGlobalTickLengthMs(l);
                 }
                 if (!server.isShutdown()) {
                     tickRateTracker.masterTick();

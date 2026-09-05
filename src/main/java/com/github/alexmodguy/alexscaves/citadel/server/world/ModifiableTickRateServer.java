@@ -6,11 +6,11 @@ package com.github.alexmodguy.alexscaves.citadel.server.world;
  */
 public interface ModifiableTickRateServer {
 
-    void setGlobalTickLengthMs(long msPerTick);
+    void acSetGlobalTickLengthMs(long msPerTick);
 
-    long getMasterMs();
+    long acGetMasterMs();
 
-    default void resetGlobalTickLengthMs() {
-        setGlobalTickLengthMs(-1);
+    default void acResetGlobalTickLengthMs() {
+        acSetGlobalTickLengthMs(-1);
     }
 }

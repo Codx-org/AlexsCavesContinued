@@ -135,8 +135,14 @@ public class OccultGemItem extends Item implements ACTickingItem {
         if (!level.getBlockState(blockpos).is(ACBlockRegistry.BEHOLDER.get())) {
             return super.useOn(context);
         } else {
-            level.playSound((Player) null, blockpos, SoundEvents.LODESTONE_COMPASS_LOCK, SoundSource.PLAYERS, 1.0F, 1.0F);
+            // UseOnContext#getPlayer is nullable, and automation mods (deployers, fake-player block
+            // placers) build one with no player at all. Upstream dereferenced it twice below, so
+            // right-clicking a beholder with an automated occult gem was a hard NPE inside our item.
             Player player = context.getPlayer();
+            if (player == null) {
+                return super.useOn(context);
+            }
+            level.playSound((Player) null, blockpos, SoundEvents.LODESTONE_COMPASS_LOCK, SoundSource.PLAYERS, 1.0F, 1.0F);
             ItemStack itemstack = context.getItemInHand();
             boolean flag = !player.getAbilities().instabuild && itemstack.getCount() == 1;
             if (flag) {

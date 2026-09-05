@@ -1094,6 +1094,93 @@ object DataPackMigration {
 	}
 
 	/**
+ * **A post-effect program can only be named without a namespace below 1.21.2, and only Forge
+ * ever pretended otherwise.**
+ *
+ * Vanilla's `PostPass` builds its program id by *concatenation* --
+ * `new ResourceLocation("shaders/program/" + name + ".json")` -- so a `name` carrying a colon is
+ * split by the single-argument constructor into the namespace `shaders/program/<ns>` and dies with
+ * *"Non [a-z0-9_.-] character in namespace of location"*. Forge patches that constructor to parse
+ * the name first, which is why upstream Alex's Caves could write `"alexscaves:blur"` and never
+ * notice; Fabric has no such patch, so on every Fabric node below 1.21.2 **six of this mod's seven
+ * post chains fail to load outright** -- hologram, irradiated, sepia, purple_witch,
+ * submarine_light and watcher_perspective. `PostEffectRegistry` logs one warning each and stores a
+ * null chain, so nothing crashes and nothing draws: the hologram projector shows a plainly-lit mob
+ * instead of a blue translucent one, radiation has no bloom, the submarine has no headlight cone
+ * and the Watcher's stare does not blur. (1.21.2 and up are unaffected -- `migrateShadersTo1212`
+ * rewrites both the chains and the programs into the frame-graph layout, where a program is a real
+ * `ResourceLocation` and a namespace is legal.)
+ *
+ * The fix is to stop needing a namespace: the mod's post programs move to
+ * `assets/minecraft/shaders/program/` under a `<modId>_` prefix -- which is where the
+ * concatenation was always going to look -- and every reference to them, in the chains and in the
+ * programs' own `vertex`/`fragment` fields, is rewritten to that flat name. Vanilla ids
+ * (`sobel`, `blit`) are already namespace-free and are left exactly as they are.
+ *
+ * Only `shaders/program/` moves. `shaders/core/` is addressed through `ShaderInstance`, which Forge
+ * and vanilla both resolve with a proper namespace split on every version in this range.
+ */
+	fun unnamespacePostProgramsBelow1212(resourcesRoot: File, modId: String): Int {
+		val assets = resourcesRoot.resolve("assets/$modId")
+		if (!assets.isDirectory) return 0
+		val programs = assets.resolve("shaders/program")
+		if (!programs.isDirectory) return 0
+		var changed = 0
+
+		/** `"alexscaves:blur"` -> `"alexscaves_blur"`; a vanilla id has no namespace and is kept. */
+		fun flatten(name: String): String =
+			if (name.startsWith("$modId:")) modId + "_" + name.removePrefix("$modId:") else name
+
+		val destination = resourcesRoot.resolve("assets/minecraft/shaders/program")
+		programs.listFiles().orEmpty().filter { it.isFile }.forEach { file ->
+			val target = destination.resolve("${modId}_${file.name}")
+			target.parentFile.mkdirs()
+			if (file.extension == "json") {
+				val root = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }.getOrNull()
+				if (root != null) {
+					val rewritten = JsonObject(root.mapValues { (key, value) ->
+						val literal = value as? JsonPrimitive
+						if ((key == "vertex" || key == "fragment") && literal != null && literal.isString) {
+							JsonPrimitive(flatten(literal.content))
+						} else {
+							value
+						}
+					})
+					target.writeText(json.encodeToString(JsonObject.serializer(), rewritten))
+					file.delete()
+					changed++
+					return@forEach
+				}
+			}
+			file.copyTo(target, overwrite = true)
+			file.delete()
+			changed++
+		}
+		programs.walkBottomUp().filter { it.isDirectory }.forEach { it.delete() }
+
+		assets.resolve("shaders/post").listFiles().orEmpty().filter { it.isFile && it.extension == "json" }
+			.forEach { file ->
+				val root = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }.getOrNull()
+					?: return@forEach
+				val passes = root["passes"] as? JsonArray ?: return@forEach
+				val rewritten = JsonArray(passes.map { pass ->
+					val passObject = pass as? JsonObject ?: return@map pass
+					val name = (passObject["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+						?: return@map pass
+					JsonObject(passObject + ("name" to JsonPrimitive(flatten(name))))
+				})
+				if (rewritten != passes) {
+					file.writeText(
+						json.encodeToString(JsonObject.serializer(), JsonObject(root + ("passes" to rewritten)))
+					)
+					changed++
+				}
+			}
+
+		return changed
+	}
+
+	/**
 	 * MC 1.21.2 rebuilt the whole shader asset layout around the frame graph. Three moves, all of them
 	 * read out of the shipped client jar rather than recalled:
 	 *
@@ -2390,6 +2477,98 @@ object DataPackMigration {
 			}
 		}
 		else -> node
+	}
+
+	/**
+	 * MC 1.20.5 moved `ItemPredicate`'s enchantment checks out of the record and into the
+	 * `predicates` sub-predicate map, and MC 1.21 then renamed the key inside each entry. Both
+	 * boundaries are read out of vanilla's own `blocks/oak_leaves.json`, per MC version:
+	 *
+	 * | band | shape |
+	 * |---|---|
+	 * | `<=1.20.4` | `{"enchantments": [{"enchantment": id, "levels": {…}}]}` |
+	 * | `1.20.5`-`1.20.6` | `{"predicates": {"minecraft:enchantments": [{"enchantment": id, …}]}}` |
+	 * | `>=1.21` | `{"predicates": {"minecraft:enchantments": [{"enchantments": id, …}]}}` |
+	 *
+	 * `ItemPredicate` and `EnchantmentPredicate` are both all-`optionalFieldOf` records, so a key
+	 * from the wrong band is DROPPED rather than rejected. What survives is a predicate with no
+	 * conditions, and `MatchTool` runs it against the held stack with no empty-stack guard — so an
+	 * unmigrated `match_tool` silk-touch check answers TRUE **for a bare hand**.
+	 *
+	 * That is not a cosmetic bug: 80 of this mod's block tables are `alternatives(silk-touch entry,
+	 * normal entry)`, so on every node >=1.20.5 the silk-touch branch won unconditionally and every
+	 * one of those blocks dropped ITSELF no matter what broke it. Ancient leaves dropped leaf blocks
+	 * and never saplings or sticks (report: "drops blocks but no saplings with bare hands"), ores
+	 * dropped ore blocks instead of their raw items, sulfur/candy/ice-cream blocks dropped whole,
+	 * and the `inverted(silk-touch)` guards on the secondary pools were suppressed at the same time.
+	 * Nothing logs, and the tables load clean.
+	 *
+	 * Only `minecraft:match_tool` is rewritten. The `enchantments` key on an `enchant_randomly`
+	 * loot FUNCTION is an unrelated field with the same name, and must not be touched.
+	 *
+	 * Idempotent: a migrated predicate has no top-level `enchantments` left to move.
+	 */
+	fun migrateMatchToolEnchantments(resourcesRoot: File, singularInnerKey: Boolean): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		data.walkTopDown().filter { it.isFile && it.extension == "json" }.forEach { file ->
+			val original = runCatching { json.parseToJsonElement(file.readText()) }.getOrNull()
+				?: return@forEach
+			val migrated = rewriteMatchToolHosts(original, singularInnerKey)
+			if (migrated != original) {
+				file.writeText(json.encodeToString(JsonElement.serializer(), migrated))
+				changed++
+			}
+		}
+		return changed
+	}
+
+	private fun rewriteMatchToolHosts(node: JsonElement, singularInnerKey: Boolean): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map { rewriteMatchToolHosts(it, singularInnerKey) })
+		is JsonObject -> {
+			val mapped = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				node.forEach { (key, value) -> out[key] = rewriteMatchToolHosts(value, singularInnerKey) }
+			})
+			val predicate = mapped["predicate"] as? JsonObject
+			if (mapped.idOf("condition") == "minecraft:match_tool" && predicate != null)
+				mapped.replacing("predicate", migrateEnchantmentPredicates(predicate, singularInnerKey))
+			else mapped
+		}
+		else -> node
+	}
+
+	/** The two legacy `ItemPredicate` enchantment lists, mapped to the sub-predicate they became. */
+	private val enchantmentSubPredicates = mapOf(
+		"enchantments" to "minecraft:enchantments",
+		"stored_enchantments" to "minecraft:stored_enchantments",
+	)
+
+	private fun migrateEnchantmentPredicates(predicate: JsonObject, singularInnerKey: Boolean): JsonObject {
+		val legacy = enchantmentSubPredicates.keys.filter { predicate[it] is JsonArray }
+		if (legacy.isEmpty()) return predicate
+		val nested = LinkedHashMap<String, JsonElement>(
+			(predicate["predicates"] as? JsonObject)?.toMap() ?: emptyMap()
+		)
+		legacy.forEach { key ->
+			nested[enchantmentSubPredicates.getValue(key)] =
+				JsonArray((predicate[key] as JsonArray).map { renameEnchantmentEntry(it, singularInnerKey) })
+		}
+		val out = LinkedHashMap<String, JsonElement>(predicate)
+		legacy.forEach(out::remove)
+		out["predicates"] = JsonObject(nested)
+		return JsonObject(out)
+	}
+
+	/** 1.21 turned `EnchantmentPredicate.enchantment` (one holder) into `enchantments` (a set). */
+	private fun renameEnchantmentEntry(entry: JsonElement, singularInnerKey: Boolean): JsonElement {
+		val obj = entry as? JsonObject ?: return entry
+		val id = obj["enchantment"] ?: return obj
+		if (singularInnerKey) return obj
+		return JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			obj.forEach { (key, value) -> out[if (key == "enchantment") "enchantments" else key] = value }
+			out["enchantments"] = id
+		})
 	}
 
 	/**

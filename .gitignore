@@ -25,3 +25,4 @@ __pycache__/
 # Reference clone of upstream Citadel, kept beside the tree while vendoring its 98 classes
 # into src/main/java/.../citadel. It carries its own .git and is not part of this mod.
 Citadel/
+testmods/

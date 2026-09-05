@@ -16,6 +16,7 @@ public class ACServerConfig {
     public final ForgeConfigSpec.IntValue atlatitanMaxExplosionResistance;
     public final ForgeConfigSpec.BooleanValue devastatingTremorzillaBeam;
     public final ForgeConfigSpec.DoubleValue drownedDivingGearSpawnChance;
+    public final ForgeConfigSpec.BooleanValue mobsCanTargetThemselves;
     public final ForgeConfigSpec.BooleanValue watcherPossession;
     public final ForgeConfigSpec.IntValue watcherPossessionCooldown;
     public final ForgeConfigSpec.BooleanValue walkingOnMagnets;
@@ -62,6 +63,7 @@ public class ACServerConfig {
         luxtructosaurusBlockDropChance = builder.comment("Chance that blocks destroyed by luxtructosaurus attacks drop themselves, if mob griefing is enabled.").translation("luxtructosaurus_block_drop_chance").defineInRange("luxtructosaurus_block_drop_chance", 0.75D, 0, 1D);
         atlatitanMaxExplosionResistance = builder.comment("The maximum explosion resistance that a block can have to be destroyed by an atlatitan stomp. Set to zero to disable all atlatitan block breaking.").translation("atlatitan_max_block_explosion_resistance").defineInRange("atlatitan_max_block_explosion_resistance", 10, 0, Integer.MAX_VALUE);
         nucleeperFuseTime = builder.comment("How long (in game ticks) it takes for a nucleeper to explode.").translation("nucleeper_fuse_time").defineInRange("nucleeper_fuse_time", 300, 20, Integer.MAX_VALUE);
+        mobsCanTargetThemselves = builder.comment("Whether a mob is allowed to pick itself as its attack target. A mob that hits itself takes the knockback from a direction of zero length, which throws it straight up into the air. False stops that; true restores it, which some players prefer for how it looks.").translation("mobs_can_target_themselves").define("mobs_can_target_themselves", false);
         devastatingTremorzillaBeam = builder.comment("True if the Tremorzilla beam breaks even more blocks.").translation("devastating_tremorzilla_beam").define("devastating_tremorzilla_beam", true);
         watcherPossession = builder.comment("Whether the Watcher can take control of the camera.").translation("watcher_possession").define("watcher_possession", true);
         watcherPossessionCooldown = builder.comment("How long (in game ticks) between watcher possession attempts.").translation("watcher_possession_cooldown").defineInRange("watcher_possession_cooldown", 300, 20, 24000);

@@ -210,6 +210,15 @@ public class AlexsCaves {
         // EventBus 7 has no bus-wide addListener: a game-bus event carries its own static BUS.
         //? if forge && >=1.21.6
         /*net.minecraftforge.event.GatherComponentsEvent.Item.BUS.addListener(AlexsCaves::gatherItemComponents);*/
+        // ...and Fabric's, which has neither bus and instead fires one callback, once, after every
+        // mod initializer has run and before the item registry is frozen. Shipped 1.0.8 had only the
+        // two arms above, so on this loader nothing ever stamped minecraft:enchantable: from 1.21.2
+        // ItemStack#isEnchantable is purely `has(ENCHANTABLE)`, and EnchantmentMenu asks it, so none
+        // of the thirteen ACEnchantableItem items could be enchanted at a table. Enchanted books were
+        // unaffected — EnchantmentHelper#getAvailableEnchantmentResults special-cases Items.BOOK and
+        // never looks at the component — which is exactly the shape the report described.
+        //? if fabric && >=1.21.2
+        /*net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents.MODIFY.register(AlexsCaves::modifyFabricDefaultComponents);*/
         // …and 1.21.2's armour materials name an item tag for their repair ingredient, which
         // creating an armour item leaves unbound in the item registry. See bindModCreatedItemTags.
         //? if neoforge && >=1.21.2
@@ -419,6 +428,47 @@ public class AlexsCaves {
                 materials.add(material.builtInRegistryHolder());
             }
             event.register(net.minecraft.core.component.DataComponents.REPAIRABLE, new net.minecraft.world.item.enchantment.Repairable(net.minecraft.core.HolderSet.direct(materials)));
+        }
+    }
+    *///?}
+
+    // Fabric's half of the same job. One callback for the whole registry, like NeoForge's, but the
+    // builder it hands the modifier is seeded from item.components() by the API itself — so the
+    // tier's own repair materials are already in it and are read straight back off it, with no
+    // per-version split of the kind the NeoForge helper needs.
+    //
+    // getOrCreate rather than get: FabricComponentMapBuilder has no plain getter, and getOrDefault
+    // rejects a null default outright. The supplier is only reached for an item that has no
+    // REPAIRABLE of its own, where an empty set is the right thing to merge with.
+    //
+    // The one-item overload is used rather than the predicate one so this reads like the other two
+    // arms; it walks the item registry per call, ~19 times over ~1500 items, once, at startup.
+    //? if fabric && >=1.21.2 {
+    /*private static void modifyFabricDefaultComponents(final net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents.ModifyContext context) {
+        for (net.minecraft.world.item.Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+            if (item instanceof com.github.alexmodguy.alexscaves.server.item.ACEnchantableItem enchantable) {
+                int value = enchantable.getEnchantmentValue();
+                // The component's codec rejects a non-positive value, where the old hook read 0 as
+                // "not enchantable" — none of this mod's items returns one, but say so out loud.
+                if (value > 0) {
+                    context.modify(item, (net.minecraft.core.component.DataComponentMap.Builder builder) ->
+                            builder.set(net.minecraft.core.component.DataComponents.ENCHANTABLE, new net.minecraft.world.item.enchantment.Enchantable(value)));
+                }
+            }
+            if (item instanceof com.github.alexmodguy.alexscaves.server.item.ACRepairableItem repairable) {
+                context.modify(item, (net.minecraft.core.component.DataComponentMap.Builder builder) -> {
+                    java.util.List<net.minecraft.core.Holder<net.minecraft.world.item.Item>> materials = new java.util.ArrayList<>();
+                    net.minecraft.world.item.enchantment.Repairable existing = ((net.fabricmc.fabric.api.item.v1.FabricComponentMapBuilder) builder)
+                            .getOrCreate(net.minecraft.core.component.DataComponents.REPAIRABLE, () -> new net.minecraft.world.item.enchantment.Repairable(net.minecraft.core.HolderSet.direct(java.util.List.<net.minecraft.core.Holder<net.minecraft.world.item.Item>>of())));
+                    if (!repairable.acReplacesTierRepairMaterials()) {
+                        existing.items().forEach(materials::add);
+                    }
+                    for (net.minecraft.world.item.Item material : repairable.acExtraRepairMaterials()) {
+                        materials.add(material.builtInRegistryHolder());
+                    }
+                    builder.set(net.minecraft.core.component.DataComponents.REPAIRABLE, new net.minecraft.world.item.enchantment.Repairable(net.minecraft.core.HolderSet.direct(materials)));
+                });
+            }
         }
     }
     *///?}

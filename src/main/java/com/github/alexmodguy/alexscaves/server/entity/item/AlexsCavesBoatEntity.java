@@ -174,4 +174,10 @@ public class AlexsCavesBoatEntity extends Boat implements AlexsCavesBoat {
     }
     //?}
 
+    // Satisfies AlexsCavesBoat with the vanilla body. The interface cannot name the vanilla
+    // method directly — see the note there.
+    @Override
+    public float acGetRowingTime(int side, float partialTicks) {
+        return this.getRowingTime(side, partialTicks);
+    }
 }

@@ -21,7 +21,6 @@ import net.minecraft.world.phys.Vec3;
 public class MineGuardianAnchorRenderer extends EntityRenderer<MineGuardianAnchorEntity> {
 
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/mine_guardian_anchor.png");
-    private static final ResourceLocation TEXTURE_CHAIN = ResourceLocation.withDefaultNamespace("textures/block/chain.png");
     private static final MineGuardianAnchorModel MODEL = new MineGuardianAnchorModel();
 
     public MineGuardianAnchorRenderer(EntityRendererProvider.Context renderManagerIn) {
@@ -57,7 +56,7 @@ public class MineGuardianAnchorRenderer extends EntityRenderer<MineGuardianAncho
         Vec3 modelOffset = MODEL.getChainPosition(new Vec3(0, 0.1F, 0));
         Vec3 chainTo = entity.getChainFrom(partialTicks).add(modelOffset).subtract(translateFrom);
         Vec3 chainFrom = entity.getChainTo(partialTicks).subtract(translateFrom).subtract(chainTo);
-        VertexConsumer chainBuffer = bufferIn.getBuffer(RenderType.entityCutoutNoCull(TEXTURE_CHAIN));
+        VertexConsumer chainBuffer = bufferIn.getBuffer(RenderType.entityCutoutNoCull(BoundroidWinchRenderer.TEXTURE_CHAIN));
         poseStack.pushPose();
         poseStack.translate(chainTo.x, chainTo.y, chainTo.z);
         BoundroidWinchRenderer.renderChain(chainFrom, poseStack, chainBuffer, packedLightIn, OverlayTexture.NO_OVERLAY);

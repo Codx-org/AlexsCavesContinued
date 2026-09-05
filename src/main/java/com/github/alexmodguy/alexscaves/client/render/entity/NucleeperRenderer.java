@@ -18,7 +18,6 @@ import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.ForgeRenderTypes;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
@@ -104,7 +103,7 @@ public class NucleeperRenderer extends MobRenderer<NucleeperEntity, NucleeperMod
             float explodeProgress = entitylivingbaseIn.getExplodeProgress(partialTicks);
             VertexConsumer ivertexbuilder1 = bufferIn.getBuffer(ACRenderTypes.getEyesAlphaEnabled(TEXTURE_GLOW));
             this.getParentModel().renderToBuffer(poseStack, ivertexbuilder1, packedLightIn, LivingEntityRenderer.getOverlayCoords(entitylivingbaseIn, 0.0F), 1.0F, 1.0F, 1.0F, alpha);
-            VertexConsumer ivertexbuilder2 = bufferIn.getBuffer(ForgeRenderTypes.getUnlitTranslucent(TEXTURE_GLASS));
+            VertexConsumer ivertexbuilder2 = bufferIn.getBuffer(ACRenderTypes.getUnlitTranslucent(TEXTURE_GLASS));
             this.getParentModel().renderToBuffer(poseStack, ivertexbuilder2, packedLightIn, LivingEntityRenderer.getOverlayCoords(entitylivingbaseIn, 0.0F), 1.0F, 1.0F, 1.0F, 1.0F);
             ResourceLocation buttons;
             int buttonDiv = entitylivingbaseIn.tickCount / 5 % 6;

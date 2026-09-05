@@ -42,6 +42,7 @@
   "block.alexscaves.scarlet_magnet": "Scarlet Magnet",
   "block.alexscaves.azure_magnet": "Azure Magnet",
   "block.alexscaves.hologram_projector": "Hologram Projector",
+  "block.alexscaves.hologram_projector.scale": "Hologram size: %sx",
   "block.alexscaves.quarry": "Magnetic Quarry",
   "block.alexscaves.heart_of_iron": "Heart of Iron",
   "block.alexscaves.limestone": "Limestone",

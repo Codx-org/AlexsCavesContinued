@@ -18,12 +18,12 @@ public class CitadelEntityData {
     }
 
     public static CompoundTag getCitadelTag(LivingEntity entity) {
-        return entity instanceof ICitadelDataEntity ? ((ICitadelDataEntity) entity).getCitadelEntityData() : new CompoundTag();
+        return entity instanceof ICitadelDataEntity ? ((ICitadelDataEntity) entity).acGetCitadelEntityData() : new CompoundTag();
     }
 
     public static void setCitadelTag(LivingEntity entity, CompoundTag tag) {
         if (entity instanceof ICitadelDataEntity) {
-            ((ICitadelDataEntity) entity).setCitadelEntityData(tag);
+            ((ICitadelDataEntity) entity).acSetCitadelEntityData(tag);
         }
     }
 }

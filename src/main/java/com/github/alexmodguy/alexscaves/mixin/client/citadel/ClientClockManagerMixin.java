@@ -27,7 +27,7 @@ public class ClientClockManagerMixin {
     @ModifyExpressionValue(
             method = "tick(J)V",
             at = @At(value = "FIELD", target = "Lnet/minecraft/client/ClientClockManager$ClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
-    private float citadel_clockRate(float rate) {
+    private float acc_citadel_clockRate(float rate) {
         return rate * ClientTickRateTracker.getForClient(Minecraft.getInstance()).getDayTimeRateMultiplier();
     }
 }

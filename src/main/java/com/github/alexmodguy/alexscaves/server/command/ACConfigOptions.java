@@ -19,7 +19,7 @@ import java.util.Locale;
  *
  * <p>It exists so the chest menu ({@link ACAdminMenu}) and the plain-text listing
  * ({@code /acc config}) are two renderings of ONE table rather than two hand-maintained copies of
- * 39 entries that can drift apart. A new option is one line here and appears in both.</p>
+ * 40 entries that can drift apart. A new option is one line here and appears in both.</p>
  *
  * <h2>Why doubles are surfaced as scaled ints</h2>
  * The CodxLib pinned by this tree (1.3.6, {@code deps.codxlib}) ships {@code adjustInt} and
@@ -344,6 +344,11 @@ public final class ACConfigOptions {
         add(new BoolOption(2, "devastating_tremorzilla_beam", "Devastating Tremorzilla Beam", Items.FIRE_CHARGE,
                 c.devastatingTremorzillaBeam,
                 "§7Off makes the beam far gentler on terrain."));
+        add(new BoolOption(2, "mobs_can_target_themselves", "Mobs Can Target Themselves", Items.WOODEN_SWORD,
+                c.mobsCanTargetThemselves,
+                "§7A mob that hits itself is knocked back from",
+                "§7nowhere, so it launches straight up.",
+                "§7On restores that; off stops it happening."));
         add(new BoolOption(2, "watcher_possession", "Watcher Possession", Items.ENDER_EYE,
                 c.watcherPossession,
                 "§7Lets the Watcher take over a player's camera.",

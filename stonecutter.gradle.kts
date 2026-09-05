@@ -3465,6 +3465,12 @@ stonecutter parameters {
 		string("!mc2111-pkg-boat", true) {
 			replace("net.minecraft.world.entity.vehicle.Boat", "net.minecraft.world.entity.vehicle.boat.Boat")
 		}
+		// Named only from AlexsCavesBoatRenderer's type bound, which has to be the common
+		// supertype of the plain and chest boats from 1.21.2. `!mc2111-pkg-boat` cannot cover it:
+		// its source string does not occur inside this one, and rules do not chain.
+		string("!mc2111-pkg-abstractboat", true) {
+			replace("net.minecraft.world.entity.vehicle.AbstractBoat", "net.minecraft.world.entity.vehicle.boat.AbstractBoat")
+		}
 		string("!mc2111-pkg-chestboat", true) {
 			replace("net.minecraft.world.entity.vehicle.ChestBoat", "net.minecraft.world.entity.vehicle.boat.ChestBoat")
 		}

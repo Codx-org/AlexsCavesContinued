@@ -643,6 +643,19 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				val changed = DataPackMigration.migrateAdvancementPredicatesTo1205(destinationDir)
 				logger.lifecycle("Migrated $changed advancement location predicates to the 1.20.5 holder-set format")
 			}
+			// 1.20.5 moved ItemPredicate's enchantment checks into the `predicates` sub-predicate
+			// map and 1.21 renamed the key inside each entry. Both records are all-optionalFieldOf,
+			// so a stale key is dropped in silence and the surviving predicate matches EVERY stack,
+			// including a bare hand — which made the silk-touch branch of 80 block tables win
+			// unconditionally (ancient leaves dropped leaves and never saplings; every ore dropped
+			// itself). See DataPackMigration.migrateMatchToolEnchantments.
+			if (migrateTo1205) doLast {
+				val changed = DataPackMigration.migrateMatchToolEnchantments(
+					destinationDir,
+					singularInnerKey = !ctx.stonecutter.eval(ctx.currentMcVersion, ">=1.21"),
+				)
+				logger.lifecycle("Migrated $changed match_tool enchantment predicates to the 1.20.5 sub-predicate format")
+			}
 			// The data pack is authored Forge-side; NeoForge reads its own namespaces.
 			if (ctx.loader is Loader.NeoForge) doLast {
 				val changed = DataPackMigration.migrateNeoForge(
@@ -694,6 +707,17 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			if (ctx.loader is Loader.Fabric) doLast {
 				val dropped = DataPackMigration.dropForgeLootModifiers(destinationDir, ctx.modId)
 				logger.lifecycle("Dropped $dropped Forge loot-modifier data files Fabric cannot read")
+			}
+			// Vanilla's legacy PostPass builds its program id by concatenating
+			// "shaders/program/" + name + ".json" into a ONE-argument ResourceLocation, so a
+			// namespaced program name is a parse error and the whole chain fails to load. Forge
+			// patches that constructor, which is why upstream never saw it; Fabric does not, so
+			// six of the seven chains are silently missing below 1.21.2 — see
+			// DataPackMigration.unnamespacePostProgramsBelow1212. From 1.21.2 the shader assets go
+			// through migrateShadersTo1212 instead, where a namespace is legal.
+			if (ctx.loader is Loader.Fabric && !ctx.stonecutter.eval(ctx.currentMcVersion, ">=1.21.2")) doLast {
+				val flat = DataPackMigration.unnamespacePostProgramsBelow1212(destinationDir, ctx.modId)
+				logger.lifecycle("Un-namespaced $flat post-shader assets Fabric cannot address")
 			}
 			// Last, so the two passes above still see the folder names they were written against.
 			if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=1.21")) doLast {

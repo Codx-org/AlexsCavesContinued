@@ -42,7 +42,7 @@ public abstract class ClientLevelMixin extends Level {
             *///?} else {
             expect = 2)
             //?}
-    private long citadel_clientSetDayTime(long timeIn) {
+    private long acc_citadel_clientSetDayTime(long timeIn) {
         return ClientTickRateTracker.getForClient(Minecraft.getInstance()).getDayTimeIncrement(timeIn);
     }
 
@@ -53,7 +53,7 @@ public abstract class ClientLevelMixin extends Level {
             method = "Lnet/minecraft/client/multiplayer/ClientLevel;tickTime()V",
             remap = CitadelConstants.REMAPREFS,
             at = @org.spongepowered.asm.mixin.injection.At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;advanceDaytime()J"))
-    private long citadel_advanceDaytime(long original) {
+    private long acc_citadel_advanceDaytime(long original) {
         return ClientTickRateTracker.getForClient(Minecraft.getInstance()).getDayTimeIncrement(original);
     }
     *///?}

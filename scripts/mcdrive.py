@@ -30,8 +30,18 @@ d = display.Display(':0')
 root = d.screen().root
 
 
+# More than one Minecraft window can be on this display at once -- a second dev client of
+# this tree, or a neighbouring repo's.  They overlap pixel-for-pixel at the same geometry,
+# and `xwd` on an obscured one hands back whatever is composited in that region, so the
+# WRONG window screenshots as the RIGHT one while every keystroke goes somewhere invisible.
+# MC_WIN pins an exact window id (`find` prints it); MC_WIN_MATCH narrows by title.
+WIN_ID = os.environ.get('MC_WIN')
+WIN_MATCH = os.environ.get('MC_WIN_MATCH', 'Minecraft')
+
+
 def mc_window():
     best = None
+    want = int(WIN_ID, 0) if WIN_ID else None
     def walk(w, depth=0):
         nonlocal best
         try:
@@ -39,7 +49,10 @@ def mc_window():
             g = w.get_geometry()
         except Exception:
             return
-        if name and 'Minecraft' in name and g.width > 200:
+        if want is not None:
+            if w.id == want:
+                best = (w, g)
+        elif name and WIN_MATCH in name and g.width > 200:
             best = (w, g)
         try:
             for c in w.query_tree().children:

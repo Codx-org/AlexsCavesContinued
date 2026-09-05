@@ -39,14 +39,14 @@ public class PostEffectInitMixin {
     /*@Inject(method = "Lnet/minecraft/client/renderer/ShaderManager;apply(Lnet/minecraft/client/renderer/ShaderManager$Configs;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V",
             remap = CitadelConstants.REMAPREFS,
             at = @At("TAIL"))
-    private void citadel_initOutline(net.minecraft.client.renderer.ShaderManager.Configs configs, net.minecraft.server.packs.resources.ResourceManager resourceManager, net.minecraft.util.profiling.ProfilerFiller profiler, CallbackInfo ci) {
+    private void acc_citadel_initOutline(net.minecraft.client.renderer.ShaderManager.Configs configs, net.minecraft.server.packs.resources.ResourceManager resourceManager, net.minecraft.util.profiling.ProfilerFiller profiler, CallbackInfo ci) {
         PostEffectRegistry.onInitializeOutline();
     }
     *///?} else {
     @Inject(method = "Lnet/minecraft/client/renderer/LevelRenderer;initOutline()V",
             remap = CitadelConstants.REMAPREFS,
             at = @At("TAIL"))
-    private void citadel_initOutline(CallbackInfo ci) {
+    private void acc_citadel_initOutline(CallbackInfo ci) {
         PostEffectRegistry.onInitializeOutline();
     }
     //?}

@@ -2,9 +2,12 @@ package com.github.alexmodguy.alexscaves.fabric.registries;
 
 import com.github.alexmodguy.alexscaves.fabric.ModBus;
 import com.github.alexmodguy.alexscaves.server.misc.ACIdFactories;
+import com.github.alexmodguy.alexscaves.mixin.fabric.PoiTypesInvoker;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.ai.village.poi.PoiType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -255,10 +258,31 @@ public final class DeferredRegister<T> {
             return value;
         }
 
+        /**
+         * Registers the entry — and, for a point-of-interest type, maps its blockstates as well.
+         *
+         * <p>Registering a {@code PoiType} is only half of what makes a block a point of interest:
+         * {@code PoiTypes.forState}, the one question {@code PoiSection} asks, reads a private map
+         * that only {@code PoiTypes.bootstrap} fills. Forge and NeoForge close that gap in the
+         * loader; on this one nothing does, so all nine of {@code ACPOIRegistry}'s types were
+         * registered and never recorded by a single chunk. See
+         * {@code mixin.fabric.PoiTypesInvoker} for the whole story. Registering through
+         * {@code registerForHolder} rather than {@code register} is what gives us the
+         * {@code Holder} that call wants; the two are the same registration, the latter being
+         * literally the former plus {@code .value()}.
+         */
         @SuppressWarnings({"unchecked", "rawtypes"})
         private void resolve(Registry<?> registry, String modid) {
             I created = factory.get();
-            Registry.register((Registry) registry, ACIdFactories.of(modid, name), created);
+            var id = ACIdFactories.of(modid, name);
+            if (created instanceof PoiType poiType) {
+                ResourceKey rawRegistryKey = registry.key();
+                Holder.Reference holder = Registry.registerForHolder((Registry) registry,
+                        ResourceKey.create(rawRegistryKey, id), created);
+                PoiTypesInvoker.ac_registerBlockStates((Holder<PoiType>) holder, poiType.matchingStates());
+            } else {
+                Registry.register((Registry) registry, id, created);
+            }
             this.value = created;
         }
 

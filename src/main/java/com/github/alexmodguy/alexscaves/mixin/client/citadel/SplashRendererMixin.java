@@ -37,7 +37,7 @@ public class SplashRendererMixin {
     private String splash;
     //?}
 
-    private int splashTextColor = -1;
+    private int accSplashTextColor = -1;
 
     // 1.21.6 rebuilt the GUI's transform stack: GuiGraphics#pose is a Matrix3x2fStack, so the splash's
     // tilt is a single rotate(F) rather than a quaternion mulPose, and render's trailing argument
@@ -60,7 +60,7 @@ public class SplashRendererMixin {
                     target = "Lorg/joml/Matrix3x2f;rotate(F)Lorg/joml/Matrix3x2f;",
                     shift = At.Shift.BEFORE
             ))
-    protected void citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
     *///?} elif >=1.21.6 {
     /*@Inject(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;F)V"},
@@ -70,7 +70,7 @@ public class SplashRendererMixin {
                     target = "Lorg/joml/Matrix3x2fStack;rotate(F)Lorg/joml/Matrix3x2f;",
                     shift = At.Shift.BEFORE
             ))
-    protected void citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
     *///?} elif >=1.21.5 {
     /*@Inject(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;I)V"},
@@ -80,7 +80,7 @@ public class SplashRendererMixin {
                     target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionfc;)V",
                     shift = At.Shift.BEFORE
             ))
-    protected void citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, int loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, int loadProgress, CallbackInfo ci) {
     *///?} else {
     @Inject(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;I)V"},
@@ -90,10 +90,10 @@ public class SplashRendererMixin {
                     target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionf;)V",
                     shift = At.Shift.BEFORE
             ))
-    protected void citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, int loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_preRenderSplashText(GuiGraphics guiGraphics, int width, Font font, int loadProgress, CallbackInfo ci) {
     //?}
         ACClientCompat.pushPose(guiGraphics);
-        citadel_firePre(guiGraphics);
+        acc_citadel_firePre(guiGraphics);
     }
 
     // Firing the event is what the field retype splits, not the injection, so it is hoisted here
@@ -102,7 +102,7 @@ public class SplashRendererMixin {
     // that node needs no @ModifyConstant at all.
     //? if >=1.21.11 {
     /*@org.spongepowered.asm.mixin.Unique
-    private void citadel_firePre(GuiGraphics guiGraphics) {
+    private void acc_citadel_firePre(GuiGraphics guiGraphics) {
         EventRenderSplashText.Pre event = new EventRenderSplashText.Pre(splash.getString(), guiGraphics, ACClientCompat.partialTick(), 16776960);
         EventRenderSplashText.Pre.post(event);
 
@@ -112,13 +112,13 @@ public class SplashRendererMixin {
         }
     }
     *///?} else {
-    private void citadel_firePre(GuiGraphics guiGraphics) {
+    private void acc_citadel_firePre(GuiGraphics guiGraphics) {
         EventRenderSplashText.Pre event = new EventRenderSplashText.Pre(splash, guiGraphics, ACClientCompat.partialTick(), 16776960);
         EventRenderSplashText.Pre.post(event);
 
         if (event.getCitadelResult() == CitadelEvent.Result.ALLOW) {
             splash = event.getSplashText();
-            splashTextColor = event.getSplashTextColor();
+            accSplashTextColor = event.getSplashTextColor();
         }
     }
     //?}
@@ -136,7 +136,7 @@ public class SplashRendererMixin {
                     shift = At.Shift.AFTER
             )
     )
-    protected void citadel_postRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_postRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
     *///?} elif >=1.21.6 {
     /*@Inject(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;F)V"},
@@ -147,7 +147,7 @@ public class SplashRendererMixin {
                     shift = At.Shift.AFTER
             )
     )
-    protected void citadel_postRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_postRenderSplashText(GuiGraphics guiGraphics, int width, Font font, float loadProgress, CallbackInfo ci) {
     *///?} else {
     @Inject(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;I)V"},
@@ -158,20 +158,20 @@ public class SplashRendererMixin {
                     shift = At.Shift.AFTER
             )
     )
-    protected void citadel_postRenderSplashText(GuiGraphics guiGraphics, int width, Font font, int loadProgress, CallbackInfo ci) {
+    protected void acc_citadel_postRenderSplashText(GuiGraphics guiGraphics, int width, Font font, int loadProgress, CallbackInfo ci) {
     //?}
-        citadel_firePost(guiGraphics);
+        acc_citadel_firePost(guiGraphics);
         ACClientCompat.popPose(guiGraphics);
     }
 
-    // Same split as citadel_firePre: the event is String-shaped on every version, the field is not.
+    // Same split as acc_citadel_firePre: the event is String-shaped on every version, the field is not.
     //? if >=1.21.11 {
     /*@org.spongepowered.asm.mixin.Unique
-    private void citadel_firePost(GuiGraphics guiGraphics) {
+    private void acc_citadel_firePost(GuiGraphics guiGraphics) {
         EventRenderSplashText.Post.post(new EventRenderSplashText.Post(splash.getString(), guiGraphics, ACClientCompat.partialTick()));
     }
     *///?} else {
-    private void citadel_firePost(GuiGraphics guiGraphics) {
+    private void acc_citadel_firePost(GuiGraphics guiGraphics) {
         EventRenderSplashText.Post.post(new EventRenderSplashText.Post(splash, guiGraphics, ACClientCompat.partialTick()));
     }
     //?}
@@ -181,9 +181,9 @@ public class SplashRendererMixin {
     // which masks the colour to 24 bits — so the event's RGB means exactly the same thing on both
     // sides and only the constant to match changes.
     // 1.21.11 has no colour constant in render() at all: the yellow is a Style on the Component,
-    // applied by SplashManager, so there is nothing here to modify and citadel_firePre carries the
+    // applied by SplashManager, so there is nothing here to modify and acc_citadel_firePre carries the
     // override on the Component instead. The arm is deliberately empty — the whole method goes away
-    // on that band, which is also why splashTextColor is only written below 1.21.11.
+    // on that band, which is also why accSplashTextColor is only written below 1.21.11.
     //? if >=1.21.11 {
     /*
     *///?} elif >=1.21.6 {
@@ -191,16 +191,16 @@ public class SplashRendererMixin {
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;F)V"},
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "CONSTANT", args = "intValue=-256"))
-    private int citadel_splashTextColor(int value) {
-        return splashTextColor == -1 ? value : splashTextColor;
+    private int acc_citadel_splashTextColor(int value) {
+        return accSplashTextColor == -1 ? value : accSplashTextColor;
     }
     *///?} else {
     @ModifyExpressionValue(
             method = {"Lnet/minecraft/client/gui/components/SplashRenderer;render(Lnet/minecraft/client/gui/GuiGraphics;ILnet/minecraft/client/gui/Font;I)V"},
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "CONSTANT", args = "intValue=16776960"))
-    private int citadel_splashTextColor(int value) {
-        return splashTextColor == -1 ? value : splashTextColor;
+    private int acc_citadel_splashTextColor(int value) {
+        return accSplashTextColor == -1 ? value : accSplashTextColor;
     }
     //?}
 }

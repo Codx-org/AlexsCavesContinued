@@ -42,6 +42,19 @@ public class NuclearFurnaceComponentBlock extends Block implements WorldlyContai
 
     public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
 
+    // Building the furnace passes through states that are, for a few instructions, invalid: the
+    // corner turns into a NUCLEAR_FURNACE while its seven neighbours are still inactive, and the
+    // neighbours are then activated one at a time. Both this block's canSurvive and the corner
+    // block's ask about the FINISHED structure, and a plain setBlock runs updateNeighbourShapes on
+    // all six faces -- so the very first component to flip made the corner furnace evaluate
+    // canSurvive against a half-built structure, answer false, and destroy itself, after which
+    // every activated component failed the same check and the whole assembly cascaded to air. That
+    // is upstream's "the multiblock cannot be built" bug (and its StackOverflowError sibling).
+    // UPDATE_KNOWN_SHAPE is vanilla's "the caller already knows the shapes are right, do not
+    // re-derive them" flag, which is exactly true here: the structure is consistent again by the
+    // time the assembly returns, and every later neighbour change still updates shapes normally.
+    private static final int ASSEMBLY_FLAGS = Block.UPDATE_NEIGHBORS | Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
     private static final VoxelShape TOP_1_SHAPE = ACMath.buildShape(
             Block.box(0, 0, 0, 16, 16, 9),
             Block.box(0, 0, 0, 9, 16, 16)
@@ -167,7 +180,7 @@ public class NuclearFurnaceComponentBlock extends Block implements WorldlyContai
                     mutableBlockPos.set(cornerPos.getX() + x, cornerPos.getY() + y, cornerPos.getZ() + z);
                     BlockState state = levelAccessor.getBlockState(mutableBlockPos);
                     if (state.is(ACBlockRegistry.NUCLEAR_FURNACE_COMPONENT.get())) {
-                        levelAccessor.setBlock(mutableBlockPos, ACBlockRegistry.NUCLEAR_FURNACE_COMPONENT.get().defaultBlockState().setValue(ACTIVE, active), 3);
+                        levelAccessor.setBlock(mutableBlockPos, ACBlockRegistry.NUCLEAR_FURNACE_COMPONENT.get().defaultBlockState().setValue(ACTIVE, active), ASSEMBLY_FLAGS);
                     }
                 }
             }
@@ -178,7 +191,7 @@ public class NuclearFurnaceComponentBlock extends Block implements WorldlyContai
         BlockPos corner = getCornerForFurnace(level, blockPos, false);
         if (corner != null && isCornerForFurnace(level, corner, true, false)) {
             Direction facing = living == null ? Direction.NORTH : living.getDirection().getOpposite();
-            level.setBlockAndUpdate(corner, ACBlockRegistry.NUCLEAR_FURNACE.get().defaultBlockState().setValue(NuclearFurnaceBlock.FACING, facing));
+            level.setBlock(corner, ACBlockRegistry.NUCLEAR_FURNACE.get().defaultBlockState().setValue(NuclearFurnaceBlock.FACING, facing), ASSEMBLY_FLAGS);
             activateNeighbors(level, corner, true);
         }
     }

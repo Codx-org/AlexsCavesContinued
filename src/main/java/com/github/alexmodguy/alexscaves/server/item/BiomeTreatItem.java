@@ -33,9 +33,9 @@ public class BiomeTreatItem extends CaveInfoItem implements ACFoodPropertiesItem
         // per stack, so the "undiscovered" profile has to be declared up front here. The
         // "discovered" one is written onto the stack in CaveInfoItem#create.
         //? if >=1.20.5
-        /*super(ACFoodBuilder.food(new Item.Properties().stacksTo(1), ACFoods.BIOME_TREAT), false);*/
+        /*super(ACFoodBuilder.food(new Item.Properties().stacksTo(1).rarity(net.minecraft.world.item.Rarity.UNCOMMON), ACFoods.BIOME_TREAT), false);*/
         //? if <1.20.5
-        super(new Item.Properties().stacksTo(1), false);
+        super(new Item.Properties().stacksTo(1).rarity(net.minecraft.world.item.Rarity.UNCOMMON), false);
     }
 
     @Override

@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class CitadelServerData extends SavedData {
 
-    private static final String IDENTIFIER = "citadel_world_data";
+    private static final String IDENTIFIER = "alexscaves_citadel_world_data";
 
     private final MinecraftServer server;
 

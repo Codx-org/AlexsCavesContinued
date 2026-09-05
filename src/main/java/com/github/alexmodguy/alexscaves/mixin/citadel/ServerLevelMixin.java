@@ -24,7 +24,7 @@ public class ServerLevelMixin {
             *///?} else {
             expect = 2)
             //?}
-    private long citadel_clientSetDayTime(long timeIn) {
+    private long acc_citadel_clientSetDayTime(long timeIn) {
         return ServerTickRateTracker.getForServer(server).getDayTimeIncrement(timeIn);
     }
 
@@ -46,7 +46,7 @@ public class ServerLevelMixin {
             method = "Lnet/minecraft/server/level/ServerLevel;tickTime()V",
             remap = CitadelConstants.REMAPREFS,
             at = @org.spongepowered.asm.mixin.injection.At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;advanceDaytime()J"))
-    private long citadel_advanceDaytime(long original) {
+    private long acc_citadel_advanceDaytime(long original) {
         return ServerTickRateTracker.getForServer(server).getDayTimeIncrement(original);
     }
     *///?}

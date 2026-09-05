@@ -2,7 +2,6 @@ package com.github.alexmodguy.alexscaves.server.block;
 
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
-import com.google.common.collect.ImmutableMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -19,12 +18,16 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import java.util.Map;
-
 public class AbyssmarineWallBlock extends WallBlock implements ActivatedByAltar {
 
-    private final Map<BlockState, VoxelShape> shapeByIndex;
-    private final Map<BlockState, VoxelShape> collisionShapeByIndex;
+    /**
+     * up (2) x east/north/west/south wall side (3 each). The four altar/water properties this block
+     * also carries do not change its outline, so they are deliberately not part of the key.
+     */
+    private static final int SHAPE_COUNT = 2 * 3 * 3 * 3 * 3;
+
+    private final VoxelShape[] shapeByIndex;
+    private final VoxelShape[] collisionShapeByIndex;
 
     public AbyssmarineWallBlock(Properties properties) {
         super(properties);
@@ -55,7 +58,19 @@ public class AbyssmarineWallBlock extends WallBlock implements ActivatedByAltar 
         builder.add(DISTANCE, ACTIVE, UP, BlockStateProperties.NORTH_WALL, BlockStateProperties.EAST_WALL, BlockStateProperties.WEST_WALL, BlockStateProperties.SOUTH_WALL, WATERLOGGED);
     }
 
-    private Map<BlockState, VoxelShape> makeAbyssalShapes(float p_57966_, float p_57967_, float p_57968_, float p_57969_, float p_57970_, float p_57971_) {
+    private static int shapeIndex(boolean up, WallSide east, WallSide north, WallSide west, WallSide south) {
+        int i = up ? 1 : 0;
+        i = i * 3 + east.ordinal();
+        i = i * 3 + north.ordinal();
+        i = i * 3 + west.ordinal();
+        return i * 3 + south.ordinal();
+    }
+
+    private static int shapeIndex(BlockState state) {
+        return shapeIndex(state.getValue(UP).booleanValue(), state.getValue(BlockStateProperties.EAST_WALL), state.getValue(BlockStateProperties.NORTH_WALL), state.getValue(BlockStateProperties.WEST_WALL), state.getValue(BlockStateProperties.SOUTH_WALL));
+    }
+
+    private VoxelShape[] makeAbyssalShapes(float p_57966_, float p_57967_, float p_57968_, float p_57969_, float p_57970_, float p_57971_) {
         float f = 8.0F - p_57966_;
         float f1 = 8.0F + p_57966_;
         float f2 = 8.0F - p_57967_;
@@ -69,7 +84,7 @@ public class AbyssmarineWallBlock extends WallBlock implements ActivatedByAltar 
         VoxelShape voxelshape6 = Block.box((double) f2, (double) p_57969_, (double) f2, (double) f3, (double) p_57971_, 16.0D);
         VoxelShape voxelshape7 = Block.box(0.0D, (double) p_57969_, (double) f2, (double) f3, (double) p_57971_, (double) f3);
         VoxelShape voxelshape8 = Block.box((double) f2, (double) p_57969_, (double) f2, 16.0D, (double) p_57971_, (double) f3);
-        ImmutableMap.Builder<BlockState, VoxelShape> builder = ImmutableMap.builder();
+        VoxelShape[] shapes = new VoxelShape[SHAPE_COUNT];
 
         for (Boolean obool : UP.getPossibleValues()) {
             for (WallSide wallside : BlockStateProperties.EAST_WALL.getPossibleValues()) {
@@ -81,24 +96,18 @@ public class AbyssmarineWallBlock extends WallBlock implements ActivatedByAltar 
                             voxelshape9 = applyWallShape(voxelshape9, wallside2, voxelshape3, voxelshape7);
                             voxelshape9 = applyWallShape(voxelshape9, wallside1, voxelshape1, voxelshape5);
                             voxelshape9 = applyWallShape(voxelshape9, wallside3, voxelshape2, voxelshape6);
-                            if (obool) {
+                            if (obool.booleanValue()) {
                                 voxelshape9 = Shapes.or(voxelshape9, voxelshape);
                             }
 
-                            BlockState blockstate = this.defaultBlockState().setValue(UP, obool).setValue(BlockStateProperties.EAST_WALL, wallside).setValue(BlockStateProperties.WEST_WALL, wallside2).setValue(BlockStateProperties.NORTH_WALL, wallside1).setValue(BlockStateProperties.SOUTH_WALL, wallside3);
-                            for (int i = 1; i <= MAX_DISTANCE; i++) {
-                                builder.put(blockstate.setValue(DISTANCE, i).setValue(ACTIVE, false).setValue(WATERLOGGED, Boolean.valueOf(false)), voxelshape9);
-                                builder.put(blockstate.setValue(DISTANCE, i).setValue(ACTIVE, false).setValue(WATERLOGGED, Boolean.valueOf(true)), voxelshape9);
-                                builder.put(blockstate.setValue(DISTANCE, i).setValue(ACTIVE, true).setValue(WATERLOGGED, Boolean.valueOf(false)), voxelshape9);
-                                builder.put(blockstate.setValue(DISTANCE, i).setValue(ACTIVE, true).setValue(WATERLOGGED, Boolean.valueOf(true)), voxelshape9);
-                            }
+                            shapes[shapeIndex(obool.booleanValue(), wallside, wallside1, wallside2, wallside3)] = voxelshape9;
                         }
                     }
                 }
             }
         }
 
-        return builder.build();
+        return shapes;
     }
 
     private static VoxelShape applyWallShape(VoxelShape p_58034_, WallSide p_58035_, VoxelShape p_58036_, VoxelShape p_58037_) {
@@ -110,11 +119,11 @@ public class AbyssmarineWallBlock extends WallBlock implements ActivatedByAltar 
     }
 
     public VoxelShape getShape(BlockState p_58050_, BlockGetter p_58051_, BlockPos p_58052_, CollisionContext p_58053_) {
-        return this.shapeByIndex.get(p_58050_);
+        return this.shapeByIndex[shapeIndex(p_58050_)];
     }
 
     public VoxelShape getCollisionShape(BlockState p_58055_, BlockGetter p_58056_, BlockPos p_58057_, CollisionContext p_58058_) {
-        return this.collisionShapeByIndex.get(p_58055_);
+        return this.collisionShapeByIndex[shapeIndex(p_58055_)];
     }
 
 }

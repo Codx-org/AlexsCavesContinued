@@ -29,7 +29,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.ForgeRenderTypes;
 
 /**
  * The mod's custom item renderer — the 3D galena gauntlet, resistor shield, raygun, spears, beholder,
@@ -246,7 +245,7 @@ public class ACItemstackRenderer
                 EXTINCTION_SPEAR_MODEL.resetToDefaultPose();
                 VertexConsumer vertexconsumer1 = ACClientCompat.armorFoilBuffer(bufferIn, RenderType.entityCutoutNoCull(EXTINCTION_SPEAR_TEXTURE), itemStackIn.hasFoil());
                 EXTINCTION_SPEAR_MODEL.renderToBuffer(poseStack, vertexconsumer1, 240, combinedOverlayIn, 1.0F, 1.0F, 1.0F, 1.0F);
-                VertexConsumer vertexconsumer2 = ACClientCompat.armorFoilBuffer(bufferIn, ForgeRenderTypes.getUnlitTranslucent(EXTINCTION_SPEAR_TEXTURE), itemStackIn.hasFoil());
+                VertexConsumer vertexconsumer2 = ACClientCompat.armorFoilBuffer(bufferIn, ACRenderTypes.getUnlitTranslucent(EXTINCTION_SPEAR_TEXTURE), itemStackIn.hasFoil());
                 EXTINCTION_SPEAR_MODEL.renderToBuffer(poseStack, vertexconsumer2, 240, combinedOverlayIn, 1.0F, 1.0F, 1.0F, 1.0F);
                 poseStack.popPose();
             } else {

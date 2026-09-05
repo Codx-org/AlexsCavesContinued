@@ -55,7 +55,17 @@ public enum DefaultMapBackgrounds {
             return TEXTURE_HASH_MAP.get(id);
         } else {
             MapBackgroundTexture simpleTexture = new MapBackgroundTexture(resourceLocation);
+            // 1.21.4 split registration from loading. Up to 1.21.3 register() ran the texture's
+            // load() itself, which is what filled in the nativeImage this class reads pixels out
+            // of. From 1.21.4 register() only files the texture in byPath -- the loading call is
+            // the new registerAndLoad(). Keeping register() here left every background image null,
+            // so getMapColor() answered 0 for every pixel and the whole cave map drew BLACK, with
+            // only the biome labels (which read the biome array, not the textures) still visible.
+            //? if >=1.21.4 {
+            /*Minecraft.getInstance().getTextureManager().registerAndLoad(resourceLocation, simpleTexture);
+            *///?} else {
             Minecraft.getInstance().getTextureManager().register(resourceLocation, simpleTexture);
+            //?}
             TEXTURE_HASH_MAP.put(id, simpleTexture);
             return simpleTexture;
         }

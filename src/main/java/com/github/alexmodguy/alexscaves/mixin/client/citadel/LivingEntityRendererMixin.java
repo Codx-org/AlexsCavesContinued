@@ -34,7 +34,7 @@ public class LivingEntityRendererMixin {
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "RETURN")
     )
-    protected void citadel_setupRotations(net.minecraft.client.renderer.entity.state.LivingEntityRenderState renderState, PoseStack poseStack, float bodyYRot, float scale, CallbackInfo ci) {
+    protected void acc_citadel_setupRotations(net.minecraft.client.renderer.entity.state.LivingEntityRenderState renderState, PoseStack poseStack, float bodyYRot, float scale, CallbackInfo ci) {
         if (com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(renderState) instanceof LivingEntity livingEntity) {
             EventLivingRenderer.SetupRotations event = new EventLivingRenderer.SetupRotations(livingEntity, model, poseStack, bodyYRot,
                     com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.partialTick(renderState));
@@ -47,7 +47,7 @@ public class LivingEntityRendererMixin {
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "RETURN")
     )
-    protected void citadel_setupRotations(LivingEntity livingEntity, PoseStack poseStack, float ageInTicks, float bodyYRot, float partialTick, CallbackInfo ci) {
+    protected void acc_citadel_setupRotations(LivingEntity livingEntity, PoseStack poseStack, float ageInTicks, float bodyYRot, float partialTick, CallbackInfo ci) {
         EventLivingRenderer.SetupRotations event = new EventLivingRenderer.SetupRotations(livingEntity, model, poseStack, bodyYRot, partialTick);
         EventLivingRenderer.SetupRotations.post(event);
 
@@ -62,7 +62,7 @@ public class LivingEntityRendererMixin {
                     shift = At.Shift.BEFORE
             )
     )
-    protected void citadel_render_setupAnim_before(LivingEntity livingEntity, float yaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo ci) {
+    protected void acc_citadel_render_setupAnim_before(LivingEntity livingEntity, float yaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo ci) {
         EventLivingRenderer.PreSetupAnimations event = new EventLivingRenderer.PreSetupAnimations(livingEntity, model, poseStack, yaw, partialTicks, bufferSource, packedLight);
         EventLivingRenderer.PreSetupAnimations.post(event);
 
@@ -77,7 +77,7 @@ public class LivingEntityRendererMixin {
                     shift = At.Shift.AFTER
             )
     )
-    protected void citadel_render_setupAnim_after(LivingEntity livingEntity, float yaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo ci) {
+    protected void acc_citadel_render_setupAnim_after(LivingEntity livingEntity, float yaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo ci) {
         EventLivingRenderer.PostSetupAnimations event = new EventLivingRenderer.PostSetupAnimations(livingEntity, model, poseStack, yaw, partialTicks, bufferSource, packedLight);
         EventLivingRenderer.PostSetupAnimations.post(event);
     }
@@ -87,7 +87,7 @@ public class LivingEntityRendererMixin {
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "RETURN")
     )
-    protected void citadel_render_renderToBuffer(LivingEntity livingEntity, float yaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo ci) {
+    protected void acc_citadel_render_renderToBuffer(LivingEntity livingEntity, float yaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo ci) {
         EventLivingRenderer.PostRenderModel event = new EventLivingRenderer.PostRenderModel(livingEntity, model, poseStack, yaw, partialTicks, bufferSource, packedLight);
         EventLivingRenderer.PostRenderModel.post(event);
     }

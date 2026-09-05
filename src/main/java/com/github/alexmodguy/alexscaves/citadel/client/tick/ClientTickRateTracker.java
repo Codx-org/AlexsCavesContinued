@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ClientTickRateTracker extends TickRateTracker {
-    public static final Logger LOGGER = LogManager.getLogger("citadel-client-tick");
+    public static final Logger LOGGER = LogManager.getLogger("alexscaves-citadel-client-tick");
     private static final Map<Minecraft, ClientTickRateTracker> dataMap = new HashMap<>();
 
     public Minecraft client;

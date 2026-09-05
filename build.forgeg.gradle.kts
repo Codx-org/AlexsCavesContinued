@@ -163,3 +163,20 @@ tasks.named<Javadoc>("javadoc") { isEnabled = false }
 configurations.configureEach {
 	resolutionStrategy { force("net.sf.jopt-simple:jopt-simple:5.0.4") }
 }
+
+// ── Local coexistence test mods (dev runs only, never shipped) ────────────────────────────
+// Any jar dropped in testmods/<node>/ is added to the dev runtime as a MOD dependency so loom
+// remaps it SRG → Mojmap. Dropping a published Forge jar straight into versions/<node>/run/mods/
+// instead loads it un-remapped and the game dies at bootstrap on an SRG name
+// (`NoSuchFieldError: f_135042_` out of a mixin merged into LivingEntity's <clinit>).
+// The directory is normally absent/empty; when it is, this block does nothing.
+run {
+	val testMods = rootProject.file("testmods/${project.name}")
+	val jars = testMods.listFiles { f: java.io.File -> f.name.endsWith(".jar") }?.sorted().orEmpty()
+	if (jars.isNotEmpty()) {
+		logger.lifecycle("[testmods] ${project.name}: ${jars.joinToString(", ") { it.name }}")
+		dependencies {
+			jars.forEach { "modLocalRuntime"(files(it)) }
+		}
+	}
+}

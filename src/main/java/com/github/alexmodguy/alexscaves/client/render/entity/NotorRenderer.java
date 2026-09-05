@@ -224,6 +224,12 @@ public class NotorRenderer extends MobRenderer<NotorEntity, NotorModel> {
                             0.0F, 0.0F, -0.1F, 0.0F, 0.0F, partialTicks);
                     ACClientCompat.renderToBuffer(FerrouslimeRenderer.FERROUSLIME_MODEL, matrixStack, ivertexbuilder, 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
                     matrixStack.popPose();
+                }else{
+                    // Everything else: a mob whose renderer is not a vanilla-shaped living one over
+                    // an EntityModel, which is most of what an animation library produces. Nothing
+                    // here can pose it, so its own renderer draws it and every render type it asks
+                    // for is swapped for the hologram type on the way to the buffer.
+                    ACClientCompat.renderAsHologram(entityIn, 0.0F, partialTicks, matrixStack, bufferIn, 240);
                 }
                 entityIn.setXRot(xRot);
                 entityIn.xRotO = xRotOld;

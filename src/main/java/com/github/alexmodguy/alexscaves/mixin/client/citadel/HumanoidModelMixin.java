@@ -38,32 +38,32 @@ public abstract class HumanoidModelMixin extends Model {
     // mixin.renderstate.EntityRendererMixin stamps onto every state it extracts.
     // 1.21.11 then dropped the ArmPose again — the pose is read off the render state inside the
     // poser now — so the descriptor and the handler both lose their trailing argument. Only the two
-    // @Injects differ between the two render-state bands; citadel_poseArm below is shared.
+    // @Injects differ between the two render-state bands; acc_citadel_poseArm below is shared.
     //? if >=1.21.11 {
     /*@Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/model/HumanoidModel;poseRightArm(Lnet/minecraft/client/renderer/entity/state/HumanoidRenderState;)V", cancellable = true)
-    private void citadel_poseRightArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, CallbackInfo ci) {
-        this.citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), false, ci);
+    private void acc_citadel_poseRightArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, CallbackInfo ci) {
+        this.acc_citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), false, ci);
     }
 
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/model/HumanoidModel;poseLeftArm(Lnet/minecraft/client/renderer/entity/state/HumanoidRenderState;)V", cancellable = true)
-    private void citadel_poseLeftArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, CallbackInfo ci) {
-        this.citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), true, ci);
+    private void acc_citadel_poseLeftArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, CallbackInfo ci) {
+        this.acc_citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), true, ci);
     }
     *///?} elif >=1.21.2 {
     /*@Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/model/HumanoidModel;poseRightArm(Lnet/minecraft/client/renderer/entity/state/HumanoidRenderState;Lnet/minecraft/client/model/HumanoidModel$ArmPose;)V", cancellable = true)
-    private void citadel_poseRightArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, HumanoidModel.ArmPose armPose, CallbackInfo ci) {
-        this.citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), false, ci);
+    private void acc_citadel_poseRightArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, HumanoidModel.ArmPose armPose, CallbackInfo ci) {
+        this.acc_citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), false, ci);
     }
 
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/model/HumanoidModel;poseLeftArm(Lnet/minecraft/client/renderer/entity/state/HumanoidRenderState;Lnet/minecraft/client/model/HumanoidModel$ArmPose;)V", cancellable = true)
-    private void citadel_poseLeftArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, HumanoidModel.ArmPose armPose, CallbackInfo ci) {
-        this.citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), true, ci);
+    private void acc_citadel_poseLeftArm(net.minecraft.client.renderer.entity.state.HumanoidRenderState state, HumanoidModel.ArmPose armPose, CallbackInfo ci) {
+        this.acc_citadel_poseArm(com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state), true, ci);
     }
     *///?}
 
     //? if >=1.21.2 {
     /*@org.spongepowered.asm.mixin.Unique
-    private void citadel_poseArm(net.minecraft.world.entity.Entity entity, boolean left, CallbackInfo ci) {
+    private void acc_citadel_poseArm(net.minecraft.world.entity.Entity entity, boolean left, CallbackInfo ci) {
         if (entity instanceof LivingEntity living) {
             EventPosePlayerHand event = new EventPosePlayerHand(living, (HumanoidModel) ((Model) this), left);
             EventPosePlayerHand.post(event);
@@ -75,7 +75,7 @@ public abstract class HumanoidModelMixin extends Model {
     *///?} else {
 
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/model/HumanoidModel;poseRightArm(Lnet/minecraft/world/entity/LivingEntity;)V", cancellable = true)
-    private void citadel_poseRightArm(LivingEntity entity, CallbackInfo ci) {
+    private void acc_citadel_poseRightArm(LivingEntity entity, CallbackInfo ci) {
         EventPosePlayerHand event = new EventPosePlayerHand(entity, (HumanoidModel) ((Model) this), false);
         EventPosePlayerHand.post(event);
         if (event.getCitadelResult() == CitadelEvent.Result.ALLOW) {
@@ -85,7 +85,7 @@ public abstract class HumanoidModelMixin extends Model {
 
 
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/model/HumanoidModel;poseLeftArm(Lnet/minecraft/world/entity/LivingEntity;)V", cancellable = true)
-    private void citadel_poseLeftArm(LivingEntity entity, CallbackInfo ci) {
+    private void acc_citadel_poseLeftArm(LivingEntity entity, CallbackInfo ci) {
         EventPosePlayerHand event = new EventPosePlayerHand(entity, (HumanoidModel) ((Model) this), true);
         EventPosePlayerHand.post(event);
         if (event.getCitadelResult() == CitadelEvent.Result.ALLOW) {

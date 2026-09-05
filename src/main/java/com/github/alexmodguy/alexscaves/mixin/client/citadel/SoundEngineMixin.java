@@ -19,7 +19,7 @@ public class SoundEngineMixin {
             cancellable = true,
             at = @At(value = "RETURN")
     )
-    protected void citadel_setupRotations(SoundInstance soundInstance, CallbackInfoReturnable<Float> cir) {
+    protected void acc_citadel_setupRotations(SoundInstance soundInstance, CallbackInfoReturnable<Float> cir) {
         cir.setReturnValue(cir.getReturnValue() * ClientTickRateTracker.getForClient(Minecraft.getInstance()).modifySoundPitch(soundInstance));
     }
 }

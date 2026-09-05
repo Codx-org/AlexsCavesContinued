@@ -41,7 +41,9 @@ public class GiantSweetberryBlock extends Block implements SimpleWaterloggedBloc
     public static final IntegerProperty ROTATION = IntegerProperty.create("rotation", 0, 7);
 
     public GiantSweetberryBlock() {
-        super(BlockBehaviour.Properties.of().mapColor(DyeColor.RED).strength(1.0F).sound(SoundType.GRASS).randomTicks());
+        // The model is a 6x6x15 berry on a stem, not a cube, so this block has no business
+        // taking part in face occlusion or blocking light. Upstream left noOcclusion() off.
+        super(BlockBehaviour.Properties.of().mapColor(DyeColor.RED).strength(1.0F).sound(SoundType.GRASS).randomTicks().noOcclusion());
         this.registerDefaultState(this.stateDefinition.any().setValue(WATERLOGGED, Boolean.valueOf(false)).setValue(ROTATION, Integer.valueOf(0)));
     }
 

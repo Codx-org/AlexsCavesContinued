@@ -6,13 +6,83 @@ compiling, booting, mixin-verified tree still had, plus the rig rules that make 
 mean something. The recurring lesson: *a green build proves the shapes exist, not that anything
 calls them.*
 
-Sections, newest first: **driving the dev client without a mouse** (2026-08-22) · the first player
+Sections, newest first: **a per-call `RenderType` factory double-draws** (2026-08-25) · **`verify_mixins.py` reads a built mixin config** (2026-08-24) · driving the
+dev client without a mouse (2026-08-22) · the first player
 bug report (2026-08-22) · the 26.x Fabric client shakedown (2026-08-20) · the content-warning pass
 (2026-08-20) · the in-world test battery (2026-08-19) · the `/acc` interactive client+server pass
 (2026-08-20) · the runtime shakedown (2026-08-18).
 
 Split out of `DEVELOPMENT.md` on 2026-08-22 so the always-loaded file stays small — see that file
 for the map of which archive holds what. Nothing here has been edited in the move.
+
+### A `RenderType` factory that builds a fresh instance per call double-draws, silently (2026-08-25)
+
+**`RenderType` declares neither `equals` nor `hashCode`** — checked with javap on every version in
+this range, on `RenderType` *and* `RenderType$CompositeRenderType`. So every map vanilla keys by one
+compares by **identity**:
+
+- `MultiBufferSource$BufferSource#startedBuilders` and `#fixedBuffers`, on every version;
+- from **26.2 only**, `RenderTypeFeatureRenderer$Group#getVertexBuilder`'s `lastRenderType ==
+  renderType` fast path (`if_acmpne` in the bytecode). That class does not exist below 26.2 —
+  1.21.9–26.1 replay custom geometry through `CustomFeatureRenderer.render(SubmitNodeCollection,
+  MultiBufferSource$BufferSource)` with no grouping at all. **Do not carry a 26.2 explanation down
+  the range; re-measure.**
+
+A factory that calls `RenderType.create(...)` per call therefore misses every one of those lookups.
+The shared batch is torn down and rebuilt each frame, and a batch begun under a key that is no longer
+in the map is left for a later `endBatch` — so the pass is intermittently drawn **twice in one
+frame**. On a normal alpha blend that is invisible. On an **additive** blend it is a brightness
+spike, which is what "the tremorzilla's glow flashes, borderline epileptic" was.
+
+Upstream Alex's Caves did this in **26 of `ACRenderTypes`' factories**. They now share one
+`TYPE_CACHE` (`ConcurrentHashMap` keyed on the method name plus its arguments — all `ResourceLocation`
+and `boolean`, so the key space is bounded), with each `getXxx` a thin wrapper over a private
+`buildXxx` that still holds the original `//?`-gated body.
+
+**How to test this class of bug** — `/tick freeze`, then capture N frames and md5 them. With ticks
+frozen every frame *must* be byte-identical; anything else is a render-order bug. Measurements:
+
+| Node | upstream | fixed |
+|---|---|---|
+| `26.2-fabric` | 10 frames, **2 distinct states**, 819 px differing by up to 161 | **12/12 byte-identical** |
+| `1.21.11-fabric` | **2 of 30** frames spike peak green 58 → **213**; repeated, same 2/30 | **0 of 30**, swing 1.151× → 1.007× |
+
+The 1.21.11 numbers are an A/B/A inside **one** client boot, switched by a file the factory checks,
+so camera, tick and scene are identical across all 90 frames. Two things that were eliminated first
+and are worth not re-walking: the layer's own inputs were constant (1500 distinct `age` values, one
+`LayerGlow.render` per frame, `spikeDown=0.0` throughout), and the mod submitted exactly once per
+frame (`ACSubmitBuffers.flush` strictly alternating body/glow, replays-per-recorder histogram
+`[(1, 4282)]`). The doubling was per-pixel exact — **median ratio 2.06**, and **0** pixels lit in the
+bright frame but dark in the dim one, i.e. no geometry appeared, the same geometry was drawn again.
+
+### `verify_mixins.py` reads a BUILT mixin config, and `compileJava` does not refresh it (2026-08-24)
+
+**A newly-registered mixin can be reported as verified on nodes that never looked at it.** The
+script resolves the config from `versions/<node>/build/resources/main/alexscaves.mixins.json`
+first, falling back to `build/generated/stonecutter/main/resources/`. Both are **`processResources`
+outputs** — and a 58-node `compileJava` sweep does not run `processResources`, so every node whose
+last resources build predates the new entry is checked against the *old* class list. The new mixin
+is not reported missing; it is simply not in the list, so nothing looks wrong.
+
+Hit on the third bug-report wave: `fabric.PoiTypesInvoker` was added to
+`src/main/resources/alexscaves.mixins.json`, the 58-node `compileJava` was green, and the run
+afterwards checked that invoker on **1 node of 22** — `26.2-fabric`, the only Fabric node whose
+`build/resources/main` copy happened to be newer than the edit. The total still moved (16433 →
+16486) because the same wave added two gated `@Inject`s to `EntityMixin`, which *are* read from
+the generated sources and so were counted on all 26 nodes their gate covers. **The arithmetic is
+what caught it**: 52 + 22 expected, 53 observed.
+
+Rules that follow:
+
+- **Run `processResources` on every node before `verify_mixins.py`** whenever the mixin *config*
+  changed — one invocation, same as any other multi-node Gradle work. Source-only changes are
+  safe; the script reads generated **sources** live.
+- **Do the arithmetic on the delta, every time.** "Some number moved" is not verification. Count
+  what each added or removed injection point should contribute per node, multiply by the nodes its
+  gate covers, and make the sum match. A mismatch is the only symptom this failure has.
+- The per-file breakdown is two dozen lines of Python against the script's own
+  `node_injections(node)` — group the returned `Injection`s by `.source` and `.node`. Reach for it
+  rather than guessing which file moved the count.
 
 ### Driving the dev client without a mouse (the input rig, 2026-08-22)
 
@@ -901,3 +971,45 @@ on every node, which is exactly why the "test them all at the end" plan had to i
   `Suspected Mods: NONE` line — read the GLFW throw, not the report generator's secondary failure.
 
 
+
+### Never ask a `Level` for block/fluid state from a worldgen thread (2026-08-27)
+
+`Level#getFluidState` → `Level#getChunkAt` → `ServerChunkCache#getChunk`, and off the main thread
+that method posts to `ServerChunkCache$MainThreadExecutor` and `join()`s. From a chunk-generation
+worker that is two distinct failures, both reported by players against `1.0.6`:
+
+- **Contention.** Every worker that touches it blocks until some *other* chunk finishes generating.
+  Invisible with one player exploring; with Chunky + C2ME running many workers it is worker-on-worker
+  serialization — a reporter's spark profile put **~19%** of all worldgen worker time in this one
+  call, with throughput falling from thousands of chunks/s to single digits.
+- **A hard crash.** The posted work is itself a chunk generation, and if its neighbours are not
+  loaded `WorldGenRegion.getChunk` throws `IllegalStateException: Requested chunk unavailable during
+  world generation`, wrapped as `Exception generating new chunk` and logged as *"Error executing task
+  on Chunk source main thread executor"*. **Nothing in that stack names the mod** — it is vanilla
+  generating a chunk, one frame removed from whoever asked.
+
+The entry point is not obvious, and it was pinned by `jstack` on a deliberately wedged server rather
+than guessed:
+
+```
+OceanRuinPieces$OceanRuinPiece.handleDataMarker  →  ServerLevelAccessor.addFreshEntityWithPassengers
+  →  WorldGenRegion.addFreshEntity  →  ProtoChunk.addEntity  →  Entity.save
+  →  Zombie.addAdditionalSaveData  →  Entity.isInWater  →  <your isInWater mixin>
+```
+
+i.e. **any entity a structure places during generation is saved on the worker, and saving it runs
+every `isInWater` mixin in the game.** AC's `ac_isInWater` / `ac_isEyeInFluid` were exactly that. Two
+things follow. It does not need to be *your* structure — AC ships 91 `structures/*.nbt` and not one
+contains an entity, and the trigger here was vanilla Ocean Ruins placing a drowned; so "it only
+happens in <my biome>" from a reporter is where they were standing, not evidence. And **the same
+defect wedges as readily as it crashes** — whether the posted generation finds its neighbours loaded
+decides which, so a stall report and a `Requested chunk unavailable` report can be one bug.
+
+Use `level.getChunkSource().getChunkNow(cx, cz)` instead — it never forces a load, never blocks, and
+returns `null` for an absent chunk (skip that column). Cache it per column across a scan loop.
+`ACFluids.fluidHeight` / `isEyeInFluid` now do this, with a class javadoc saying it is a correctness
+fix so nobody restores the "simpler" `getFluidState`.
+
+**Corollary for triage:** `Requested chunk unavailable during world generation` in a log does *not*
+mean the mod's own feature over-reached its region. Before auditing features, ask whether anything in
+the mod can cause a *re-entrant* generation from a worker thread.

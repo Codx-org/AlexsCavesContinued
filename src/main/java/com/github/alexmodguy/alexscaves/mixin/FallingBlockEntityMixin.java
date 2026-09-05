@@ -40,12 +40,12 @@ public abstract class FallingBlockEntityMixin extends Entity implements FallingB
     // See LivingEntityMixin: 1.20.5 added the SynchedEntityData.Builder parameter.
     //? if >=1.20.5 {
     /*@Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/item/FallingBlockEntity;defineSynchedData(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V")
-    private void citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder, CallbackInfo ci) {
+    private void acc_citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(ACSyncedData.FALL_BLOCK_TIME, 0);
     }
     *///?} else {
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/item/FallingBlockEntity;defineSynchedData()V")
-    private void citadel_registerData(CallbackInfo ci) {
+    private void acc_citadel_registerData(CallbackInfo ci) {
         entityData.define(ACSyncedData.FALL_BLOCK_TIME, 0);
     }
     //?}

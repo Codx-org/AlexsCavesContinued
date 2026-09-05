@@ -241,9 +241,17 @@ public class TremorzillaRenderer extends MobRenderer<TremorzillaEntity, Tremorzi
         }
 
         public void render(PoseStack matrixStackIn, MultiBufferSource bufferIn, int packedLightIn, TremorzillaEntity tremorzilla, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
-            float normalAlpha = ((float) (Math.sin(ageInTicks * 0.2F)) * 0.15F + 0.5F);
+            // The glow is additive, so alpha is brightness.  Upstream pulsed 0.35..0.65 whether or
+            // not the tremorzilla was charged -- being powered only swapped in a texture with more
+            // lit pixels, it never made the plates any brighter.  Until 1.0.4 that went unnoticed
+            // because the uncached RenderType had the pass drawn twice on some frames, which is the
+            // flashing that was fixed; once the duplicate pass went, the plates read as never
+            // lighting up.  A powered tremorzilla now pulses 0.70..1.00 instead -- the same peak the
+            // double draw used to reach, minus the flicker.
+            boolean powered = tremorzilla.isPowered();
+            float normalAlpha = ((float) (Math.sin(ageInTicks * 0.2F)) * 0.15F + (powered ? 0.85F : 0.5F));
             float spikeDownAmount = tremorzilla.getClientSpikeDownAmount(partialTicks);
-            VertexConsumer normalGlowConsumer = bufferIn.getBuffer(ACRenderTypes.getEyesAlphaEnabled(tremorzilla.isPowered() ? tremorzilla.getAltSkin() == 2 ? TEXTURE_TECTONIC_GLOW_POWERED : tremorzilla.getAltSkin() == 1 ? TEXTURE_RETRO_GLOW_POWERED : TEXTURE_GLOW_POWERED : tremorzilla.getAltSkin() == 2 ? TEXTURE_TECTONIC_GLOW : tremorzilla.getAltSkin() == 1 ? TEXTURE_RETRO_GLOW : TEXTURE_GLOW));
+            VertexConsumer normalGlowConsumer = bufferIn.getBuffer(ACRenderTypes.getEyesAlphaEnabled(powered ? tremorzilla.getAltSkin() == 2 ? TEXTURE_TECTONIC_GLOW_POWERED : tremorzilla.getAltSkin() == 1 ? TEXTURE_RETRO_GLOW_POWERED : TEXTURE_GLOW_POWERED : tremorzilla.getAltSkin() == 2 ? TEXTURE_TECTONIC_GLOW : tremorzilla.getAltSkin() == 1 ? TEXTURE_RETRO_GLOW : TEXTURE_GLOW));
             this.getParentModel().renderToBuffer(matrixStackIn, normalGlowConsumer, packedLightIn, LivingEntityRenderer.getOverlayCoords(tremorzilla, 0.0F), 1.0F, 1.0F, 1.0F, normalAlpha);
             if (spikeDownAmount > 0) {
                 VertexConsumer spikeGlowConsumer;

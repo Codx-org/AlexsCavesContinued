@@ -16,7 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class ServerTickRateTracker extends TickRateTracker {
-    public static final Logger LOGGER = LogManager.getLogger("citadel-server-tick");
+    public static final Logger LOGGER = LogManager.getLogger("alexscaves-citadel-server-tick");
 
     public MinecraftServer server;
 

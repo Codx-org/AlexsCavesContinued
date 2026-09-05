@@ -25,7 +25,14 @@ import org.joml.Matrix4f;
 public class BoundroidWinchRenderer extends MobRenderer<BoundroidWinchEntity, BoundroidWinchModel> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/boundroid_winch.png");
     private static final ResourceLocation TEXTURE_GLOW = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/boundroid_winch_glow.png");
-    private static final ResourceLocation TEXTURE_CHAIN = ResourceLocation.parse("minecraft:textures/block/chain.png");
+    // Vanilla renamed the block texture at 1.21.9 — textures/block/chain.png is simply gone from
+    // the jar there, and the three renderers that hang a chain drew the missing-texture checker on
+    // every node from 1.21.9 up. Shared from here because renderChain below is shared from here.
+    //? if >=1.21.9 {
+    /*public static final ResourceLocation TEXTURE_CHAIN = ResourceLocation.parse("minecraft:textures/block/iron_chain.png");
+    *///?} else {
+    public static final ResourceLocation TEXTURE_CHAIN = ResourceLocation.parse("minecraft:textures/block/chain.png");
+    //?}
     public static final int MAX_CHAIN_SEGMENTS = 256;
 
     public BoundroidWinchRenderer(EntityRendererProvider.Context renderManagerIn) {

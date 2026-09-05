@@ -7,5 +7,5 @@ package com.github.alexmodguy.alexscaves.citadel.server.generation;
  */
 public interface NoiseGeneratorSettingsAccessor {
 
-    void onSaveData(boolean saving);
+    void acOnSaveData(boolean saving);
 }

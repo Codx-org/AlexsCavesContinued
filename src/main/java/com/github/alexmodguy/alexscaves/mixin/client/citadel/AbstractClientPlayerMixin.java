@@ -33,7 +33,7 @@ public abstract class AbstractClientPlayerMixin extends Player {
     // instead of cancelling two lookups there is a single record to rebuild with the cape swapped in.
     //? if <1.20.2 {
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/player/AbstractClientPlayer;getCloakTextureLocation()Lnet/minecraft/resources/ResourceLocation;", cancellable = true)
-    private void citadel_getCapeLocation(CallbackInfoReturnable<ResourceLocation> cir) {
+    private void acc_citadel_getCapeLocation(CallbackInfoReturnable<ResourceLocation> cir) {
         CitadelCapes.Cape cape = CitadelCapes.getCurrentCape(this);
         if (cape != null) {
             cir.setReturnValue(cape.getTexture());
@@ -41,7 +41,7 @@ public abstract class AbstractClientPlayerMixin extends Player {
     }
 
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/player/AbstractClientPlayer;getElytraTextureLocation()Lnet/minecraft/resources/ResourceLocation;", cancellable = true)
-    private void citadel_getElytraLocation(CallbackInfoReturnable<ResourceLocation> cir) {
+    private void acc_citadel_getElytraLocation(CallbackInfoReturnable<ResourceLocation> cir) {
         CitadelCapes.Cape cape = CitadelCapes.getCurrentCape(this);
         if (cape != null) {
             cir.setReturnValue(cape.getTexture());
@@ -51,7 +51,7 @@ public abstract class AbstractClientPlayerMixin extends Player {
 
     //? if >=1.20.2 && <1.21.9 {
     /*@Inject(at = @At("RETURN"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/player/AbstractClientPlayer;getSkin()Lnet/minecraft/client/resources/PlayerSkin;", cancellable = true)
-    private void citadel_getSkin(CallbackInfoReturnable<net.minecraft.client.resources.PlayerSkin> cir) {
+    private void acc_citadel_getSkin(CallbackInfoReturnable<net.minecraft.client.resources.PlayerSkin> cir) {
         CitadelCapes.Cape cape = CitadelCapes.getCurrentCape(this);
         if (cape != null) {
             net.minecraft.client.resources.PlayerSkin skin = cir.getReturnValue();
@@ -67,7 +67,7 @@ public abstract class AbstractClientPlayerMixin extends Player {
     // plain texture path, so it is wrapped as a ResourceTexture whose id and path are the same
     // location — nothing looks the id up, it only has to be stable for equality.
     @Inject(at = @At("RETURN"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/client/player/AbstractClientPlayer;getSkin()Lnet/minecraft/world/entity/player/PlayerSkin;", cancellable = true)
-    private void citadel_getSkin(CallbackInfoReturnable<net.minecraft.world.entity.player.PlayerSkin> cir) {
+    private void acc_citadel_getSkin(CallbackInfoReturnable<net.minecraft.world.entity.player.PlayerSkin> cir) {
         CitadelCapes.Cape cape = CitadelCapes.getCurrentCape(this);
         if (cape != null) {
             net.minecraft.world.entity.player.PlayerSkin skin = cir.getReturnValue();

@@ -109,6 +109,31 @@ public abstract class DinosaurEntity extends TamableAnimal implements IDancesToJ
         if (!buryingEggs && buryEggsProgress > 0F) {
             buryEggsProgress--;
         }
+        this.followHeadWithBody();
+    }
+
+    // Vanilla only clamps a mob's head to its body while it is pathing
+    // (LookControl#clampHeadRotationToBody), so an idle mob's head may twist arbitrarily far
+    // and only snaps back once BodyRotationControl decides the head has been still for ten
+    // ticks. On a vanilla mob that is a cube pivoting on top of a cube; on a dinosaur the
+    // rotation runs through a long neck, so anything past getMaxHeadYRot() reads as the head
+    // whipping around on its own while the animal stands still. Keep the head inside the same
+    // limit vanilla uses everywhere else, and turn the body after it at getHeadRotSpeed() so
+    // the animal still follows what it is looking at instead of freezing at the limit.
+    protected void followHeadWithBody() {
+        float max = this.getMaxHeadYRot();
+        float difference = Mth.wrapDegrees(this.yHeadRot - this.yBodyRot);
+        if (difference > max || difference < -max) {
+            float overshoot = difference > max ? difference - max : difference + max;
+            float turn = Mth.clamp(overshoot, -this.getHeadRotSpeed(), this.getHeadRotSpeed());
+            this.yBodyRot += turn;
+            difference -= turn;
+            if (difference > max) {
+                this.yHeadRot = this.yBodyRot + max;
+            } else if (difference < -max) {
+                this.yHeadRot = this.yBodyRot - max;
+            }
+        }
     }
 
     public float maxSitTicks() {

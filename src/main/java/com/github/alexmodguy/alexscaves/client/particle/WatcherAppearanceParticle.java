@@ -17,7 +17,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraftforge.client.ForgeRenderTypes;
+import com.github.alexmodguy.alexscaves.client.render.ACRenderTypes;
 
 public class WatcherAppearanceParticle extends ACCustomParticle {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/watcher_appearance.png");
@@ -52,7 +52,7 @@ public class WatcherAppearanceParticle extends ACCustomParticle {
         posestack.scale(-scale, -scale, scale);
         posestack.translate(0.0D, 0.5F, 2 + (1F - initalFlip));
         MultiBufferSource multibuffersource$buffersource = ACParticleBuffers.source();
-        VertexConsumer vertexconsumer = multibuffersource$buffersource.getBuffer(ForgeRenderTypes.getUnlitTranslucent(TEXTURE));
+        VertexConsumer vertexconsumer = multibuffersource$buffersource.getBuffer(ACRenderTypes.getUnlitTranslucent(TEXTURE));
         this.model.positionForParticle(partialTick, age);
         this.model.renderToBuffer(posestack, vertexconsumer, 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, Mth.clamp(1 - f * f, 0F, 1F));
         ACParticleBuffers.endBatch(multibuffersource$buffersource);

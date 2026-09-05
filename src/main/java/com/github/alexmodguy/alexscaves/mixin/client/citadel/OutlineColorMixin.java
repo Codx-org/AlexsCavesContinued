@@ -27,7 +27,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * EXCLUSIVE: Mixin keeps whichever applicator ran first, logs
  * {@code "@Redirect conflict. Skipping …"} for the other, and then the loser's own
  * {@code "defaultRequire": 1} throws
- * {@code InjectionError: Critical injection failure: Redirector citadel_getTeamColor … (0/1)
+ * {@code InjectionError: Critical injection failure: Redirector acc_citadel_getTeamColor … (0/1)
  * succeeded}. That fails the whole {@code EntityRenderer} transformation, so <i>both</i> mods' client
  * entrypoints die at {@code Initializing game} — installing the two together was an unconditional
  * crash on every version and every loader. Winning the tie would not have helped; whoever loses still
@@ -68,7 +68,7 @@ public class OutlineColorMixin {
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getTeamColor()I")
     )
-    private int citadel_getTeamColor(Entity entity, Operation<Integer> original) {
+    private int acc_citadel_getTeamColor(Entity entity, Operation<Integer> original) {
         int color = original.call(entity);
         EventGetOutlineColor event = new EventGetOutlineColor(entity, color);
         EventGetOutlineColor.post(event);

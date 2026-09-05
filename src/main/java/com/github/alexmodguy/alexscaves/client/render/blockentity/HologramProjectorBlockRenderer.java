@@ -98,8 +98,12 @@ public class HologramProjectorBlockRenderer<T extends HologramProjectorBlockEnti
         float ticks = projectorBlockEntity.tickCount + partialTicks;
         float bob1 = (float) (Math.sin(ticks * 0.05F + amount) * 0.1F);
         float bob2 = (float) (Math.cos(ticks * 0.05F + amount) * 0.1F);
+        // The projector's own size setting. A hand-posed hologram hangs from its anchor by the
+        // head, so the anchor rises with the scale and the mob's feet stay level with the top of
+        // the beam whatever size it is drawn at.
+        float holoScale = projectorBlockEntity.getHologramScale();
         float length = (1F + bob1) * amount;
-        float width = ((holoEntity == null ? 0.8F : holoEntity.getBbWidth()) + bob2) * amount;
+        float width = ((holoEntity == null ? 0.8F : holoEntity.getBbWidth()) + bob2) * amount * holoScale;
         if(holoEntity instanceof LivingEntity living){
             width *= living.getScale();
         }
@@ -131,15 +135,17 @@ public class HologramProjectorBlockRenderer<T extends HologramProjectorBlockEnti
         if (projectorBlockEntity.isPlayerRender()) {
             poseStack.pushPose();
             poseStack.scale(1, amount, 1);
-            poseStack.translate(0, length + 1.5F, 0);
+            poseStack.translate(0, length + 1.5F * holoScale, 0);
             poseStack.mulPose(Axis.YN.rotationDegrees(180 - cameraY + projectorBlockEntity.getRotation(partialTicks)));
+            poseStack.scale(holoScale, holoScale, holoScale);
             renderPlayerHologram(projectorBlockEntity.getLastPlayerUUID(), partialTicks, poseStack, bufferIn, 240);
             poseStack.popPose();
         } else if (holoEntity != null) {
             poseStack.pushPose();
             poseStack.scale(1, amount, 1);
-            poseStack.translate(0, length + 1.5F, 0);
+            poseStack.translate(0, length + 1.5F * holoScale, 0);
             poseStack.mulPose(Axis.YN.rotationDegrees(180 - cameraY + projectorBlockEntity.getRotation(partialTicks)));
+            poseStack.scale(holoScale, holoScale, holoScale);
             renderEntityInHologram(holoEntity, 0, 0, 0, 0, partialTicks, poseStack, bufferIn, 240);
             poseStack.popPose();
         }

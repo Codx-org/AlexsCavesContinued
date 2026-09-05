@@ -32,7 +32,7 @@ public class LevelRendererMixin {
     @Inject(method = "Lnet/minecraft/client/renderer/LevelRenderer;resize(II)V",
             remap = CitadelConstants.REMAPREFS,
             at = @At("TAIL"))
-    private void citadel_resize(int x, int y, CallbackInfo ci) {
+    private void acc_citadel_resize(int x, int y, CallbackInfo ci) {
         PostEffectRegistry.resize(x, y);
     }
 
@@ -96,13 +96,13 @@ public class LevelRendererMixin {
             //?}
     )
     //? if >=1.21.2 {
-    /*private void citadel_renderLevel_beforeEntities(CallbackInfo ci) {
+    /*private void acc_citadel_renderLevel_beforeEntities(CallbackInfo ci) {
     *///?} elif >=1.21 {
-    /*private void citadel_renderLevel_beforeEntities(net.minecraft.client.DeltaTracker deltaTracker, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
+    /*private void acc_citadel_renderLevel_beforeEntities(net.minecraft.client.DeltaTracker deltaTracker, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
     *///?} elif >=1.20.5 {
-    /*private void citadel_renderLevel_beforeEntities(float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
+    /*private void acc_citadel_renderLevel_beforeEntities(float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
     *///?} else {
-    private void citadel_renderLevel_beforeEntities(PoseStack poseStack, float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, CallbackInfo ci) {
+    private void acc_citadel_renderLevel_beforeEntities(PoseStack poseStack, float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, CallbackInfo ci) {
     //?}
         PostEffectRegistry.clearAndBindWrite(Minecraft.getInstance().getMainRenderTarget());
     }
@@ -141,7 +141,7 @@ public class LevelRendererMixin {
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/OutlineBufferSource;endOutlineBatch()V")
     )
-    private void citadel_renderLevel_process(net.minecraft.client.renderer.OutlineBufferSource outlineBufferSource) {
+    private void acc_citadel_renderLevel_process(net.minecraft.client.renderer.OutlineBufferSource outlineBufferSource) {
         PostEffectRegistry.processEffects(Minecraft.getInstance().getMainRenderTarget());
         outlineBufferSource.endOutlineBatch();
     }
@@ -185,13 +185,13 @@ public class LevelRendererMixin {
                     value = "TAIL"
             ))
     //? if >=1.21.2 {
-    /*private void citadel_renderLevel_end(CallbackInfo ci) {
+    /*private void acc_citadel_renderLevel_end(CallbackInfo ci) {
     *///?} elif >=1.21 {
-    /*private void citadel_renderLevel_end(net.minecraft.client.DeltaTracker deltaTracker, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
+    /*private void acc_citadel_renderLevel_end(net.minecraft.client.DeltaTracker deltaTracker, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
     *///?} elif >=1.20.5 {
-    /*private void citadel_renderLevel_end(float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
+    /*private void acc_citadel_renderLevel_end(float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f frustumMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
     *///?} else {
-    private void citadel_renderLevel_end(PoseStack poseStack, float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, CallbackInfo ci) {
+    private void acc_citadel_renderLevel_end(PoseStack poseStack, float f, long l, boolean b, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, CallbackInfo ci) {
     //?}
         PostEffectRegistry.blitEffects();
     }

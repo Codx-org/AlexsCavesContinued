@@ -43,6 +43,15 @@ public class NuclearFurnaceScreen extends AbstractContainerScreen<NuclearFurnace
     // rather than a call to renderBackground, which on 26 would recurse. That is also why there is no
     // replacement rule for renderBg: a rename would compile into a method overriding nothing, and
     // upstream wrote no @Override here, so nothing would have said so.
+    //
+    // The middle arm draws no background of its own for the same reason, and getting that wrong was a
+    // HARD CRASH rather than a cosmetic one: upstream's 1.20.1 body calls renderBackground, which
+    // there is Screen's one-argument blur/darken and calls nothing back. From 1.20.2 the container
+    // screen overrides it — AbstractContainerScreen#renderBackground is renderTransparentBackground
+    // plus renderBg (read out of the bytecode on 1.20.2 and 1.21.5) — so renderBg calling
+    // renderBackground is unbounded mutual recursion, i.e. a StackOverflowError the first frame the
+    // nuclear furnace GUI is open, on every node from 1.20.2 to 1.21.11. Vanilla has already drawn the
+    // darken pass by the time this runs on that whole band; the body below is the panel and nothing else.
     //? if >=26 {
     /*@Override
     public void extractBackground(GuiGraphics guiGraphics, int x, int y, float f) {
@@ -50,7 +59,6 @@ public class NuclearFurnaceScreen extends AbstractContainerScreen<NuclearFurnace
     *///?} elif >=1.20.2 {
     /*@Override
     protected void renderBg(GuiGraphics guiGraphics, float f, int x, int y) {
-        this.renderBackground(guiGraphics, x, y, f);
     *///?} else {
     @Override
     protected void renderBg(GuiGraphics guiGraphics, float f, int x, int y) {

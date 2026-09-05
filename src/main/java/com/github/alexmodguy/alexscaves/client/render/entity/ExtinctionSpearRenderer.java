@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraftforge.client.ForgeRenderTypes;
+import com.github.alexmodguy.alexscaves.client.render.ACRenderTypes;
 
 public class ExtinctionSpearRenderer extends EntityRenderer<ExtinctionSpearEntity> {
 
@@ -30,7 +30,7 @@ public class ExtinctionSpearRenderer extends EntityRenderer<ExtinctionSpearEntit
         poseStack.mulPose(Axis.XP.rotationDegrees(Mth.lerp(partialTicks, entityIn.xRotO, entityIn.getXRot()) + 90.0F));
         poseStack.translate(0.0D, (double) 0.25F, 0.0D);
         MODEL.setupAnim(entityIn, 0.0F, 0.0F, entityIn.tickCount + partialTicks, 0.0F, 0.0F);
-        VertexConsumer ivertexbuilder = bufferIn.getBuffer(ForgeRenderTypes.getUnlitTranslucent(getTextureLocation(entityIn)));
+        VertexConsumer ivertexbuilder = bufferIn.getBuffer(ACRenderTypes.getUnlitTranslucent(getTextureLocation(entityIn)));
         MODEL.renderToBuffer(poseStack, ivertexbuilder, 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
         poseStack.popPose();
         super.render(entityIn, entityYaw, partialTicks, poseStack, bufferIn, packedLightIn);

@@ -23,7 +23,7 @@ public class LevelMixin {
 
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS, cancellable = true,
             method = "Lnet/minecraft/world/level/Level;guardEntityTick(Ljava/util/function/Consumer;Lnet/minecraft/world/entity/Entity;)V")
-    private void citadel_guardEntityTick(Consumer<Entity> ticker, Entity entity, CallbackInfo ci) {
+    private void acc_citadel_guardEntityTick(Consumer<Entity> ticker, Entity entity, CallbackInfo ci) {
         if (!isClientSide) {
             if (!Citadel.PROXY.canEntityTickServer((Level) (Object) this, entity)) {
                 ci.cancel();

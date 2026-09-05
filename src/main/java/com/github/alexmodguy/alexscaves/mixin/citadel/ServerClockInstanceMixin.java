@@ -48,20 +48,20 @@ public class ServerClockInstanceMixin {
     /*@ModifyExpressionValue(
             method = "tick(Z)V",
             at = @At(value = "FIELD", target = "Lnet/minecraft/world/clock/ServerClockManager$ClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
-    private float citadel_clockRate(float rate) {
-        return citadel_scaleClockRate(rate);
+    private float acc_citadel_clockRate(float rate) {
+        return acc_citadel_scaleClockRate(rate);
     }
     *///?} else {
     @ModifyExpressionValue(
             method = "tick()V",
             at = @At(value = "FIELD", target = "Lnet/minecraft/world/clock/ServerClockManager$ClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
-    private float citadel_clockRate(float rate) {
-        return citadel_scaleClockRate(rate);
+    private float acc_citadel_clockRate(float rate) {
+        return acc_citadel_scaleClockRate(rate);
     }
     //?}
 
     @Unique
-    private float citadel_scaleClockRate(float rate) {
+    private float acc_citadel_scaleClockRate(float rate) {
         MinecraftServer server = Citadel.PROXY.getMinecraftServer();
         if (server == null) {
             return rate;

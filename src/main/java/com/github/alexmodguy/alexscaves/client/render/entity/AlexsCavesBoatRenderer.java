@@ -16,12 +16,26 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+//? if >=1.21.2 {
+/*import net.minecraft.world.entity.vehicle.AbstractBoat;
+*///?}
 import net.minecraft.world.entity.vehicle.Boat;
 import org.joml.Quaternionf;
 
 import java.util.HashMap;
 
+// The bound is the class the dispatch cast is generated against, so it must be the nearest
+// common supertype of BOTH AC boats. 1.21.2 moved the chest boats onto their own branch
+// (ChestBoat extends AbstractChestBoat extends AbstractBoat), making them siblings of Boat
+// rather than subclasses, so a `Boat` bound erases to a checkcast the chest boat cannot pass:
+// ClassCastException out of the renderer the first frame one is visible. CaveBoatItem already
+// declares the placed entity as Entity for the same reason; this bound was missed.
+// The registration in ClientProxy is raw, which is why it still compiled.
+//? if >=1.21.2 {
+/*public class AlexsCavesBoatRenderer<T extends AbstractBoat & AlexsCavesBoat> extends EntityRenderer<T> {
+*///?} else {
 public class AlexsCavesBoatRenderer<T extends Boat & AlexsCavesBoat> extends EntityRenderer<T> {
+//?}
 
     private final HashMap<AlexsCavesBoat.Type, ResourceLocation> textureMap = new HashMap<>();
     private final HashMap<AlexsCavesBoat.Type, ACBoatModel> modelMap = new HashMap<>();

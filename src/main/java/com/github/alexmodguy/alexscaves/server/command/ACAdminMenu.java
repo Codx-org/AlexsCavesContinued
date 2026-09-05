@@ -137,7 +137,7 @@ public final class ACAdminMenu {
     }
 
     /**
-     * The reset button is page-aware on purpose: a single "reset everything" on a 39-option panel is
+     * The reset button is page-aware on purpose: a single "reset everything" on a 40-option panel is
      * far too easy to hit by accident, and codxlib hands the click the page it happened on.
      */
     private static void resetCurrentPage(CodxMenuClick click) {

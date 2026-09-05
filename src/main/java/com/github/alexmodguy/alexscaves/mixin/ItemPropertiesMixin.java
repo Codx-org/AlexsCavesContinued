@@ -15,6 +15,13 @@ public class ItemPropertiesMixin {
     /*@org.spongepowered.asm.mixin.Shadow
     private net.minecraft.resources.ResourceKey<Item> id;
 
+    // See BlockPropertiesMixin: stamped at construction as well, so an id read that happens before
+    // Item's own constructor runs still resolves.
+    @org.spongepowered.asm.mixin.injection.Inject(method = "<init>", at = @org.spongepowered.asm.mixin.injection.At("RETURN"))
+    private void ac_stampIdOnConstruction(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        ac_stampPendingId();
+    }
+
     @org.spongepowered.asm.mixin.injection.Inject(method = "effectiveDescriptionId", at = @org.spongepowered.asm.mixin.injection.At("HEAD"))
     private void ac_stampIdForDescription(org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<String> cir) {
         ac_stampPendingId();

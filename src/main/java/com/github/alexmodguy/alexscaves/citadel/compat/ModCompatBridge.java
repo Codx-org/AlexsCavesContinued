@@ -5,7 +5,9 @@ import com.github.alexmodguy.alexscaves.citadel.Citadel;
 import com.github.alexmodguy.alexscaves.citadel.server.generation.SurfaceRulesManager;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Map;
 
 /**
@@ -40,18 +42,32 @@ public class ModCompatBridge {
             Class<?> stageType = Class.forName("terrablender.api.SurfaceRuleManager$RuleStage");
             Object overworld = enumValue(categoryType, "OVERWORLD");
             Object beforeBedrock = enumValue(stageType, "BEFORE_BEDROCK");
-            Method addToDefaults = manager.getMethod("addToDefaultSurfaceRulesAtStage", categoryType, stageType, int.class, SurfaceRules.RuleSource.class);
-            Method addRules = manager.getMethod("addSurfaceRules", categoryType, String.class, SurfaceRules.RuleSource.class);
+
+            // TerraBlender 26.2.0.0.2 replaced the RuleSource parameter of both entry points with a
+            // RuleBuilder (a Function<HolderGetter<Biome>, RuleSource>) so that rules can be rebuilt
+            // against a live registry. Try the pre-26.2 signature first, then the builder one; the
+            // builder is supplied as a proxy, since the interface is not on this tree's classpath.
+            Class<?> ruleBuilderType = null;
+            Method addToDefaults;
+            Method addRules;
+            try {
+                addToDefaults = manager.getMethod("addToDefaultSurfaceRulesAtStage", categoryType, stageType, int.class, SurfaceRules.RuleSource.class);
+                addRules = manager.getMethod("addSurfaceRules", categoryType, String.class, SurfaceRules.RuleSource.class);
+            } catch (NoSuchMethodException noLegacyApi) {
+                ruleBuilderType = Class.forName("terrablender.api.SurfaceRuleManager$RuleBuilder");
+                addToDefaults = manager.getMethod("addToDefaultSurfaceRulesAtStage", categoryType, stageType, int.class, ruleBuilderType);
+                addRules = manager.getMethod("addSurfaceRules", categoryType, String.class, ruleBuilderType);
+            }
 
             Map<String, SurfaceRules.RuleSource> vanillaBiomeRules = SurfaceRulesManager.getOverworldRulesByBiomeForTerrablender(true);
             for (Map.Entry<String, SurfaceRules.RuleSource> entry : vanillaBiomeRules.entrySet()) {
-                addToDefaults.invoke(null, overworld, beforeBedrock, 0, entry.getValue());
+                addToDefaults.invoke(null, overworld, beforeBedrock, 0, ruleArgument(ruleBuilderType, entry.getValue()));
             }
             Citadel.LOGGER.info("Added {} vanilla biome surface rule types via terrablender", vanillaBiomeRules.size());
 
             Map<String, SurfaceRules.RuleSource> moddedBiomeRules = SurfaceRulesManager.getOverworldRulesByBiomeForTerrablender(false);
             for (Map.Entry<String, SurfaceRules.RuleSource> entry : moddedBiomeRules.entrySet()) {
-                addRules.invoke(null, overworld, entry.getKey(), entry.getValue());
+                addRules.invoke(null, overworld, entry.getKey(), ruleArgument(ruleBuilderType, entry.getValue()));
             }
             Citadel.LOGGER.info("Added {} modded biome surface rule types via terrablender", moddedBiomeRules.size());
 
@@ -60,6 +76,35 @@ public class ModCompatBridge {
             Citadel.LOGGER.warn("TerraBlender is installed but its surface rule API could not be reached; "
                     + "falling back to the built-in surface rule merge, which TerraBlender may override.", e);
         }
+    }
+
+    /**
+     * The rule source itself on the pre-26.2 API, or a {@code RuleBuilder} handing it back on the
+     * newer one. The rules this tree contributes are already fully built, so the builder ignores the
+     * registry it is handed.
+     */
+    private static Object ruleArgument(Class<?> ruleBuilderType, SurfaceRules.RuleSource rule) {
+        if (ruleBuilderType == null) {
+            return rule;
+        }
+        InvocationHandler handler = (proxy, method, args) -> {
+            switch (method.getName()) {
+                case "apply":
+                    return rule;
+                case "equals":
+                    return proxy == args[0];
+                case "hashCode":
+                    return System.identityHashCode(proxy);
+                case "toString":
+                    return "AlexsCavesRuleBuilder[" + rule + "]";
+                default:
+                    if (method.isDefault()) {
+                        return InvocationHandler.invokeDefault(proxy, method, args);
+                    }
+                    throw new UnsupportedOperationException(method.toString());
+            }
+        };
+        return Proxy.newProxyInstance(ruleBuilderType.getClassLoader(), new Class<?>[]{ruleBuilderType}, handler);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

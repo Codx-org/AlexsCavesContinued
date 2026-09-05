@@ -17,7 +17,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.ForgeRenderTypes;
+import com.github.alexmodguy.alexscaves.client.render.ACRenderTypes;
 import org.joml.Matrix3f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -85,7 +85,7 @@ public class VoidBeingEyeParticle extends ACCustomParticle {
             quaternion.mul(Axis.ZP.rotation(f3));
         }
         MultiBufferSource multibuffersource$buffersource = ACParticleBuffers.source();
-        VertexConsumer portalStatic = multibuffersource$buffersource.getBuffer(ForgeRenderTypes.getUnlitTranslucent(TEXTURES[textureIndex]));
+        VertexConsumer portalStatic = multibuffersource$buffersource.getBuffer(ACRenderTypes.getUnlitTranslucent(TEXTURES[textureIndex]));
         PoseStack posestack = new PoseStack();
         PoseStack.Pose posestack$pose = posestack.last();
         Matrix3f matrix3f = posestack$pose.normal();

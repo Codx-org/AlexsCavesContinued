@@ -99,29 +99,40 @@ public abstract class EntityMixin implements MagneticEntityAccessor {
     // Citadel registers this entity data at the TAIL of Entity's constructor because
     // Entity#defineSynchedData is abstract and cannot be injected into. 1.20.5 kept it abstract
     // but made SynchedEntityData immutable once built, so the TAIL of the constructor is too
-    // late — there is no `define` to call any more. The last point at which the four accessors
-    // can still be added is the `builder.build()` call the constructor ends with (offset 384 in
-    // the 1.20.6 bytecode, long after the delegate super() call), so that is what this replaces.
+    // late -- there is no `define` to call any more. The builder therefore has to be reached
+    // while the constructor still holds it.
     //
-    // It is a @Redirect and not an @Inject-with-@Local, which is what this used to be: Mixin only
-    // allows @Inject into a constructor at RETURN/TAIL unless the bundled Mixin is new enough to
-    // support arbitrary constructor injection. NeoForge's is; Forge's is not, and every Forge node
-    // from 1.20.6 up died at startup with "@At("INVOKE") selector Found @Inject targetting a
-    // constructor". @Redirect carries no such restriction once the node is past the delegate call,
-    // so this shape works on all three loaders. Fully-qualified so the gated-out branch needs no
-    // import.
+    // It is a @ModifyArg on the `defineSynchedData(builder)` call and NOT an @Inject-with-@Local
+    // or a @Redirect, and both halves of that matter:
+    //
+    //  * @Inject: Mixin only allows injecting into a constructor at RETURN/TAIL unless the
+    //    bundled Mixin supports arbitrary constructor injection. NeoForge's does; Forge's does
+    //    not, and every Forge node from 1.20.6 up died at startup with "@At("INVOKE") selector
+    //    Found @Inject targetting a constructor".
+    //  * @Redirect on the trailing `builder.build()`: works, but a redirect OWNS the instruction
+    //    it replaces, and only one mod can own it. Any other mod adding its own synched data the
+    //    same way -- toucanlib does -- makes both redirects target the same `build()` call, the
+    //    loser fails its injection check and the game hard-crashes at class load with
+    //    defaultRequire: 1. It crashed players who had both mods installed, and neither mod is
+    //    at fault on its own.
+    //
+    // @ModifyArg is stackable: several handlers can chain on one argument, each seeing the
+    // previous one's value, so this composes with any other mod doing the same thing. Defining
+    // our accessors before the subclass's own defines is safe -- Builder#define writes at
+    // accessor.id(), so define order carries no meaning. Fully-qualified so the gated-out branch
+    // needs no import.
     //? if >=1.20.5 {
-    /*@org.spongepowered.asm.mixin.injection.Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/network/syncher/SynchedEntityData$Builder;build()Lnet/minecraft/network/syncher/SynchedEntityData;"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/Entity;<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V")
-    private net.minecraft.network.syncher.SynchedEntityData citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+    /*@org.spongepowered.asm.mixin.injection.ModifyArg(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;defineSynchedData(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/Entity;<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V")
+    private net.minecraft.network.syncher.SynchedEntityData.Builder acc_citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
         builder.define(CitadelSyncedData.MAGNET_DELTA_X, 0F);
         builder.define(CitadelSyncedData.MAGNET_DELTA_Y, 0F);
         builder.define(CitadelSyncedData.MAGNET_DELTA_Z, 0F);
         builder.define(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION, Direction.DOWN);
-        return builder.build();
+        return builder;
     }
     *///?} else {
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/Entity;<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V")
-    private void citadel_registerData(CallbackInfo ci) {
+    private void acc_citadel_registerData(CallbackInfo ci) {
         entityData.define(CitadelSyncedData.MAGNET_DELTA_X, 0F);
         entityData.define(CitadelSyncedData.MAGNET_DELTA_Y, 0F);
         entityData.define(CitadelSyncedData.MAGNET_DELTA_Z, 0F);
@@ -298,8 +309,7 @@ public abstract class EntityMixin implements MagneticEntityAccessor {
         // the eye check stays keyed on the water tag, so a submerged head neither drowns nor draws the
         // underwater overlay in soda.
         //? if fabric || (neoforge && >=26.1) {
-        /*if (com.github.alexmodguy.alexscaves.server.misc.ACFluids.purpleSodaHeight((Entity) (Object) this) > 0.0D
-                || com.github.alexmodguy.alexscaves.server.misc.ACFluids.acidHeight((Entity) (Object) this) > 0.0D) {
+        /*if (com.github.alexmodguy.alexscaves.server.misc.ACFluids.modFluidHeight((Entity) (Object) this) > 0.0D) {
             cir.setReturnValue(true);
             return;
         }
@@ -538,6 +548,59 @@ public abstract class EntityMixin implements MagneticEntityAccessor {
         Entity self = (Entity) (Object) this;
         self.updateFluidHeightAndDoFluidPushing(ACTagRegistry.ACID, 0.014D);
         self.updateFluidHeightAndDoFluidPushing(ACTagRegistry.PURPLE_SODA, 0.014D);
+    }
+    *///?}
+
+    // The two halves of "acid and soda behave like water" that ac_isInWater above does NOT buy, on
+    // the same two loaders and for the same reason: nothing there dispatches to a FluidType, so
+    // vanilla answers every fluid question about this mod's fluids with the water tag's answer,
+    // which is zero.
+    //
+    // ① Surfacing. LivingEntity#aiStep decides a swim-jump with
+    //    `boolean flag = this.isInWater() && this.getFluidHeight(WATER) > 0.0` and only calls
+    //    jumpInLiquid(WATER) when flag holds; otherwise it falls through to a jumpFromGround that a
+    //    floating entity never reaches, because that arm is guarded on onGround(). isInWater() is
+    //    already true here, the height is still 0, so holding jump in soda did nothing at all and
+    //    the player sank with no way up. Both getFluidHeight calls in aiStep are javap-confirmed on
+    //    vanilla 26.2 and on 1.21.11.
+    //
+    // ② Drowning. LivingEntity#baseTick gates the whole air-supply block on
+    //    isEyeInFluid(WATER) && !canBreatheUnderwater(), so a head under soda neither lost air nor
+    //    showed the bubble bar. Forge does drown you — FluidType#canDrownIn defaults to true and
+    //    neither of this mod's two overrides it — so this is parity with the other loader, not a
+    //    new behaviour. It also restores isUnderWater() and the bubble bar, and brings back a
+    //    submerged screen overlay, which had been absent in soda on these loaders since the fluid
+    //    stopped going through a FluidType. ⚠️ It is VANILLA's overlay, not this mod's: the two
+    //    under_acid/under_purple_soda textures are only reachable through
+    //    IClientFluidTypeExtensions#getRenderOverlayTexture, which is Forge's, and vanilla's
+    //    ScreenEffectRenderer blits a hardcoded textures/misc/underwater.png (javap'd on 26.2).
+    //    Wrong tint, right signal; swapping it needs a per-version injection into a method that is
+    //    renderWater on three different descriptors and submitWater on a fourth.
+    //
+    // Both answer for the water tag ONLY, and only upwards: a real water reading always wins, so an
+    // entity in water next to soda is unaffected. Everything else keyed on FluidTags.WATER —
+    // freezing, fire extinguishing, boat physics — reads the block, not these, and is untouched.
+    //
+    // ACFluids rather than the mod tags' own trackers on purpose: NeoForge 26.1.2.97 hard-throws
+    // from getFluidHeight/isEyeInFluid for any tag that is not WATER or LAVA (see ACFluids), which
+    // is exactly the build this arm has to run on.
+    //? if fabric || (neoforge && >=26.1) {
+    /*@Inject(method = "getFluidHeight(Lnet/minecraft/tags/TagKey;)D", remap = true, cancellable = true, at = @At("RETURN"))
+    private void ac_modFluidHeightAsWater(net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid> tag, CallbackInfoReturnable<Double> cir) {
+        if (tag == net.minecraft.tags.FluidTags.WATER) {
+            double modHeight = com.github.alexmodguy.alexscaves.server.misc.ACFluids.modFluidHeight((Entity) (Object) this);
+            if (modHeight > cir.getReturnValueD()) {
+                cir.setReturnValue(modHeight);
+            }
+        }
+    }
+
+    @Inject(method = "isEyeInFluid(Lnet/minecraft/tags/TagKey;)Z", remap = true, cancellable = true, at = @At("RETURN"))
+    private void ac_modFluidOnEyesAsWater(net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid> tag, CallbackInfoReturnable<Boolean> cir) {
+        if (tag == net.minecraft.tags.FluidTags.WATER && !cir.getReturnValueZ()
+                && com.github.alexmodguy.alexscaves.server.misc.ACFluids.isEyeInModFluid((Entity) (Object) this)) {
+            cir.setReturnValue(true);
+        }
     }
     *///?}
 }

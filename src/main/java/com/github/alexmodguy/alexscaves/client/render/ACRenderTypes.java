@@ -33,6 +33,22 @@ public class ACRenderTypes
         //? if <1.21.5
         extends RenderType
 {
+    // Every factory below returns ONE instance per distinct argument tuple instead of a fresh
+    // RenderType per call, which is what upstream did in all of them. See the note on
+    // EYES_ALPHA_ENABLED further down: RenderType declares no equals/hashCode on any version in
+    // this range, so every map vanilla keys by one -- MultiBufferSource$BufferSource#startedBuilders
+    // and #fixedBuffers, and from 26.2 RenderTypeFeatureRenderer$Group#lastRenderType -- compares
+    // by IDENTITY, and a per-call instance makes every one of those lookups miss. On the additive
+    // types that is visible: it is what made the tremorzilla's glow draw twice in some frames and
+    // flash. A ConcurrentHashMap rather than Util.memoize because several of these take two
+    // arguments and some take none.
+    private static final java.util.Map<Object, RenderType> TYPE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static RenderType cached(Object key, java.util.function.Supplier<RenderType> builder) {
+        RenderType existing = TYPE_CACHE.get(key);
+        return existing != null ? existing : TYPE_CACHE.computeIfAbsent(key, k -> builder.get());
+    }
+
     // 1.21.2 made a shader state shard hold the ShaderProgram declaration itself rather than a
     // supplier of the compiled instance — the client owns compilation now. See ACInternalShaders.
     // 1.21.5 deleted ShaderStateShard outright: a render type names one whole RenderPipeline, so
@@ -169,6 +185,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getParticleTrail(ResourceLocation resourceLocation) {
+        return cached(java.util.Arrays.asList("getParticleTrail", resourceLocation), () -> buildGetParticleTrail(resourceLocation));
+    }
+
+    private static RenderType buildGetParticleTrail(ResourceLocation resourceLocation) {
         //? if >=1.21.5 {
         /*return RenderType.create("particle_trail", 256, true, true, ACInternalShaders.ENERGY_SWIRL_TRANSLUCENT, RenderType.CompositeState.builder().setTextureState(acTexture(resourceLocation, true, true)).setLightmapState(RenderStateShard.LIGHTMAP).setOverlayState(RenderStateShard.OVERLAY).createCompositeState(true));
         *///?} else {
@@ -177,6 +197,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getVoidBeingCloud(ResourceLocation resourceLocation) {
+        return cached(java.util.Arrays.asList("getVoidBeingCloud", resourceLocation), () -> buildGetVoidBeingCloud(resourceLocation));
+    }
+
+    private static RenderType buildGetVoidBeingCloud(ResourceLocation resourceLocation) {
         //? if >=1.21.5 {
         /*return RenderType.create("void_being", 256, true, true, ACInternalShaders.ENERGY_SWIRL_TRANSLUCENT, RenderType.CompositeState.builder().setTextureState(acTexture(resourceLocation, false, true)).setLightmapState(RenderStateShard.LIGHTMAP).setOverlayState(RenderStateShard.OVERLAY).createCompositeState(true));
         *///?} else {
@@ -230,6 +254,10 @@ public class ACRenderTypes
     }
 
     private static RenderType immediateType(ACClientCompat.ImmediateDraw kind, ResourceLocation texture) {
+        return cached(java.util.Arrays.asList("immediateType", kind, texture), () -> buildImmediateType(kind, texture));
+    }
+
+    private static RenderType buildImmediateType(ACClientCompat.ImmediateDraw kind, ResourceLocation texture) {
         var state = RenderType.CompositeState.builder();
         if (texture != null) {
             state.setTextureState(acTexture(texture, false, false));
@@ -273,20 +301,106 @@ public class ACRenderTypes
         //?}
     }
 
+    // Memoized for the reason ENTITY_TRANSLUCENT_CULL above is, and for a second one that is a
+    // player-visible bug: upstream built a FRESH RenderType on every call, and this one is called
+    // once per glowing entity per frame.
+    //
+    // RenderType declares neither equals nor hashCode on any version in this range, so every map
+    // vanilla keys by it -- MultiBufferSource$BufferSource#startedBuilders and #fixedBuffers, and
+    // from 26.2 RenderTypeFeatureRenderer$Group's lastRenderType fast path -- is comparing by
+    // IDENTITY. A per-frame instance therefore never matches the previous frame's: the buffer
+    // lookup always misses, the shared batch is torn down and rebuilt every frame, and a batch
+    // ended by a key that is no longer the one in the map is left to be flushed later. The result
+    // is that the eye-alpha pass is intermittently drawn twice in one frame, and because
+    // EYES_ALPHA_BLEND is additive that reads as the glow flashing at several times its brightness
+    // -- the "tremorzilla glow flickers" report. Measured on 1.21.11-fabric with ticks frozen, so
+    // every frame should be identical: 2 of 30 frames spiked from peak green 58 to 213 with a
+    // fresh type per call, twice over, and 0 of 30 with this memoized -- and on 26.2, 10 of 10
+    // frames byte-identical instead of alternating between two states.
+    //
+    // One instance per texture is also what vanilla itself does for every type it ships.
+    //? if >=1.21.5 {
+    /*private static final java.util.function.Function<ResourceLocation, RenderType> EYES_ALPHA_ENABLED = net.minecraft.Util.memoize(
+            (ResourceLocation locationIn) -> RenderType.create("eye_alpha", 256, true, false, ACInternalShaders.EYES_ALPHA, RenderType.CompositeState.builder()
+                    .setTextureState(acTexture(locationIn, false, false))
+                    .setLightmapState(RenderStateShard.LIGHTMAP)
+                    .setOverlayState(RenderStateShard.OVERLAY)
+                    .createCompositeState(true)));
+    *///?} else {
+    private static final java.util.function.Function<ResourceLocation, RenderType> EYES_ALPHA_ENABLED = net.minecraft.Util.memoize(
+            (ResourceLocation locationIn) -> create("eye_alpha", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, RenderType.CompositeState.builder()
+                    .setShaderState(RENDERTYPE_EYES_SHADER)
+                    .setTextureState(new RenderStateShard.TextureStateShard(locationIn, false, false))
+                    .setTransparencyState(EYES_ALPHA_TRANSPARENCY)
+                    .setCullState(NO_CULL)
+                    .setLightmapState(LIGHTMAP)
+                    .setOverlayState(OVERLAY)
+                    .setDepthTestState(EQUAL_DEPTH_TEST)
+                    .createCompositeState(true)));
+    //?}
+
     public static RenderType getEyesAlphaEnabled(ResourceLocation locationIn) {
-        //? if >=1.21.5 {
-        /*return RenderType.create("eye_alpha", 256, true, false, ACInternalShaders.EYES_ALPHA, RenderType.CompositeState.builder()
+        return EYES_ALPHA_ENABLED.apply(locationIn);
+    }
+
+    /**
+     * The loaders' {@code getUnlitTranslucent} — entity-translucent with the
+     * cardinal (diffuse) lighting term switched off, so a model's faces are not shaded darker
+     * for facing away from the two hard-coded light directions. The Cave Compendium's book
+     * model, the extinction spear, the dark arrow, the nucleeper/gumbeeper glass, the amber
+     * monolith and three particles all draw with it.
+     *
+     * <p>Two loader nodes do not supply a working one, so the mod supplies its own there:
+     * <ul>
+     *   <li><b>Fabric</b> (all 22 nodes) has no such type at all. The stand-in used to answer it
+     *       with vanilla's entity-translucent-<i>emissive</i> type, which is the wrong switch:
+     *       {@code EMISSIVE} drops the <i>lightmap</i> and leaves the diffuse term in place —
+     *       verified in {@code core/entity.vsh} from 1.21.5 up and in
+     *       {@code rendertype_entity_translucent_emissive.vsh} below it, where the
+     *       {@code minecraft_mix_light} call sits outside the emissive branch on every version.
+     *       That is what made the book render with a hard bright/dark step per face.</li>
+     *   <li><b>Forge at 26.2</b> (65.1.0) rewrote its own type onto plain
+     *       {@code RenderPipelines.ENTITY_TRANSLUCENT} — no unlit define, no lightmap — so it
+     *       regressed into the same diffuse shading. Forge below 26.2 and NeoForge on every
+     *       node keep a real unlit pipeline and are left delegating.</li>
+     * </ul>
+     *
+     * <p>One accepted divergence: below 1.21.5 the mod's arm borrows vanilla's {@code eyes}
+     * shader, which is genuinely unlit but declares no {@code Sampler2}, so the lightmap shard
+     * is a no-op and the model is drawn fullbright. That is the same divergence the Fabric
+     * stand-in has always carried; from 1.21.5 the pipeline arm keeps the lightmap properly.
+     */
+    public static RenderType getUnlitTranslucent(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getUnlitTranslucent", locationIn), () -> buildGetUnlitTranslucent(locationIn));
+    }
+
+    private static RenderType buildGetUnlitTranslucent(ResourceLocation locationIn) {
+        //? if fabric && <1.21.5 {
+        /*RenderType.CompositeState unlit$compositestate = RenderType.CompositeState.builder()
+                .setShaderState(RENDERTYPE_EYES_SHADER)
+                .setTextureState(new RenderStateShard.TextureStateShard(locationIn, false, false))
+                .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                .setCullState(NO_CULL)
+                .setLightmapState(LIGHTMAP)
+                .setOverlayState(OVERLAY)
+                .createCompositeState(true);
+        return create("unlit_translucent", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, true, unlit$compositestate);
+        *///?} elif fabric || (forge && >=26.2) {
+        /*return RenderType.create("unlit_translucent", 256, true, true, ACInternalShaders.ENTITY_UNLIT_TRANSLUCENT, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setOverlayState(RenderStateShard.OVERLAY)
                 .createCompositeState(true));
         *///?} else {
-        RenderType.CompositeState rendertype$compositestate = RenderType.CompositeState.builder().setShaderState(RENDERTYPE_EYES_SHADER).setTextureState(new RenderStateShard.TextureStateShard(locationIn, false, false)).setTransparencyState(EYES_ALPHA_TRANSPARENCY).setCullState(NO_CULL).setLightmapState(LIGHTMAP).setOverlayState(OVERLAY).setDepthTestState(EQUAL_DEPTH_TEST).createCompositeState(true);
-        return create("eye_alpha", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, rendertype$compositestate);
+        return ForgeRenderTypes.getUnlitTranslucent(locationIn);
         //?}
     }
 
     public static RenderType getAmbersolShine() {
+        return cached(java.util.Arrays.asList("getAmbersolShine"), () -> buildGetAmbersolShine());
+    }
+
+    private static RenderType buildGetAmbersolShine() {
         // 1.21.9 deleted the separate particles framebuffer along with the fabulous-graphics path
         // that was the only thing distinguishing it, so PARTICLES_TARGET is gone and its output
         // simply is the main target now.
@@ -315,6 +429,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getNucleeperLights() {
+        return cached(java.util.Arrays.asList("getNucleeperLights"), () -> buildGetNucleeperLights());
+    }
+
+    private static RenderType buildGetNucleeperLights() {
         //? if >=1.21.5 {
         /*return RenderType.create("nucleeper_lights", 256, true, true, ACInternalShaders.LIGHTNING_EYES_ALPHA, RenderType.CompositeState.builder()
                 .setLightmapState(RenderStateShard.NO_LIGHTMAP)
@@ -332,6 +450,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getHologramLights() {
+        return cached(java.util.Arrays.asList("getHologramLights"), () -> buildGetHologramLights());
+    }
+
+    private static RenderType buildGetHologramLights() {
         //? if >=1.21.5 {
         /*return RenderType.create("hologram_lights", 256, true, true, ACInternalShaders.LIGHTNING_TRANSLUCENT, RenderType.CompositeState.builder()
                 .setLightmapState(RenderStateShard.NO_LIGHTMAP)
@@ -350,6 +472,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getCrucibleItemBeam() {
+        return cached(java.util.Arrays.asList("getCrucibleItemBeam"), () -> buildGetCrucibleItemBeam());
+    }
+
+    private static RenderType buildGetCrucibleItemBeam() {
         //? if >=1.21.5 {
         /*return RenderType.create("crucible_item_beam", 256, true, true, ACInternalShaders.LIGHTNING_TRANSLUCENT, RenderType.CompositeState.builder()
                 .setLightmapState(RenderStateShard.NO_LIGHTMAP)
@@ -365,6 +491,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getSubmarineLights() {
+        return cached(java.util.Arrays.asList("getSubmarineLights"), () -> buildGetSubmarineLights());
+    }
+
+    private static RenderType buildGetSubmarineLights() {
         //? if >=1.21.5 {
         /*return RenderType.create("submarine_lights", 256, true, true, ACInternalShaders.LIGHTNING_TRANSLUCENT, RenderType.CompositeState.builder()
                 .setLightmapState(RenderStateShard.NO_LIGHTMAP)
@@ -384,6 +514,10 @@ public class ACRenderTypes
 
 
     public static RenderType getGel(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getGel", locationIn), () -> buildGetGel(locationIn));
+    }
+
+    private static RenderType buildGetGel(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("ferrouslime_gel", 256, true, true, ACInternalShaders.FERROUSLIME_GEL, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -401,6 +535,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getRadiationGlow(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getRadiationGlow", locationIn), () -> buildGetRadiationGlow(locationIn));
+    }
+
+    private static RenderType buildGetRadiationGlow(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("radiation_glow", 256, false, true, ACInternalShaders.IRRADIATED, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -419,6 +557,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getBlueRadiationGlow(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getBlueRadiationGlow", locationIn), () -> buildGetBlueRadiationGlow(locationIn));
+    }
+
+    private static RenderType buildGetBlueRadiationGlow(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("blue_radiation_glow", 256, false, true, ACInternalShaders.BLUE_IRRADIATED, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -436,8 +578,18 @@ public class ACRenderTypes
         //?}
     }
     public static RenderType getGelTriangles(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getGelTriangles", locationIn), () -> buildGetGelTriangles(locationIn));
+    }
+
+    private static RenderType buildGetGelTriangles(ResourceLocation locationIn) {
+        // sortOnUpload is FALSE here on purpose: this type's pipeline is TRIANGLES, and depth
+        // sorting has only ever applied to QUADS. Through 26.1 MeshData#sortQuads returned null
+        // for any other mode, so the flag was a silent no-op; 26.2 routes the same draw through
+        // StagedVertexBuffer#appendDraw, which throws IllegalArgumentException "Cannot sort draw
+        // with TRIANGLES" the first frame the type is used. Passing false is byte-identical
+        // behaviour on every version and is what keeps 26.2 from crashing.
         //? if >=1.21.5 {
-        /*return RenderType.create("ferrouslime_gel_triangles", 256, true, true, ACInternalShaders.FERROUSLIME_GEL_TRIANGLES, RenderType.CompositeState.builder()
+        /*return RenderType.create("ferrouslime_gel_triangles", 256, true, false, ACInternalShaders.FERROUSLIME_GEL_TRIANGLES, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .createCompositeState(false));
@@ -454,6 +606,10 @@ public class ACRenderTypes
 
 
     public static RenderType getSubmarineMask() {
+        return cached(java.util.Arrays.asList("getSubmarineMask"), () -> buildGetSubmarineMask());
+    }
+
+    private static RenderType buildGetSubmarineMask() {
         //? if >=1.21.5 {
         /*return RenderType.create("submarine_mask", 256, true, true, ACInternalShaders.WATER_MASK_NO_CULL, RenderType.CompositeState.builder().setTextureState(RenderStateShard.NO_TEXTURE).createCompositeState(false));
         *///?} else {
@@ -462,6 +618,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getGhostly(ResourceLocation texture) {
+        return cached(java.util.Arrays.asList("getGhostly", texture), () -> buildGetGhostly(texture));
+    }
+
+    private static RenderType buildGetGhostly(ResourceLocation texture) {
         //? if >=1.21.5 {
         /*return RenderType.create("ghostly", 256, true, true, ACInternalShaders.GHOSTLY, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(texture, false, false))
@@ -485,6 +645,10 @@ public class ACRenderTypes
 
 
     public static RenderType getTeslaBulb(ResourceLocation resourceLocation) {
+        return cached(java.util.Arrays.asList("getTeslaBulb", resourceLocation), () -> buildGetTeslaBulb(resourceLocation));
+    }
+
+    private static RenderType buildGetTeslaBulb(ResourceLocation resourceLocation) {
         //? if >=1.21.5 {
         /*return RenderType.create("tesla_bulb", 256, false, true, ACInternalShaders.ENERGY_SWIRL_TRANSLUCENT, RenderType.CompositeState.builder().setTextureState(acTexture(resourceLocation, false, true)).setLightmapState(RenderStateShard.LIGHTMAP).createCompositeState(true));
         *///?} else {
@@ -493,6 +657,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getHologram(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getHologram", locationIn), () -> buildGetHologram(locationIn));
+    }
+
+    private static RenderType buildGetHologram(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("hologram", 256, false, true, ACInternalShaders.HOLOGRAM, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -513,6 +681,10 @@ public class ACRenderTypes
 
 
     public static RenderType getRedGhost(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getRedGhost", locationIn), () -> buildGetRedGhost(locationIn));
+    }
+
+    private static RenderType buildGetRedGhost(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("red_ghost", 256, false, true, ACInternalShaders.RED_GHOST, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -532,6 +704,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getCaveMapBackground(ResourceLocation locationIn, boolean showBackground) {
+        return cached(java.util.Arrays.asList("getCaveMapBackground", locationIn, showBackground), () -> buildGetCaveMapBackground(locationIn, showBackground));
+    }
+
+    private static RenderType buildGetCaveMapBackground(ResourceLocation locationIn, boolean showBackground) {
         //? if >=1.21.5 {
         /*return RenderType.create("cave_map_background", 256, false, true, showBackground ? ACInternalShaders.CAVE_MAP_BACKGROUND_NO_CULL : ACInternalShaders.CAVE_MAP_BACKGROUND_CULL, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -550,6 +726,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getBookWidget(ResourceLocation locationIn, boolean sepia) {
+        return cached(java.util.Arrays.asList("getBookWidget", locationIn, sepia), () -> buildGetBookWidget(locationIn, sepia));
+    }
+
+    private static RenderType buildGetBookWidget(ResourceLocation locationIn, boolean sepia) {
         if(sepia){
             //? if >=1.21.5 {
             /*return RenderType.create("book_widget", 256, false, true, ACInternalShaders.SEPIA, RenderType.CompositeState.builder()
@@ -566,12 +746,16 @@ public class ACRenderTypes
                     .createCompositeState(true));
             //?}
         }else{
-            return ForgeRenderTypes.getUnlitTranslucent(locationIn);
+            return getUnlitTranslucent(locationIn);
         }
 
     }
 
     public static RenderType getBubbledCull(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getBubbledCull", locationIn), () -> buildGetBubbledCull(locationIn));
+    }
+
+    private static RenderType buildGetBubbledCull(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("bubbled_cull", 256, true, true, ACInternalShaders.BUBBLED_CULL, RenderType.CompositeState.builder().setTextureState(acTexture(locationIn, false, false)).setLightmapState(RenderStateShard.LIGHTMAP).setOutputState(RenderStateShard.ITEM_ENTITY_TARGET).setOverlayState(RenderStateShard.OVERLAY).createCompositeState(true));
         *///?} else {
@@ -581,6 +765,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getBubbledNoCull(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getBubbledNoCull", locationIn), () -> buildGetBubbledNoCull(locationIn));
+    }
+
+    private static RenderType buildGetBubbledNoCull(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("bubbled_no_cull", 256, false, false, ACInternalShaders.BUBBLED_NO_CULL, RenderType.CompositeState.builder().setTextureState(acTexture(locationIn, false, false)).setLightmapState(RenderStateShard.LIGHTMAP).setOutputState(RenderStateShard.ITEM_ENTITY_TARGET).setOverlayState(RenderStateShard.OVERLAY).createCompositeState(true));
         *///?} else {
@@ -590,8 +778,18 @@ public class ACRenderTypes
     }
 
     public static RenderType getRaygunRay(ResourceLocation locationIn, boolean irradiated) {
+        return cached(java.util.Arrays.asList("getRaygunRay", locationIn, irradiated), () -> buildGetRaygunRay(locationIn, irradiated));
+    }
+
+    private static RenderType buildGetRaygunRay(ResourceLocation locationIn, boolean irradiated) {
+        // sortOnUpload is FALSE here on purpose: this type's pipeline is TRIANGLES, and depth
+        // sorting has only ever applied to QUADS. Through 26.1 MeshData#sortQuads returned null
+        // for any other mode, so the flag was a silent no-op; 26.2 routes the same draw through
+        // StagedVertexBuffer#appendDraw, which throws IllegalArgumentException "Cannot sort draw
+        // with TRIANGLES" the first frame the type is used. Passing false is byte-identical
+        // behaviour on every version and is what keeps 26.2 from crashing.
         //? if >=1.21.5 {
-        /*return RenderType.create("raygun_ray", 256, true, true, ACInternalShaders.ENERGY_SWIRL_TRANSLUCENT_TRIANGLES, RenderType.CompositeState.builder()
+        /*return RenderType.create("raygun_ray", 256, true, false, ACInternalShaders.ENERGY_SWIRL_TRANSLUCENT_TRIANGLES, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setOutputState(irradiated ? IRRADIATED_OUTPUT : RenderStateShard.ITEM_ENTITY_TARGET)
@@ -609,6 +807,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getTremorzillaBeam(ResourceLocation locationIn, boolean irradiated) {
+        return cached(java.util.Arrays.asList("getTremorzillaBeam", locationIn, irradiated), () -> buildGetTremorzillaBeam(locationIn, irradiated));
+    }
+
+    private static RenderType buildGetTremorzillaBeam(ResourceLocation locationIn, boolean irradiated) {
         //? if >=1.21.5 {
         /*return RenderType.create("tremorzilla_beam", 256, true, true, ACInternalShaders.ENERGY_SWIRL_TRANSLUCENT, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))
@@ -628,6 +830,10 @@ public class ACRenderTypes
     }
 
     public static RenderType getPurpleWitch(ResourceLocation locationIn) {
+        return cached(java.util.Arrays.asList("getPurpleWitch", locationIn), () -> buildGetPurpleWitch(locationIn));
+    }
+
+    private static RenderType buildGetPurpleWitch(ResourceLocation locationIn) {
         //? if >=1.21.5 {
         /*return RenderType.create("purple_witch", 256, false, true, ACInternalShaders.PURPLE_WITCH, RenderType.CompositeState.builder()
                 .setTextureState(acTexture(locationIn, false, false))

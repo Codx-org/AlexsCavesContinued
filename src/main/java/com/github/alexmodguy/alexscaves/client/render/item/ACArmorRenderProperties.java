@@ -83,20 +83,33 @@ public class ACArmorRenderProperties implements IClientItemExtensions {
      * all four pieces and {@code HumanoidArmorLayer} hides the parts it does not want.
      */
     public static Model getACArmorModel(LivingEntity entityLiving, ItemStack itemStack, Model _default) {
+        return applyACArmorAnimations(entityLiving, getACArmorModelBase(itemStack, _default));
+    }
+
+    /**
+     * The armour model for {@code itemStack} in its bind pose, before any animation pass.
+     *
+     * <p>Split out of {@link #getACArmorModel} because the two steps have to straddle the wearer's
+     * pose: {@link #applyACArmorAnimations} reads limb rotations off the model it is given (the
+     * primordial flaps hang off the legs), so the parent's pose has to be on the model first. The
+     * combined method above keeps the old order for the loader hook, whose caller copies the pose
+     * afterwards and cannot be reordered from here.
+     */
+    public static Model getACArmorModelBase(ItemStack itemStack, Model _default) {
         if (!init) {
             initializeModels();
         }
         if (itemStack.getItem() instanceof PrimordialArmorItem) {
-            return entityLiving == null ? PRIMORDIAL_ARMOR_MODEL : PRIMORDIAL_ARMOR_MODEL.withAnimations(entityLiving);
+            return PRIMORDIAL_ARMOR_MODEL;
         }
         if (itemStack.getItem() instanceof HazmatArmorItem) {
-            return entityLiving == null ? HAZMAT_ARMOR_MODEL : HAZMAT_ARMOR_MODEL.withAnimations(entityLiving);
+            return HAZMAT_ARMOR_MODEL;
         }
         if (itemStack.getItem() instanceof DivingArmorItem) {
             return DIVING_ARMOR_MODEL;
         }
         if (itemStack.getItem() instanceof DarknessArmorItem) {
-            return entityLiving == null ? DARKNESS_ARMOR_MODEL : DARKNESS_ARMOR_MODEL.withAnimations(entityLiving);
+            return DARKNESS_ARMOR_MODEL;
         }
         if (itemStack.getItem() instanceof RainbounceBootsItem) {
             return RAINBOUNCE_ARMOR_MODEL;
@@ -105,6 +118,28 @@ public class ACArmorRenderProperties implements IClientItemExtensions {
             return GINGERBREAD_ARMOR_MODEL;
         }
         return _default;
+    }
+
+    /**
+     * The per-set animation pass. Three of the six sets have one; the other three, and a
+     * {@code null} entity, return the model untouched. {@code null} is a legal entity and means
+     * "no animation" — the pre-1.21.2 loader hook was already documented as nullable, and
+     * NeoForge's 1.21.2 hook can never supply one.
+     */
+    public static Model applyACArmorAnimations(LivingEntity entityLiving, Model model) {
+        if (entityLiving == null) {
+            return model;
+        }
+        if (model instanceof PrimordialArmorModel primordial) {
+            return primordial.withAnimations(entityLiving);
+        }
+        if (model instanceof HazmatArmorModel hazmat) {
+            return hazmat.withAnimations(entityLiving);
+        }
+        if (model instanceof DarknessArmorModel darkness) {
+            return darkness.withAnimations(entityLiving);
+        }
+        return model;
     }
 
     // Takes a plain Item, not an ArmorItem: the parameter is only ever instanceof-tested against

@@ -36,7 +36,6 @@ public class QuarrySmasherRenderer extends EntityRenderer<QuarrySmasherEntity> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/quarry_smasher.png");
     private static final ResourceLocation TEXTURE_GLOW = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/quarry_smasher_glow.png");
     private static final ResourceLocation TEXTURE_BOUNDROID = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/boundroid_quarry.png");
-    private static final ResourceLocation TEXTURE_CHAIN = ResourceLocation.withDefaultNamespace("textures/block/chain.png");
     private static final Map<UUID, LightningRender> lightningRenderMap = new HashMap<>();
     private static final LightningBoltData.BoltRenderInfo LIGHTNING_BOLT_INFO = new LightningBoltData.BoltRenderInfo(0.0F, 0.01F, 0.3F, 0.6F, new Vector4f(0.71F, 0.76F, 0.95F, 0.3F), 0);
     private static final Object CORNER_1 = new Object();
@@ -138,7 +137,7 @@ public class QuarrySmasherRenderer extends EntityRenderer<QuarrySmasherEntity> {
 
             Vec3 chainOffset = new Vec3(0, -0.75F, 0);
             Vec3 chainTo = entity.getPosition(partialTicks).add(chainOffset).subtract(entity.headPart.getPosition(partialTicks).add(0, -0.25F, 0));
-            VertexConsumer chainBuffer = bufferIn.getBuffer(RenderType.entityCutoutNoCull(TEXTURE_CHAIN));
+            VertexConsumer chainBuffer = bufferIn.getBuffer(RenderType.entityCutoutNoCull(BoundroidWinchRenderer.TEXTURE_CHAIN));
             poseStack.pushPose();
             poseStack.translate(boundroidTop.x - chainOffset.x, boundroidTop.y - chainOffset.y, boundroidTop.z - chainOffset.z);
             BoundroidWinchRenderer.renderChain(chainTo, poseStack, chainBuffer, packedLightIn, OverlayTexture.NO_OVERLAY);

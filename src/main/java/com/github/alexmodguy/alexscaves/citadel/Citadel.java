@@ -61,7 +61,7 @@ public class Citadel {
         // SurfaceRulesManager wraps the overworld rule source in a CitadelSurfaceRuleWrapper, and a
         // RuleSource with an unregistered codec cannot be encoded — the world save would fail.
         // Registered under this mod's namespace, not Citadel's: the wrapper is swapped back out
-        // before level data is written (see NoiseGeneratorSettingsMixin#onSaveData), so the id is
+        // before level data is written (see NoiseGeneratorSettingsMixin#acOnSaveData), so the id is
         // internal and never reaches disk.
         // 1.20.5 retyped the MATERIAL_RULE / MATERIAL_CONDITION registries from Codec to MapCodec.
         //? if >=1.20.5 {

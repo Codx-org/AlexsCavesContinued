@@ -78,7 +78,15 @@ public abstract class HumanoidArmorLayerMixin extends net.minecraft.client.rende
             // NeoForge's lost its entity parameter in 1.21.2 and would hand back the un-animated
             // model. This branch only ever runs for AC's own CustomArmorPostRender items, whose
             // IClientItemExtensions is ACArmorRenderProperties either way.
-            Model armorModel = ACArmorRenderProperties.getACArmorModel(livingEntity, itemstack, model);
+            Model armorModel = ACArmorRenderProperties.getACArmorModelBase(itemstack, model);
+            // What vanilla's renderArmorPiece does between picking the model and hiding parts, and
+            // the reason this cancels it: without the copy the armour sits in its bind pose while
+            // the wearer moves. The animation pass goes after it, not inside getACArmorModel, since
+            // it reads the limb rotations the copy just supplied.
+            if (armorModel != model) {
+                model.copyPropertiesTo((HumanoidModel) armorModel);
+            }
+            ACArmorRenderProperties.applyACArmorAnimations(livingEntity, armorModel);
             setPartVisibility((HumanoidModel) armorModel, equipmentSlot);
             ResourceLocation texture = getACArmorResource(livingEntity, itemstack, equipmentSlot, null);
             ACArmorRenderProperties.renderCustomArmor(poseStack, multiBufferSource, light, itemstack, item, armorModel, legs, texture);
@@ -141,7 +149,15 @@ public abstract class HumanoidArmorLayerMixin extends net.minecraft.client.rende
         net.minecraft.world.item.equipment.Equippable equippable = itemstack.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
         if (equippable != null && equippable.slot() == equipmentSlot && this.getParentModel() instanceof HumanoidModel parentModel) {
             LivingEntity livingEntity = com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(state) instanceof LivingEntity living ? living : null;
-            Model armorModel = ACArmorRenderProperties.getACArmorModel(livingEntity, itemstack, parentModel);
+            Model armorModel = ACArmorRenderProperties.getACArmorModelBase(itemstack, parentModel);
+            // The 1.21.9 equivalent of copyPropertiesTo, which went with the ArmorModelSet rewrite:
+            // EquipmentLayerRenderer#renderLayers poses the model it is handed by running
+            // setupAnim over the render state, so the model this arm substitutes has to be posed
+            // the same way or it draws in its bind pose.
+            if (armorModel != parentModel) {
+                ((HumanoidModel) armorModel).setupAnim(state);
+            }
+            ACArmorRenderProperties.applyACArmorAnimations(livingEntity, armorModel);
             ac_setPartVisibility((HumanoidModel) armorModel, equipmentSlot);
             ResourceLocation texture = getACArmorResource(livingEntity, itemstack, equipmentSlot, null);
             com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers buffers =
@@ -204,6 +220,41 @@ public abstract class HumanoidArmorLayerMixin extends net.minecraft.client.rende
                             && com.github.alexmodguy.alexscaves.client.render.compat.ACStateAccess.entity(this.ac_renderState) instanceof LivingEntity living ? living : null);
         }
     }
+    *///?} elif neoforge && >=1.21.1 && <1.21.2 {
+    /*// NeoForge 21.1 alone. It added a SECOND renderArmorPiece overload carrying the six animation
+    // floats, and it is the one render() actually calls; the vanilla six-argument descriptor
+    // survives only as a bridge that delegates to it. The else arm below therefore resolves on this
+    // node, applies, and never runs - which is why this mod's armour drew nothing here at all: the
+    // cancel never happened and vanilla went on to render from the material's layer list, which
+    // ACArmorMaterial#vanilla deliberately leaves empty. Hooking the twelve-argument overload covers
+    // the six-argument one too, since that one delegates. The six floats are unused: this mod poses
+    // the armour from applyACArmorAnimations, not from the wearer's limb swing.
+    @Inject(
+            method = {"Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V"},
+            at = @At(value = "HEAD"),
+            remap = true,
+            cancellable = true
+    )
+    private void ac_renderArmorPiece(PoseStack poseStack, MultiBufferSource multiBufferSource, LivingEntity livingEntity, EquipmentSlot equipmentSlot, int light, HumanoidModel humanoidModel, float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
+        ItemStack itemstack = livingEntity.getItemBySlot(equipmentSlot);
+        if (itemstack.getItem() instanceof CustomArmorPostRender) {
+            ci.cancel();
+            lastArmorItemStackRendered = itemstack;
+            Item item = itemstack.getItem();
+            if (item instanceof ArmorItem armorItem && armorItem.getEquipmentSlot() == equipmentSlot) {
+                boolean legs = equipmentSlot == EquipmentSlot.LEGS;
+                HumanoidModel model = this.getParentModel() instanceof HumanoidModel humanoidModel1 ? humanoidModel1 : humanoidModel;
+                Model armorModel = ForgeHooksClient.getArmorModel(livingEntity, itemstack, equipmentSlot, model);
+                if (armorModel != model) {
+                    model.copyPropertiesTo((HumanoidModel) armorModel);
+                }
+                ACArmorRenderProperties.applyACArmorAnimations(livingEntity, armorModel);
+                setPartVisibility((HumanoidModel) armorModel, equipmentSlot);
+                ResourceLocation texture = getACArmorResource(livingEntity, itemstack, equipmentSlot, null);
+                ACArmorRenderProperties.renderCustomArmor(poseStack, multiBufferSource, light, lastArmorItemStackRendered, armorItem, armorModel, legs, texture);
+            }
+        }
+    }
     *///?} else {
 
     @Inject(
@@ -223,6 +274,14 @@ public abstract class HumanoidArmorLayerMixin extends net.minecraft.client.rende
                     boolean legs = equipmentSlot == EquipmentSlot.LEGS;
                     HumanoidModel model = this.getParentModel() instanceof HumanoidModel humanoidModel1 ? humanoidModel1 : humanoidModel;
                     Model armorModel = ForgeHooksClient.getArmorModel(livingEntity, itemstack, equipmentSlot, model);
+                    // See the note in the 1.21.2 arm: vanilla copies the wearer's pose onto the
+                    // armour model inside renderArmorPiece, which this cancels. The loader hook has
+                    // already run its animation pass off the previous frame's pose, so re-running it
+                    // after the copy is what makes it read the current one.
+                    if (armorModel != model) {
+                        model.copyPropertiesTo((HumanoidModel) armorModel);
+                    }
+                    ACArmorRenderProperties.applyACArmorAnimations(livingEntity, armorModel);
                     setPartVisibility((HumanoidModel) armorModel, equipmentSlot);
                     ResourceLocation texture = getACArmorResource(livingEntity, itemstack, equipmentSlot, null);
                     ACArmorRenderProperties.renderCustomArmor(poseStack, multiBufferSource, light, lastArmorItemStackRendered, armorItem, armorModel, legs, texture);

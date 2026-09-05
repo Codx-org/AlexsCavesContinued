@@ -96,10 +96,10 @@ public class ACItemRegistry {
     public static final ACArmorMaterial GINGERBREAD_ARMOR_MATERIAL = new ACArmorMaterial("gingerbread", 10, new int[]{2, 4, 5, 2}, 25, ACCompat.rawSound(SoundEvents.ARMOR_EQUIP_LEATHER), 0.0F);
     public static final ACDeferredRegister<Item> DEF_REG = ACDeferredRegister.create(Registries.ITEM, AlexsCaves.MODID);
     public static final Supplier<Item> ADVANCEMENT_TAB_ICON = DEF_REG.register("advancement_tab_icon", () -> new Item(new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
-    public static final Supplier<Item> CAVE_TABLET = DEF_REG.register("cave_tablet", () -> new CaveInfoItem(new Item.Properties(), true));
-    public static final Supplier<Item> CAVE_CODEX = DEF_REG.register("cave_codex", () -> new CaveInfoItem(new Item.Properties(), false));
+    public static final Supplier<Item> CAVE_TABLET = DEF_REG.register("cave_tablet", () -> new CaveInfoItem(new Item.Properties().rarity(Rarity.UNCOMMON), true));
+    public static final Supplier<Item> CAVE_CODEX = DEF_REG.register("cave_codex", () -> new CaveInfoItem(new Item.Properties().rarity(Rarity.UNCOMMON), false));
     public static final Supplier<Item> CAVE_BOOK = DEF_REG.register("cave_book", () -> new CaveBookItem());
-    public static final Supplier<Item> CAVE_MAP = DEF_REG.register("cave_map", () -> new CaveMapItem(new Item.Properties().stacksTo(1)));
+    public static final Supplier<Item> CAVE_MAP = DEF_REG.register("cave_map", () -> new CaveMapItem(new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
     public static final Supplier<Item> CAVE_MAP_SPRITE = DEF_REG.register("cave_map_inventory", () -> new Item(new Item.Properties()));
     public static final Supplier<Item> CAVE_MAP_LOADING_SPRITE = DEF_REG.register("cave_map_loading", () -> new Item(new Item.Properties()));
     public static final Supplier<Item> CAVE_MAP_FILLED_SPRITE = DEF_REG.register("cave_map_filled", () -> new Item(new Item.Properties()));

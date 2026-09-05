@@ -22,6 +22,16 @@ public class BlockPropertiesMixin {
     /*@org.spongepowered.asm.mixin.Shadow
     private net.minecraft.resources.ResourceKey<net.minecraft.world.level.block.Block> id;
 
+    // Stamped again the moment the object is built, not only when vanilla reads it: a third-party
+    // mixin can read the id inside a block constructor before BlockBehaviour's own constructor runs
+    // (Farmer's Delight Refabricated does exactly this in FenceGateBlock), which is earlier than
+    // either getter below. Only fires inside ACRegistryIds#constructing, so it can never touch a
+    // Properties belonging to another mod.
+    @org.spongepowered.asm.mixin.injection.Inject(method = "<init>", at = @org.spongepowered.asm.mixin.injection.At("RETURN"))
+    private void ac_stampIdOnConstruction(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        ac_stampPendingId();
+    }
+
     @org.spongepowered.asm.mixin.injection.Inject(method = "effectiveDrops", at = @org.spongepowered.asm.mixin.injection.At("HEAD"))
     private void ac_stampIdForDrops(org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<java.util.Optional<net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>>> cir) {
         ac_stampPendingId();

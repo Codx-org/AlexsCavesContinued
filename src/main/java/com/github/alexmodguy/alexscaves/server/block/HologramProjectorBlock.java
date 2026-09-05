@@ -89,6 +89,19 @@ public class HologramProjectorBlock extends BaseEntityBlock implements SimpleWat
 
     private InteractionResult acUse(BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
         ItemStack heldItem = player.getItemInHand(handIn);
+        // Crouch-use with an empty hand steps the projected mob's size. Nothing else has ever been
+        // bound to that gesture on this block, and it is the only in-world control the projector
+        // needs that does not want a screen of its own.
+        if (worldIn.getBlockEntity(pos) instanceof HologramProjectorBlockEntity scaledBlockEntity && player.isShiftKeyDown() && heldItem.isEmpty()) {
+            if (!worldIn.isClientSide()) {
+                float scale = scaledBlockEntity.cycleHologramScale();
+                com.github.alexmodguy.alexscaves.server.misc.ACCompat.displayClientMessage(player,
+                        net.minecraft.network.chat.Component.translatable("block.alexscaves.hologram_projector.scale",
+                                String.format(java.util.Locale.ROOT, "%.2f", scale)), true);
+            }
+            worldIn.playSound((Player) null, pos, ACSoundRegistry.HOLOGRAM_STOP.get(), SoundSource.BLOCKS);
+            return InteractionResult.SUCCESS;
+        }
         if (worldIn.getBlockEntity(pos) instanceof HologramProjectorBlockEntity projectorBlockEntity && !player.isShiftKeyDown() && heldItem.is(ACItemRegistry.HOLOCODER.get())) {
             CompoundTag entityTag = null;
             EntityType entityType = null;

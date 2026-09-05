@@ -139,8 +139,16 @@ public class CandyCaneHookRenderer extends EntityRenderer<CandyCaneHookEntity> {
         float f2 = (float) (to.z - d5);
         VertexConsumer vertexconsumer = bufferSource.getBuffer(RenderType.leash());
         Matrix4f matrix4f = poseStack.last().pose();
-        BlockPos blockpos = BlockPos.containing(fromVec);
-        BlockPos blockpos1 = BlockPos.containing(to);
+        // Upstream copied vanilla's leash renderer but handed the light lookup the two RELATIVE
+        // offsets this method draws between -- fromVec is (player hand - hook) and to is the
+        // hook's own muzzle offset -- instead of world positions. Both therefore sampled the
+        // light at a block a couple of metres from x=0,z=0, which underground is 0/0, so the
+        // licorice string drew black everywhere instead of purple. Add the hook's position back
+        // to recover the two real endpoints: fromVec's end is the player's hand, to's end is the
+        // hook itself.
+        Vec3 stringOrigin = from.position();
+        BlockPos blockpos = BlockPos.containing(stringOrigin.add(fromVec));
+        BlockPos blockpos1 = BlockPos.containing(stringOrigin.add(to));
         int i = from.level().getBrightness(LightLayer.BLOCK, blockpos);
         int j = from.level().getBrightness(LightLayer.BLOCK, blockpos1);
         int k = from.level().getBrightness(LightLayer.SKY, blockpos);

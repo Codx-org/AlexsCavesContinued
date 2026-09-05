@@ -21,8 +21,8 @@ import java.net.Proxy;
 @Mixin(MinecraftServer.class)
 public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
 
-    private long modifiedMsPerTick = -1;
-    private long masterMs;
+    private long accModifiedMsPerTick = -1;
+    private long accMasterMs;
 
     // 26 grew the constructor at both ends: an Optional<GameRules> in fifth place (the per-world rule
     // overrides a `/create`d world can carry) and a trailing `propagatesCrashes` boolean handed to the
@@ -36,7 +36,7 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
             method = "Lnet/minecraft/server/MinecraftServer;<init>(Ljava/lang/Thread;Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;Lnet/minecraft/server/packs/repository/PackRepository;Lnet/minecraft/server/WorldStem;Ljava/util/Optional;Ljava/net/Proxy;Lcom/mojang/datafixers/DataFixer;Lnet/minecraft/server/Services;Lnet/minecraft/server/level/progress/ChunkProgressListenerFactory;ZLnet/minecraft/server/notifications/NotificationManager;)V",
             at = @At("TAIL")
     )
-    private void citadel_init(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, java.util.Optional<?> gameRules, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, boolean propagatesCrashes, net.minecraft.server.notifications.NotificationManager notificationManager, CallbackInfo ci) {
+    private void acc_citadel_init(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, java.util.Optional<?> gameRules, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, boolean propagatesCrashes, net.minecraft.server.notifications.NotificationManager notificationManager, CallbackInfo ci) {
         CitadelProxy.setMinecraftServer((MinecraftServer) (Object) (this));
     }
     *///?} elif >=26 {
@@ -44,7 +44,7 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
             method = "Lnet/minecraft/server/MinecraftServer;<init>(Ljava/lang/Thread;Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;Lnet/minecraft/server/packs/repository/PackRepository;Lnet/minecraft/server/WorldStem;Ljava/util/Optional;Ljava/net/Proxy;Lcom/mojang/datafixers/DataFixer;Lnet/minecraft/server/Services;Lnet/minecraft/server/level/progress/ChunkProgressListenerFactory;Z)V",
             at = @At("TAIL")
     )
-    private void citadel_init(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, java.util.Optional<?> gameRules, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, boolean propagatesCrashes, CallbackInfo ci) {
+    private void acc_citadel_init(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, java.util.Optional<?> gameRules, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, boolean propagatesCrashes, CallbackInfo ci) {
         CitadelProxy.setMinecraftServer((MinecraftServer) (Object) (this));
     }
     *///?} else {
@@ -52,7 +52,7 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
             method = "Lnet/minecraft/server/MinecraftServer;<init>(Ljava/lang/Thread;Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;Lnet/minecraft/server/packs/repository/PackRepository;Lnet/minecraft/server/WorldStem;Ljava/net/Proxy;Lcom/mojang/datafixers/DataFixer;Lnet/minecraft/server/Services;Lnet/minecraft/server/level/progress/ChunkProgressListenerFactory;)V",
             at = @At("TAIL")
     )
-    private void citadel_init(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, CallbackInfo ci) {
+    private void acc_citadel_init(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, CallbackInfo ci) {
         CitadelProxy.setMinecraftServer((MinecraftServer) (Object) (this));
     }
     //?}
@@ -76,8 +76,8 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
                     shift = At.Shift.BEFORE
             )
     )
-    protected void citadel_beforeServerTick(CallbackInfo ci) {
-        masterTick();
+    protected void acc_citadel_beforeServerTick(CallbackInfo ci) {
+        accMasterTick();
     }
     *///?} else {
     @Inject(
@@ -89,13 +89,13 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
                     shift = At.Shift.BEFORE
             )
     )
-    protected void citadel_beforeServerTick(CallbackInfo ci) {
-        masterTick();
+    protected void acc_citadel_beforeServerTick(CallbackInfo ci) {
+        accMasterTick();
     }
     //?}
 
-    private void masterTick() {
-        masterMs += 50L;
+    private void accMasterTick() {
+        accMasterMs += 50L;
     }
 
     // How the server-wide tick length is changed splits at 1.20.3, which rewrote runServer's timing
@@ -109,25 +109,25 @@ public abstract class MinecraftServerMixin implements ModifiableTickRateServer {
             remap = CitadelConstants.REMAPREFS,
             at = @At(value = "CONSTANT", args = "longValue=50"),
             expect = 4)
-    private long citadel_serverMsPerTick(long value) {
-        return modifiedMsPerTick == -1 ? value : modifiedMsPerTick;
+    private long acc_citadel_serverMsPerTick(long value) {
+        return accModifiedMsPerTick == -1 ? value : accModifiedMsPerTick;
     }
     //?}
 
     @Override
-    public void setGlobalTickLengthMs(long msPerTick) {
+    public void acSetGlobalTickLengthMs(long msPerTick) {
         // Citadel calls this every server tick, and the 1.20.3+ path broadcasts the new rate to every
         // client, so only act on an actual change. -1 means "back to normal".
-        if (modifiedMsPerTick == msPerTick) {
+        if (accModifiedMsPerTick == msPerTick) {
             return;
         }
-        modifiedMsPerTick = msPerTick;
+        accModifiedMsPerTick = msPerTick;
         //? if >=1.20.3
         /*((MinecraftServer) (Object) this).tickRateManager().setTickRate(msPerTick <= 0 ? 20.0F : 1000.0F / msPerTick);*/
     }
 
     @Override
-    public long getMasterMs() {
-        return masterMs;
+    public long acGetMasterMs() {
+        return accMasterMs;
     }
 }

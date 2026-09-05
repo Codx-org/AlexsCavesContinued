@@ -7,5 +7,9 @@ public interface MultiNoiseBiomeSourceAccessor {
     void setLastSampledSeed(long var1);
 
     void setLastSampledDimension(ResourceKey<Level> var1);
+
+    long getLastSampledSeed();
+
+    ResourceKey<Level> getLastSampledDimension();
 }
 

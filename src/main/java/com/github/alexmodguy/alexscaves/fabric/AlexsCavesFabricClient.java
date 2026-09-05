@@ -82,6 +82,13 @@ public class AlexsCavesFabricClient implements ClientModInitializer {
         // forwards what comes back to Fabric API's builtin-renderer registry. Ungated because the
         // method is simply empty from 1.21.4, where a model definition names the renderer instead.
         com.github.alexmodguy.alexscaves.fabric.client.ACFabricItemRenderers.register();
+
+        // The chunk render layer of every block whose model declares one. `render_type` in a model
+        // JSON is a Forge extension that neither vanilla nor Fabric API has ever read, so without
+        // this all 119 of them draw on the solid layer and their transparent texels come out black.
+        // Ungated below 26; from 26 the layer is baked into the quad from its sprite instead.
+        //? if <26
+        com.github.alexmodguy.alexscaves.fabric.client.ACFabricRenderLayers.register();
     }
 
     /**

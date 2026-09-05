@@ -19,7 +19,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
-import net.minecraftforge.client.ForgeRenderTypes;
+import com.github.alexmodguy.alexscaves.client.render.ACRenderTypes;
 import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
@@ -252,12 +252,7 @@ public class CaveBookScreen extends Screen {
         this.hoveringPageLeft = mouseLeanX < -MOUSE_LEAN_THRESHOLD && canGoLeft();
         this.hoveringPageRight = mouseLeanX > MOUSE_LEAN_THRESHOLD && canGoRight();
         //? if >=1.21.6 {
-        /*// The gradient goes first from 1.21.6. Upstream draws it last and leans on fillGradient's
-        // z of -1000 to slide it behind a book that is already on screen; there is no z any more,
-        // and the frame is layered by the order things are submitted in. The rest of the order below
-        // is upstream's.
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        // And the book cannot be drawn here at all: a 3D model reaches a 1.21.6 screen only through
+        /*// The book cannot be drawn here at all: a 3D model reaches a 1.21.6 screen only through
         // the picture-in-picture pass, which calls back into renderBookModel once the GUI is being
         // rasterised. See CaveBookRenderState for the box and CaveBookPipRenderer for the transform.
         ((com.github.alexmodguy.alexscaves.mixin.client.GuiRenderStateAccessor) guiGraphics).ac_getGuiRenderState()
@@ -284,8 +279,14 @@ public class CaveBookScreen extends Screen {
         *///?} else {
         super.render(guiGraphics, mouseX, mouseY, fakePartialTickThatsZeroForSomeReason);
         //?}
-        //? if >=1.20.2 && <1.21.6
-        /*this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);*/
+        // Upstream drew the background here, last, leaning on fillGradient's z of -1000 to slide it
+        // behind a book that was already on screen. That call is only correct on 1.20.1. From 1.20.2
+        // vanilla's own Screen#render opens by calling renderBackground (and from 1.21.6 the final
+        // renderWithTooltip does, ahead of render), so on 55 of the 58 nodes upstream's line was a
+        // SECOND pass of the same 0xC0101010 -> 0xD0101010 gradient: alpha 0.82 applied twice leaves
+        // the frame at 3.4% instead of 18%, i.e. roughly a quarter as bright as intended -- which is
+        // what "the whole screen goes near-black when the compendium opens" is. Measured against a
+        // report screenshot: the hotbar's brightest pixel came back 26/255 where one pass predicts 60.
         //? if <1.20.2
         this.renderBackground(guiGraphics);
         if(unlockTooltip){
@@ -347,7 +348,7 @@ public class CaveBookScreen extends Screen {
         poseStack.scale(bookScale, bookScale, bookScale);
         BOOK_MODEL.setupAnim(null, openBookAmount, pageAngle, pageUp, -20 * (openBookAmount) - 10 * pageFlipBump, 0);
         BOOK_MODEL.mouseOver(mouseLeanX, mouseLeanY, ageInTicks, flip, canGoLeft(), canGoRight());
-        BOOK_MODEL.renderToBuffer(poseStack, bufferSource.getBuffer(ForgeRenderTypes.getUnlitTranslucent(BOOK_TEXTURE)), 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+        BOOK_MODEL.renderToBuffer(poseStack, bufferSource.getBuffer(ACRenderTypes.getUnlitTranslucent(BOOK_TEXTURE)), 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
         renderBookContents(poseStack, bufferSource, mouseX, mouseY, partialTick);
         poseStack.popPose();
     }

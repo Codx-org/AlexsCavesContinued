@@ -8,7 +8,7 @@ import net.minecraft.nbt.CompoundTag;
  */
 public interface ICitadelDataEntity {
 
-    CompoundTag getCitadelEntityData();
+    CompoundTag acGetCitadelEntityData();
 
-    void setCitadelEntityData(CompoundTag nbt);
+    void acSetCitadelEntityData(CompoundTag nbt);
 }

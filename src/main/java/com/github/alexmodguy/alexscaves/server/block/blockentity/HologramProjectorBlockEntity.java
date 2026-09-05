@@ -42,6 +42,12 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
 
     private UUID lastPlayerUUID;
 
+    // The projected mob's size multiplier, cycled in world by crouch-using the projector with an
+    // empty hand. Persisted and synced exactly like the rest of the projector's state; 1.0 is what
+    // every projector placed before this existed loads as, so the default is unchanged.
+    public static final float[] HOLOGRAM_SCALES = {0.25F, 0.5F, 0.75F, 1.0F, 1.5F, 2.0F, 3.0F};
+    private float hologramScale = 1.0F;
+
     public HologramProjectorBlockEntity(BlockPos pos, BlockState state) {
         super(ACBlockEntityRegistry.HOLOGRAM_PROJECTOR.get(), pos, state);
     }
@@ -96,6 +102,9 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
             this.entityTag = ACCompat.getCompound(tag, "EntityTag");
         }
         this.rotation = ACCompat.getFloat(tag, "Rotation");
+        if (tag.contains("HologramScale")) {
+            this.hologramScale = ACCompat.getFloat(tag, "HologramScale");
+        }
         if (tag.contains("LastPlayerUUID")) {
             this.lastPlayerUUID = ACCompat.getUUID(tag, "LastPlayerUUID");
         }
@@ -110,6 +119,7 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
             tag.put("EntityTag", this.entityTag);
         }
         tag.putFloat("Rotation", this.rotation);
+        tag.putFloat("HologramScale", this.hologramScale);
         if (lastPlayerUUID != null) {
             ACCompat.putUUID(tag, "LastPlayerUUID", lastPlayerUUID);
         }
@@ -118,7 +128,7 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
     @OnlyIn(Dist.CLIENT)
     public AABB getRenderBoundingBox() {
         BlockPos pos = this.getBlockPos();
-        float f = displayEntity == null ? 1.0F : Math.max(displayEntity.getBbWidth(), displayEntity.getBbHeight());
+        float f = (displayEntity == null ? 1.0F : Math.max(displayEntity.getBbWidth(), displayEntity.getBbHeight())) * hologramScale;
         return ACPlatform.encapsulating(pos.offset(-1, -1, -1), pos.offset(2, 2, 2)).inflate(Math.max(f - 0.5F, 1F));
     }
 
@@ -136,6 +146,9 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
             }
             this.entityTag = ACCompat.getCompound(packet.getTag(), "EntityTag");
             this.rotation = ACCompat.getFloat(packet.getTag(), "Rotation");
+            if (packet.getTag().contains("HologramScale")) {
+                this.hologramScale = ACCompat.getFloat(packet.getTag(), "HologramScale");
+            }
             if (packet.getTag().contains("LastPlayerUUID")) {
                 this.lastPlayerUUID = ACCompat.getUUID(packet.getTag(), "LastPlayerUUID");
             }
@@ -151,6 +164,7 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
             compoundtag.put("EntityTag", this.entityTag);
         }
         compoundtag.putFloat("Rotation", this.rotation);
+        compoundtag.putFloat("HologramScale", this.hologramScale);
         if (lastPlayerUUID != null) {
             ACCompat.putUUID(compoundtag, "LastPlayerUUID", lastPlayerUUID);
         }
@@ -163,6 +177,24 @@ public class HologramProjectorBlockEntity extends BlockEntity implements ACUpdat
         this.rotation = playerRot;
         displayEntity = null;
         lastPlayerUUID = null;
+    }
+
+    public float getHologramScale() {
+        return hologramScale;
+    }
+
+    /** Advances to the next size and syncs it; answers the size that is now in effect. */
+    public float cycleHologramScale() {
+        int index = 0;
+        for (int i = 0; i < HOLOGRAM_SCALES.length; i++) {
+            if (Math.abs(HOLOGRAM_SCALES[i] - hologramScale) < 1.0E-4F) {
+                index = i;
+                break;
+            }
+        }
+        this.hologramScale = HOLOGRAM_SCALES[(index + 1) % HOLOGRAM_SCALES.length];
+        this.markUpdated();
+        return this.hologramScale;
     }
 
     public boolean isPlayerRender() {

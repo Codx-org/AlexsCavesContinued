@@ -87,8 +87,17 @@ public class ExtinctionSpearEntity extends AbstractArrow {
         this.entityData.define(WIGGLING, false);
     }
 
+    /**
+     * ⚠ From 1.20.5 this is {@code getDefaultPickupItem()} (a `!mc205-pickupitem` rename), and
+     * AbstractArrow's two-argument constructor CALLS it to seed its own {@code pickupItemStack} --
+     * before this class's field initialisers have run. {@code spearItem} is therefore null on every
+     * spear built through {@code EntityType#create}: every client-side copy, and every /summon.
+     * Vanilla's own {@code getPickupItem()} is {@code pickupItemStack.copy()} and
+     * {@code addAdditionalSaveData} stores it through a non-nullable codec, so the null is one
+     * dereference away from an NPE that has nothing to do with where it was created.
+     */
     protected ItemStack getPickupItem() {
-        return spearItem;
+        return spearItem == null ? new ItemStack(ACItemRegistry.EXTINCTION_SPEAR.get()) : spearItem;
     }
 
     @Nullable
@@ -109,7 +118,16 @@ public class ExtinctionSpearEntity extends AbstractArrow {
             } else if(this.isWiggling()){
                 if(ticksWiggling++ > 20){
                     this.setWiggling(false);
-                    this.explode();
+                    // Server side only. Upstream blew up on both, which on 1.20.1 was merely wasteful
+                    // -- a client-side Explosion damaged nothing and the knockback was overwritten by
+                    // the next position packet. From 1.21.2 Explosion is an interface whose only
+                    // implementation is ServerExplosion, so ACPlatform#explosion hands back null off a
+                    // server level and every entity in the blast is asked nothing about opting out
+                    // (see its javadoc, which asserts exactly this invariant). Keep the blast where
+                    // the other seven TephraExplosion/MineExplosion/TotemExplosion call sites keep it.
+                    if (!this.level().isClientSide()) {
+                        this.explode();
+                    }
                 }
             } else {
                 Vec3 vec3 = entity.getEyePosition().subtract(this.position());

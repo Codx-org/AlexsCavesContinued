@@ -15,7 +15,6 @@ import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.ForgeRenderTypes;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -96,7 +95,7 @@ public class PurpleWitchMagicParticle extends AbstractTrailParticle {
     }
 
     protected VertexConsumer getVetrexConsumer(MultiBufferSource multibuffersource$buffersource) {
-        return multibuffersource$buffersource.getBuffer(ForgeRenderTypes.getUnlitTranslucent(getTrailTexture()));
+        return multibuffersource$buffersource.getBuffer(ACRenderTypes.getUnlitTranslucent(getTrailTexture()));
     }
 
     public float getAlpha() {

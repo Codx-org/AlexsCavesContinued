@@ -1716,10 +1716,10 @@ public class ACCompat {
     public static net.minecraft.nbt.CompoundTag getPersistentData(net.minecraft.world.entity.Entity entity) {
         //? if fabric {
         /*if (entity instanceof com.github.alexmodguy.alexscaves.citadel.server.entity.ICitadelDataEntity dataEntity) {
-            net.minecraft.nbt.CompoundTag data = dataEntity.getCitadelEntityData();
+            net.minecraft.nbt.CompoundTag data = dataEntity.acGetCitadelEntityData();
             if (data == null) {
                 data = new net.minecraft.nbt.CompoundTag();
-                dataEntity.setCitadelEntityData(data);
+                dataEntity.acSetCitadelEntityData(data);
             }
             return data;
         }
@@ -3166,5 +3166,55 @@ public class ACCompat {
         *///?} else {
         return builder;
         //?}
+    }
+
+    /**
+     * The rider's strafe input as the SERVER sees it -- {@code xxa}, positive = strafe left.
+     *
+     * <p>⚠️ <b>1.21.2 deleted {@code ServerPlayer#setPlayerInput}, and with it every server-side
+     * value of {@code xxa}/{@code zza} for a riding player.</b> Through 1.21.1 the client sent a
+     * {@code ServerboundPlayerInputPacket} carrying the two float impulses and the server wrote them
+     * straight onto the player, which is how a vehicle that steers ON THE SERVER read its controls.
+     * From 1.21.2 that packet carries an {@code Input} record instead and the server parks it in
+     * {@code lastClientInput}; nothing writes {@code xxa}/{@code zza} server-side any more, so they
+     * are frozen at {@code 0.0F} forever. The fields still exist and every read still compiles --
+     * the vehicle simply stops responding, on 45 of the 58 nodes, with nothing in any log.
+     *
+     * <p>Vanilla's own rideable mobs did not notice because they are simulated by the RIDER'S
+     * client ({@code getControllingPassenger} + {@code isControlledByLocalInstance}) and the server
+     * only receives the resulting position. {@code SubmarineEntity} is an {@code Entity} that never
+     * overrides {@code getControllingPassenger}, so the server is authoritative for it and this is
+     * exactly why the submarine became unsteerable -- no acceleration, no turning -- at 1.21.2.
+     *
+     * <p>On a client this falls through to the field, which {@code LocalPlayer} still fills from
+     * {@code KeyboardInput} on every version, so a call site's client-side behaviour is unchanged.
+     * The one thing the reconstruction cannot recover is 1.20.1's sneak dampening (vanilla scaled
+     * both impulses by {@code 0.3} while crouched before sending them); the {@code Input} record is
+     * booleans, so a crouched rider now steers at full rate. Every AC call site either takes
+     * {@code Math.signum} of the value or scales it, so that is a feel difference, not a bug.
+     */
+    public static float riderXxa(net.minecraft.world.entity.player.Player player) {
+        //? if >=1.21.2 {
+        /*if (player instanceof net.minecraft.server.level.ServerPlayer acServerPlayer) {
+            net.minecraft.world.entity.player.Input acInput = acServerPlayer.getLastClientInput();
+            return (acInput.left() ? 1.0F : 0.0F) - (acInput.right() ? 1.0F : 0.0F);
+        }
+        *///?}
+        return player.xxa;
+    }
+
+    /**
+     * The rider's forward input as the SERVER sees it -- {@code zza}, positive = forwards.
+     *
+     * <p>See {@link #riderXxa} for why reading the field directly stopped working at 1.21.2.
+     */
+    public static float riderZza(net.minecraft.world.entity.player.Player player) {
+        //? if >=1.21.2 {
+        /*if (player instanceof net.minecraft.server.level.ServerPlayer acServerPlayer) {
+            net.minecraft.world.entity.player.Input acInput = acServerPlayer.getLastClientInput();
+            return (acInput.forward() ? 1.0F : 0.0F) - (acInput.backward() ? 1.0F : 0.0F);
+        }
+        *///?}
+        return player.zza;
     }
 }

@@ -1,63 +1,52 @@
 package com.github.alexmodguy.alexscaves.fabric.forge.client;
 
+import com.github.alexmodguy.alexscaves.client.render.ACRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 
 /**
  * Fabric stand-in for the one loader render type this mod draws with.
  *
- * <p>Ten call sites ask for {@link #getUnlitTranslucent}, all of them glow: the cave book's page
- * quad, the extinction spear (held and thrown), the dark arrow, the nucleeper's and gumbeeper's
- * glass, the amber monolith, and three particles. None is gated, so whatever this answers has to be
- * right on all 22 Fabric nodes.
+ * <p>Ten call sites want an unlit-translucent type, all of them glow: the cave book's model and its
+ * page widget, the extinction spear (held and thrown), the dark arrow, the nucleeper's and
+ * gumbeeper's glass, the amber monolith, and three particles. They no longer come here — they call
+ * {@code ACRenderTypes.getUnlitTranslucent}, which supplies the mod's own type on the nodes whose
+ * loader has none and delegates to the loader everywhere else. This class survives only because the
+ * Fabric rename rule points that delegate's <i>import</i> at it, and it forwards so that any future
+ * caller reaching for the loader spelling still gets the right thing.
  *
- * <h2>Why this is a one-line delegate and not a copy of the loader's render type</h2>
+ * <p><b>Do not reinstate the old body.</b> It answered with vanilla's entity-translucent-emissive
+ * type, and {@code EMISSIVE} is the wrong switch: in {@code core/entity.vsh} (1.21.5 and up) and in
+ * {@code rendertype_entity_translucent_emissive.vsh} (below it) the define gates only the
+ * <i>lightmap</i>, while the {@code minecraft_mix_light} call that applies the two hard-coded
+ * directional lights sits outside it on every version. So the type was fullbright <i>and</i>
+ * diffuse-shaded — which is what made the Cave Compendium's book render with a hard bright/dark
+ * step from one face to the next, reported against 1.0.2.
  *
- * <p>The loader's own implementation is not one thing across this range — it was rewritten, and the
- * two halves disagree about what "unlit" means:
- *
- * <ul>
- *   <li>up to and including 26.1 it is a composite over a <b>loader-supplied core shader</b>
- *       ({@code rendertype_entity_unlit_translucent}, shipped in the universal jar under the
- *       loader's own asset namespace). That shader is vanilla's entity-translucent one with the
- *       directional diffuse mix dropped from the vertex stage — so it is unlit in the sense of
- *       <i>no diffuse shading</i>, and it still multiplies by the lightmap;
- *   <li>from 26.2 the shader is gone from the code path (the asset still ships, unused) and the
- *       type is pure vanilla: the entity-translucent pipeline, sorted, overlay bound, and
- *       <b>no lightmap</b> — i.e. unlit now means <i>ignores the light level</i>, and the diffuse
- *       shading it used to remove is back.
- * </ul>
- *
- * <p>Neither half is reachable here. The old one needs an asset this mod does not ship and a
- * core-shader registration path Fabric does not have without a mixin of its own; the new one names
- * a pipeline whose lightmap sampler is fed by the loader's patched setup, not by anything a mod can
- * ask vanilla for. So this answers with the vanilla render type that both halves are approximating,
- * {@code entityTranslucentEmissive}: sorted translucent, overlay bound, cull off, and fullbright.
- *
- * <p>Two deliberate divergences follow, and they are the whole cost of this class:
+ * <p>For the record, since the loader's own type is not one thing across this range and the shape
+ * of it decides which nodes need the mod's own:
  *
  * <ul>
- *   <li><b>The lightmap is ignored on every node</b>, where below 26.2 the loader applied it. Every
- *       one of the ten call sites is an emissive effect that reads as self-lit, so fullbright is
- *       the intent at all of them; the visible difference is that these effects no longer darken in
- *       an unlit cave. It also makes the 22 Fabric nodes agree with each other and with the 26.2+
- *       loader nodes, rather than splitting the port down the middle at 26.2 to reproduce a
- *       distinction the loader itself stopped making.
- *   <li><b>Depth is not written</b> (vanilla's emissive type masks it off, the loader's did not).
- *       Both composites sort on upload, so overlapping quads inside one draw still resolve; what is
- *       lost is these effects occluding <i>other</i> translucent geometry drawn after them.
+ *   <li><b>Forge up to 26.1</b> and <b>NeoForge on every node</b> supply a real one: a composite
+ *       (later a pipeline) over a loader-supplied shader that is vanilla's entity-translucent with
+ *       the directional diffuse mix dropped and the lightmap kept. Those 35 nodes still delegate.
+ *   <li><b>Forge 26.2</b> (65.1.0) rewrote its two {@code unlitTranslucent} factories onto plain
+ *       {@code RenderPipelines.ENTITY_TRANSLUCENT} — no unlit define, no lightmap bound — so that
+ *       one node regressed into exactly the diffuse shading the type exists to remove, and it gets
+ *       the mod's type alongside Fabric. NeoForge 26.2 did not: it still names
+ *       {@code neoforge:pipeline/entity_unlit_translucent} with {@code NO_CARDINAL_LIGHTING} and
+ *       still binds the lightmap (read out of 26.2.0.66's bytecode, not out of this comment's
+ *       previous revision, which claimed the opposite for both loaders).
  * </ul>
- *
- * <p>Nothing here is version-gated. {@code RenderType.entityTranslucentEmissive} is in the
- * {@code !mc2111-rendertypes-*} rename list, so the 1.21.11 split of that class into a factory
- * holder carries this call and its import across on its own.
  */
 public final class ForgeRenderTypes {
 
     private ForgeRenderTypes() {
     }
 
+    // Not recursive: this class is compiled on Fabric only, and ACRenderTypes' delegate-to-the-
+    // loader arm is gated off on every Fabric node. Keep it that way if that gate is ever widened.
     public static RenderType getUnlitTranslucent(ResourceLocation textureLocation) {
-        return RenderType.entityTranslucentEmissive(textureLocation);
+        return ACRenderTypes.getUnlitTranslucent(textureLocation);
     }
 }

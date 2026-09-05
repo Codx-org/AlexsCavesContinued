@@ -29,39 +29,39 @@ public class PrimaryLevelDataMixin {
     //? if >=26 {
     /*@Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS,
             method = "Lnet/minecraft/world/level/storage/PrimaryLevelData;setTagData(Lnet/minecraft/nbt/CompoundTag;Ljava/util/UUID;)V")
-    private void citadel_preSetTagData(CompoundTag compoundTag, java.util.UUID singlePlayerUUID, CallbackInfo ci) {
-        citadelUpdateSurfaceRulesForServer(true);
+    private void acc_citadel_preSetTagData(CompoundTag compoundTag, java.util.UUID singlePlayerUUID, CallbackInfo ci) {
+        accCitadelUpdateSurfaceRulesForServer(true);
     }
 
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS,
             method = "Lnet/minecraft/world/level/storage/PrimaryLevelData;setTagData(Lnet/minecraft/nbt/CompoundTag;Ljava/util/UUID;)V")
-    private void citadel_postSetTagData(CompoundTag compoundTag, java.util.UUID singlePlayerUUID, CallbackInfo ci) {
-        citadelUpdateSurfaceRulesForServer(false);
+    private void acc_citadel_postSetTagData(CompoundTag compoundTag, java.util.UUID singlePlayerUUID, CallbackInfo ci) {
+        accCitadelUpdateSurfaceRulesForServer(false);
     }
 
     @Unique
-    private void citadelUpdateSurfaceRulesForServer(boolean saving) {
+    private void accCitadelUpdateSurfaceRulesForServer(boolean saving) {
         net.minecraft.server.MinecraftServer server = com.github.alexmodguy.alexscaves.citadel.Citadel.PROXY.getMinecraftServer();
         if (server != null) {
-            citadelUpdateSurfaceRules(server.registryAccess(), saving);
+            accCitadelUpdateSurfaceRules(server.registryAccess(), saving);
         }
     }
     *///?} else {
     @Inject(at = @At("HEAD"), remap = CitadelConstants.REMAPREFS,
             method = "Lnet/minecraft/world/level/storage/PrimaryLevelData;setTagData(Lnet/minecraft/core/RegistryAccess;Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/nbt/CompoundTag;)V")
-    private void citadel_preSetTagData(RegistryAccess registryAccess, CompoundTag compoundTag, CompoundTag compoundTag1, CallbackInfo ci) {
-        citadelUpdateSurfaceRules(registryAccess, true);
+    private void acc_citadel_preSetTagData(RegistryAccess registryAccess, CompoundTag compoundTag, CompoundTag compoundTag1, CallbackInfo ci) {
+        accCitadelUpdateSurfaceRules(registryAccess, true);
     }
 
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS,
             method = "Lnet/minecraft/world/level/storage/PrimaryLevelData;setTagData(Lnet/minecraft/core/RegistryAccess;Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/nbt/CompoundTag;)V")
-    private void citadel_postSetTagData(RegistryAccess registryAccess, CompoundTag compoundTag, CompoundTag compoundTag1, CallbackInfo ci) {
-        citadelUpdateSurfaceRules(registryAccess, false);
+    private void acc_citadel_postSetTagData(RegistryAccess registryAccess, CompoundTag compoundTag, CompoundTag compoundTag1, CallbackInfo ci) {
+        accCitadelUpdateSurfaceRules(registryAccess, false);
     }
     //?}
 
     @Unique
-    private void citadelUpdateSurfaceRules(RegistryAccess registryAccess, boolean saving) {
+    private void accCitadelUpdateSurfaceRules(RegistryAccess registryAccess, boolean saving) {
         Registry<LevelStem> registry = registryAccess.registryOrThrow(Registries.LEVEL_STEM);
         if (registry.containsKey(LevelStem.OVERWORLD)) {
             // Registry#get answers the Holder from 1.21.2; the nullable value is getValue now.
@@ -71,7 +71,7 @@ public class PrimaryLevelDataMixin {
             LevelStem levelstem = registry.get(LevelStem.OVERWORLD);
             //?}
             if (levelstem.generator() instanceof NoiseBasedChunkGenerator noiseBasedChunkGenerator && noiseBasedChunkGenerator.settings.isBound() && (Object) noiseBasedChunkGenerator.settings.value() instanceof NoiseGeneratorSettingsAccessor accessor) {
-                accessor.onSaveData(saving);
+                accessor.acOnSaveData(saving);
             }
         }
     }

@@ -779,6 +779,133 @@ public class ACClientCompat {
     }
 
     /**
+     * The texture to draw a mob's hologram with: the dispatcher renderer's own, found through
+     * whichever accessor that renderer has.
+     *
+     * <p>{@link #rendererTexture} answers for every renderer up to 1.21.1 and for vanilla-shaped
+     * living renderers after it, which is all the hand-posed hologram path can draw anyway. The
+     * generic path draws mobs whose renderer is neither — a GeckoLib mob, say — and from 1.21.2
+     * those have no accessor this tree can name, only one they declare themselves. So the fallback
+     * is a reflective look for a one-argument {@code getTextureLocation} taking either the entity or
+     * the render state, which is the shape every such renderer has kept. Null if there is none, and
+     * the caller then draws nothing rather than drawing a missing texture.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static net.minecraft.resources.ResourceLocation hologramTexture(net.minecraft.world.entity.Entity entity, float partialTick) {
+        net.minecraft.resources.ResourceLocation texture = rendererTexture(entity, partialTick);
+        if (texture != null) {
+            return texture;
+        }
+        net.minecraft.client.renderer.entity.EntityRenderer render =
+                net.minecraft.client.Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
+        if (render == null) {
+            return null;
+        }
+        Object state = null;
+        //? if >=1.21.2 {
+        /*try {
+            state = render.createRenderState(entity, partialTick);
+        } catch (Throwable ignored) {
+            state = null;
+        }
+        *///?}
+        for (java.lang.reflect.Method method : render.getClass().getMethods()) {
+            if (!"getTextureLocation".equals(method.getName())
+                    || method.getParameterCount() != 1
+                    || !net.minecraft.resources.ResourceLocation.class.isAssignableFrom(method.getReturnType())) {
+                continue;
+            }
+            Class<?> parameter = method.getParameterTypes()[0];
+            Object argument = parameter.isInstance(entity) ? entity : parameter.isInstance(state) ? state : null;
+            if (argument == null) {
+                continue;
+            }
+            try {
+                Object result = method.invoke(render, argument);
+                if (result instanceof net.minecraft.resources.ResourceLocation location) {
+                    return location;
+                }
+            } catch (Throwable ignored) {
+                // A renderer that throws on a detached copy of an entity is no worse off than one
+                // with no accessor at all; keep looking, then give up.
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Draws an entity through its own dispatcher renderer, with every render type it asks for
+     * swapped for the hologram type — the generic half of the hologram projector, for mobs the
+     * hand-posed path cannot draw.
+     *
+     * <p>Placement matches that path rather than the world: a hand-posed hologram hangs from the
+     * pose stack's origin, where a renderer puts the entity's feet, so the leading translate is
+     * vanilla's own {@code -1.501} spelled forwards.
+     */
+    private static final java.util.Set<net.minecraft.world.entity.EntityType<?>> HOLOGRAM_FAILURES =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static <E extends net.minecraft.world.entity.Entity> void renderAsHologram(
+            E entity,
+            float yaw,
+            float partialTick,
+            PoseStack poseStack,
+            net.minecraft.client.renderer.MultiBufferSource buffers,
+            int packedLight) {
+        net.minecraft.client.renderer.entity.EntityRenderer raw =
+                net.minecraft.client.Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
+        if (raw == null) {
+            return;
+        }
+        net.minecraft.resources.ResourceLocation texture = hologramTexture(entity, partialTick);
+        if (texture == null) {
+            return;
+        }
+        com.github.alexmodguy.alexscaves.client.render.ACHologramBuffers hologram =
+                new com.github.alexmodguy.alexscaves.client.render.ACHologramBuffers(buffers, texture);
+        // A renderer draws the name tag itself, and a hologram has no business carrying one. The
+        // display entity is a detached client-side copy that is never ticked, so the flag is put
+        // back only for tidiness.
+        boolean showName = entity.isCustomNameVisible();
+        entity.setCustomNameVisible(false);
+        poseStack.pushPose();
+        poseStack.translate(0.0F, -1.5F, 0.0F);
+        try {
+            //? if >=1.21.9 {
+            /*net.minecraft.client.renderer.entity.state.EntityRenderState state = raw.createRenderState(entity, partialTick);
+            if (state instanceof net.minecraft.client.renderer.entity.state.LivingEntityRenderState living) {
+                living.bodyRot = yaw;
+                living.yRot = yaw;
+            }
+            state.lightCoords = packedLight;
+            raw.submit(state, poseStack,
+                    new com.github.alexmodguy.alexscaves.client.render.compat.ACDrawCollector(hologram::getBuffer),
+                    new com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers(null).camera());
+            *///?} elif >=1.21.2 {
+            /*net.minecraft.client.renderer.entity.state.EntityRenderState state = raw.createRenderState(entity, partialTick);
+            if (state instanceof net.minecraft.client.renderer.entity.state.LivingEntityRenderState living) {
+                living.bodyRot = yaw;
+                living.yRot = yaw;
+            }
+            raw.render(state, poseStack, hologram, packedLight);
+            *///?} else {
+            raw.render(entity, yaw, partialTick, poseStack, hologram, packedLight);
+            //?}
+        } catch (Throwable throwable) {
+            // A third-party renderer handed a detached entity is the one thing here that is not this
+            // mod's code. It must not take the frame down with it, so the hologram simply goes blank
+            // -- once per entity type, since this runs every frame the projector is on screen.
+            if (HOLOGRAM_FAILURES.add(entity.getType())) {
+                com.github.alexmodguy.alexscaves.AlexsCaves.LOGGER.warn("Could not render {} as a hologram", entity.getType(), throwable);
+            }
+        } finally {
+            poseStack.popPose();
+            entity.setCustomNameVisible(showName);
+        }
+    }
+
+    /**
      * Poses a model that belongs to some other entity's renderer — the three places that draw a mob
      * with a render type of their own (amber monolith, notor hologram, the guide book's entity
      * widget) rather than handing the whole job to the renderer.

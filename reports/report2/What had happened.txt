@@ -1,0 +1,9 @@
+Also, here are some extra texture related bugs that happen in 1.21.5/fabric :
+- when going underwater, the block and particles start to flash ramdomly and in certain biomes (such as the toxic caves, forlorn hollows and abyssal chasm), the screen goes completely blank with the biome's respective atmosphere
+
+- some of the sides of the diving helmet have a texture problem
+
+- with the Skin Layers 3D mod, majority of the custom headsets didn't overlap with the newly added layers (such as the hood of darkness, hazmat mask, primordial helmet and the diving helmet)
+
+also the game completely crashes when placing in a pewen boat
+https://mclo.gs/94zKrOc

@@ -128,8 +128,11 @@ public class SpelunkeryTableScreen extends AbstractContainerScreen<SpelunkeryTab
         this.renderMagnify(guiGraphics, partialTick);
     *///?} elif >=1.20.2 {
     /*public void render(GuiGraphics guiGraphics, int x, int y, float partialTick) {
-        this.renderBackground(guiGraphics, x, y, partialTick);
-        this.renderBg(guiGraphics, partialTick, x, y);
+        // No renderBackground/renderBg of its own on this band. Upstream's two calls are right on
+        // 1.20.1, where Screen#render draws neither; from 1.20.2 Screen#render opens by calling
+        // renderBackground (renderWithTooltip does from 1.21.6), and the container screen's override
+        // of it is renderTransparentBackground plus renderBg. Keeping them meant the 0xC0101010 ->
+        // 0xD0101010 darken ran twice and the panel was blitted three times.
         super.render(guiGraphics, x, y, partialTick);
         this.renderMagnify(guiGraphics, partialTick);
         this.renderTooltip(guiGraphics, x, y);

@@ -18,7 +18,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.client.ForgeRenderTypes;
+import com.github.alexmodguy.alexscaves.client.render.ACRenderTypes;
 
 public class AmberMonolithBlockRenderer<T extends AmberMonolithBlockEntity> implements BlockEntityRenderer<T> {
 
@@ -92,7 +92,7 @@ public class AmberMonolithBlockRenderer<T extends AmberMonolithBlockEntity> impl
                 // well be a vanilla one whose model is not.
                 if (render instanceof net.minecraft.client.model.EntityModel) {
                     net.minecraft.client.model.EntityModel model = (net.minecraft.client.model.EntityModel) render;
-                    VertexConsumer ivertexbuilder = bufferIn.getBuffer(ForgeRenderTypes.getUnlitTranslucent(ACClientCompat.rendererTexture(entityIn, partialTicks)));
+                    VertexConsumer ivertexbuilder = bufferIn.getBuffer(ACRenderTypes.getUnlitTranslucent(ACClientCompat.rendererTexture(entityIn, partialTicks)));
                     matrixStack.pushPose();
                     boolean shouldSit = entityIn.isPassenger() && (entityIn.getVehicle() != null && com.github.alexmodguy.alexscaves.server.misc.ACCompat.shouldRiderSit(entityIn.getVehicle()));
                     boolean prevCrouching = false;

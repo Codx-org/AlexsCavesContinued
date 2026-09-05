@@ -195,6 +195,16 @@ public class ACInternalShaders {
             .withCull(true)
             .build();
 
+    // Forge/NeoForge's unlitTranslucent: entity-translucent with the cardinal (diffuse) lighting
+    // term switched off, so a model's faces are not shaded by their normals. The lightmap is
+    // KEPT — this is not an emissive type; it is the loader's ENTITY_UNLIT_TRANSLUCENT, whose
+    // only difference from vanilla entity-translucent is the NO_CARDINAL_LIGHTING define.
+    // EMISSIVE would be the wrong switch: it drops the lightmap and leaves the diffuse term in.
+    public static final RenderPipeline ENTITY_UNLIT_TRANSLUCENT = entityTranslucent()
+            .withLocation(acId("pipeline/entity_unlit_translucent"))
+            .withShaderDefine("NO_CARDINAL_LIGHTING")
+            .build();
+
     // The eyes shader with the mod's separate-alpha blend, drawn only where depth already matches.
     public static final RenderPipeline EYES_ALPHA = ACPipelineState.depthEqual(ACPipelineState.blend(eyes()
             .withLocation(acId("pipeline/eyes_alpha")), EYES_ALPHA_BLEND)

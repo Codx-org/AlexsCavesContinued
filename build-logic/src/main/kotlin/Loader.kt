@@ -127,11 +127,13 @@ sealed class Loader(val id: String) {
 					)
 				),
 				dependencies = mapOf(ctx.modId to forgeDeps),
-				mixins = listOf(ForgeMixin("${ctx.modId}.mixins.json")),
-				// Left empty on purpose: Forge auto-loads META-INF/accesstransformer.cfg (the
-				// default location, which is where loom puts this mod's AT), and naming it here
-				// as well makes Forge read it twice.
-				accessTransformers = emptyList()
+				// NOT modelled at all, and that is load-bearing: Forge's ModFile only falls back to
+				// the default META-INF/accesstransformer.cfg when the key is ABSENT. An empty list is
+				// a present-but-empty key, which satisfies neither that branch nor the "use the named
+				// files" one, so every Forge jar shipped with no access transformer loaded at all.
+				// NeoForge's parser falls back either way. Loom already puts the AT in the default
+				// location, so the key is never needed.
+				mixins = listOf(ForgeMixin("${ctx.modId}.mixins.json"))
 			)
 
 			// Spliced into the [[mods]] table rather than modelled as a field on ForgeMod: it would

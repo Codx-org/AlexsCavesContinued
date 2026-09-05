@@ -1059,12 +1059,25 @@ public class ClientEvents {
             return false;
         }
         //?}
-        // The band-aid below has nothing left to read from 1.21.6: the fog is a std140 block
-        // FogRenderer writes straight into a GPU ring buffer, and RenderSystem's getter hands back
-        // an opaque slice of it. The event's own getters are the values now — they read the very
-        // FogData fields setFarPlaneDistance/setNearPlaneDistance write — so this is the same pair,
-        // just no longer able to see a foreign mod that reached past the event.
-        //? if >=1.21.6 {
+        // Where the defaults come from, and why the boundary is 1.21.2 rather than 1.21.6.
+        //
+        // Below 1.21.2 vanilla's setupFog writes RenderSystem's fog start/end BEFORE the event is
+        // fired, so reading them back is the same pair the event carries — and it additionally
+        // sees a foreign mod that reached past the event and set them directly, which is the
+        // band-aid upstream wanted.
+        //
+        // From 1.21.2 setupFog computes an immutable FogParameters and RETURNS it; RenderSystem is
+        // written later, by the caller. So at event time the getter still holds the PREVIOUS
+        // frame's fog — which, in a mod fog volume, is a distance this method already multiplied.
+        // Multiplying it again every frame compounds: the fog collapses toward the camera within a
+        // second or two and the world renders as a flat sheet of the biome's fog colour, flickering
+        // as the two passes disagree. From 1.21.6 there is nothing to read at all — the fog is a
+        // std140 block written straight into a GPU ring buffer.
+        //
+        // The event's own getters are correct on every version from 1.21.2 up: the loader (and, on
+        // Fabric, this mod's own FogSetupMixin) fills them from the FogParameters setupFog just
+        // built, and setFarPlaneDistance/setNearPlaneDistance write back into the same pair.
+        //? if >=1.21.2 {
         /*float defaultFarPlaneDistance = event.getFarPlaneDistance();
         float defaultNearPlaneDistance = event.getNearPlaneDistance();
         *///?} else {

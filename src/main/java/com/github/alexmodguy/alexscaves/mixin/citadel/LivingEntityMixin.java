@@ -27,7 +27,7 @@ public abstract class LivingEntityMixin extends Entity implements ICitadelDataEn
     // holder class for @MixinMerged EntityDataAccessor fields and throws in dev when it finds any.
     // See CitadelSyncedData's class notes. Hence the boolean field: it holds the call without being
     // an accessor itself.
-    private static final boolean CITADEL_DATA_INSTALLED = CitadelSyncedData.installCitadelData(
+    private static final boolean ACC_CITADEL_DATA_INSTALLED = CitadelSyncedData.installCitadelData(
             SynchedEntityData.defineId(LivingEntity.class, com.github.alexmodguy.alexscaves.server.misc.ACDataSerializers.COMPOUND_TAG));
 
     protected LivingEntityMixin(EntityType<? extends Entity> entityType, Level world) {
@@ -40,12 +40,12 @@ public abstract class LivingEntityMixin extends Entity implements ICitadelDataEn
     // which is abstract (see EntityMixin).
     //? if >=1.20.5 {
     /*@Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;defineSynchedData(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V")
-    private void citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder, CallbackInfo ci) {
+    private void acc_citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(CitadelSyncedData.CITADEL_DATA, new CompoundTag());
     }
     *///?} else {
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;defineSynchedData()V")
-    private void citadel_registerData(CallbackInfo ci) {
+    private void acc_citadel_registerData(CallbackInfo ci) {
         entityData.define(CitadelSyncedData.CITADEL_DATA, new CompoundTag());
     }
     //?}
@@ -58,42 +58,42 @@ public abstract class LivingEntityMixin extends Entity implements ICitadelDataEn
     // is the same zero-copy bridge those rules generate.
     //? if >=1.21.6 {
     /*@Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V")
-    private void citadel_writeAdditional(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
-        CompoundTag citadelDat = getCitadelEntityData();
+    private void acc_citadel_writeAdditional(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
+        CompoundTag citadelDat = acGetCitadelEntityData();
         if (citadelDat != null) {
             ACCompat.tagOf(output).put("CitadelData", citadelDat);
         }
     }
 
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V")
-    private void citadel_readAdditional(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
+    private void acc_citadel_readAdditional(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
         CompoundTag compoundNBT = ACCompat.tagOf(input);
         if (compoundNBT.contains("CitadelData")) {
-            setCitadelEntityData(ACCompat.getCompound(compoundNBT, "CitadelData"));
+            acSetCitadelEntityData(ACCompat.getCompound(compoundNBT, "CitadelData"));
         }
     }
     *///?} else {
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V")
-    private void citadel_writeAdditional(CompoundTag compoundNBT, CallbackInfo ci) {
-        CompoundTag citadelDat = getCitadelEntityData();
+    private void acc_citadel_writeAdditional(CompoundTag compoundNBT, CallbackInfo ci) {
+        CompoundTag citadelDat = acGetCitadelEntityData();
         if (citadelDat != null) {
             compoundNBT.put("CitadelData", citadelDat);
         }
     }
 
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V")
-    private void citadel_readAdditional(CompoundTag compoundNBT, CallbackInfo ci) {
+    private void acc_citadel_readAdditional(CompoundTag compoundNBT, CallbackInfo ci) {
         if (compoundNBT.contains("CitadelData")) {
-            setCitadelEntityData(ACCompat.getCompound(compoundNBT, "CitadelData"));
+            acSetCitadelEntityData(ACCompat.getCompound(compoundNBT, "CitadelData"));
         }
     }
     //?}
 
-    public CompoundTag getCitadelEntityData() {
+    public CompoundTag acGetCitadelEntityData() {
         return entityData.get(CitadelSyncedData.CITADEL_DATA);
     }
 
-    public void setCitadelEntityData(CompoundTag nbt) {
+    public void acSetCitadelEntityData(CompoundTag nbt) {
         entityData.set(CitadelSyncedData.CITADEL_DATA, nbt);
     }
 }

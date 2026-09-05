@@ -34,7 +34,7 @@ public class NoiseGeneratorSettingsMixin implements NoiseGeneratorSettingsAccess
 
 
    @Inject(method = "surfaceRule", at = @At("HEAD"), cancellable = true)
-    private void surfaceRule(CallbackInfoReturnable<SurfaceRules.RuleSource> cir) {
+    private void acc_citadel_surfaceRule(CallbackInfoReturnable<SurfaceRules.RuleSource> cir) {
         if (!hasModifiedRules && !saving && !ModCompatBridge.usingTerrablender()) { // initialized
             this.unmodifiedSurfaceRule = surfaceRule;
             if(SurfaceRulesManager.hasOverworldModifications()){
@@ -53,7 +53,7 @@ public class NoiseGeneratorSettingsMixin implements NoiseGeneratorSettingsAccess
     }
 
     @Override
-    public void onSaveData(boolean saving) {
+    public void acOnSaveData(boolean saving) {
         this.saving = saving;
         if(!ModCompatBridge.usingTerrablender() && this.requiresSurfaceRuleSwapping){
             if(this.hasModifiedRules){

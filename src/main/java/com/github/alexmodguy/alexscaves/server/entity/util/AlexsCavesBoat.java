@@ -12,6 +12,20 @@ public interface AlexsCavesBoat {
 
     AlexsCavesBoat.Type getACBoatType();
 
+    // Declared here so the boat MODELS can be typed on this interface rather than on a vanilla
+    // boat class: 1.21.2 split the chest boats onto their own branch (ChestBoat ->
+    // AbstractChestBoat -> AbstractBoat), so `Boat` stopped being a supertype of both AC boats
+    // and any model or renderer generic bound naming it erased to a checkcast the chest boat
+    // could not pass.
+    //
+    // ⚠️ It carries a mod-unique name and BOTH entities implement it by delegating to the
+    // vanilla method. It used to be spelled `getRowingTime(int, float)` and rely on the vanilla
+    // superclass supplying the body — which works only where the runtime is Mojmap. On Fabric
+    // the vanilla method is intermediary-named at runtime, so nothing implemented the interface
+    // method and rendering either boat threw AbstractMethodError. A mod interface may never
+    // expect a VANILLA supertype to satisfy it; declare your own name and delegate.
+    float acGetRowingTime(int side, float partialTicks);
+
     enum Type {
         PEWEN("pewen", ACBlockRegistry.PEWEN_PLANKS, ACItemRegistry.PEWEN_BOAT, ACItemRegistry.PEWEN_CHEST_BOAT),
         THORNWOOD("thornwood", ACBlockRegistry.PEWEN_PLANKS, ACItemRegistry.THORNWOOD_BOAT, ACItemRegistry.THORNWOOD_CHEST_BOAT);

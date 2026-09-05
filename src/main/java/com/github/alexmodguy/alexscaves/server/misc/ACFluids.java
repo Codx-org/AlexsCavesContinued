@@ -5,12 +5,14 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.ChunkSource;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 
 /**
- * The seven questions this mod asks about the fluid an entity is standing in, answered by reading
+ * The nine questions this mod asks about the fluid an entity is standing in, answered by reading
  * the world directly rather than by asking the loader or vanilla for a cached answer.
  *
  * <p><b>Why it does its own scan.</b> There have been three different answers to "how deep is the
@@ -63,6 +65,17 @@ import net.minecraft.world.phys.AABB;
  * {@code mixin.EntityMixin} widens the tracked tag set on 26 and calls
  * {@code updateFluidHeightAndDoFluidPushing} on Fabric below 26. Those arms stay; this class only
  * answers questions.
+ *
+ * <p><b>Both probes read chunks through {@code ChunkSource#getChunkNow} and give up on a miss, and
+ * that is not an optimisation.</b> {@code Level#hasChunkAt} and {@code Level#getFluidState} both
+ * end in {@code ServerChunkCache#getChunk}, which hands the read to the server thread and
+ * {@code join()}s it whenever the caller is on another thread. These questions are asked from
+ * {@code Entity#save}, which structure placement runs on a worldgen thread while the server thread
+ * is itself waiting on that worldgen future — so the blocking form deadlocks world generation
+ * outright. {@code getChunkNow} returns null off-thread and for an unloaded chunk instead, which is
+ * the same "no fluid here" answer the old {@code hasChunkAt} guard already gave. The
+ * {@code FluidState#getHeight} calls take the chunk as their {@code BlockGetter} for the same
+ * reason.
  */
 public final class ACFluids {
 
@@ -88,6 +101,20 @@ public final class ACFluids {
     /** Height of this mod's purple soda at the entity, in blocks, 0 when it is not in any. */
     public static double purpleSodaHeight(Entity entity) {
         return fluidHeight(entity, ACTagRegistry.PURPLE_SODA);
+    }
+
+    /**
+     * The deeper of this mod's two swimmable fluids at the entity, in blocks, 0 when it is in
+     * neither. One scan for both, because every caller that wants one wants the other in the same
+     * breath and the scan is the expensive half.
+     */
+    public static double modFluidHeight(Entity entity) {
+        return fluidHeight(entity, ACTagRegistry.ACID, ACTagRegistry.PURPLE_SODA);
+    }
+
+    /** Whether the entity's eyes are inside either of this mod's two swimmable fluids. */
+    public static boolean isEyeInModFluid(Entity entity) {
+        return isEyeInFluid(entity, ACTagRegistry.ACID) || isEyeInFluid(entity, ACTagRegistry.PURPLE_SODA);
     }
 
     /** The deepest of the fluids the entity is standing in, in blocks — any fluid, not a fixed list. */
@@ -120,7 +147,17 @@ public final class ACFluids {
      * covers, and keep the greatest {@code blockY + fluidHeight} that is at or above the box floor.
      */
     private static double fluidHeight(Entity entity, TagKey<Fluid> tag) {
+        return fluidHeight(entity, tag, null);
+    }
+
+    /**
+     * As {@link #fluidHeight(Entity, TagKey)}, but counting either of two tags in a single pass.
+     * {@code orTag} is only consulted when {@code tag} is non-null — a null {@code tag} already
+     * means "any fluid" and cannot be widened further.
+     */
+    private static double fluidHeight(Entity entity, TagKey<Fluid> tag, TagKey<Fluid> orTag) {
         Level level = entity.level();
+        ChunkSource chunks = level.getChunkSource();
         AABB box = entity.getBoundingBox().deflate(BOX_SHRINK);
         int minX = (int) Math.floor(box.minX);
         int maxX = (int) Math.ceil(box.maxX);
@@ -130,18 +167,28 @@ public final class ACFluids {
         int maxZ = (int) Math.ceil(box.maxZ);
         double deepest = 0.0D;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        LevelChunk chunk = null;
+        int cachedX = Integer.MIN_VALUE;
+        int cachedZ = Integer.MIN_VALUE;
         for (int x = minX; x < maxX; x++) {
-            for (int y = minY; y < maxY; y++) {
-                for (int z = minZ; z < maxZ; z++) {
+            for (int z = minZ; z < maxZ; z++) {
+                int cx = x >> 4;
+                int cz = z >> 4;
+                if (cx != cachedX || cz != cachedZ) {
+                    cachedX = cx;
+                    cachedZ = cz;
+                    chunk = chunks.getChunkNow(cx, cz);
+                }
+                if (chunk == null) {
+                    continue;
+                }
+                for (int y = minY; y < maxY; y++) {
                     pos.set(x, y, z);
-                    if (!level.hasChunkAt(pos)) {
+                    FluidState fluid = chunk.getFluidState(pos);
+                    if (fluid.isEmpty() || (tag != null && !fluid.is(tag) && (orTag == null || !fluid.is(orTag)))) {
                         continue;
                     }
-                    FluidState fluid = level.getFluidState(pos);
-                    if (fluid.isEmpty() || (tag != null && !fluid.is(tag))) {
-                        continue;
-                    }
-                    double surface = y + fluid.getHeight(level, pos);
+                    double surface = y + fluid.getHeight(chunk, pos);
                     if (surface >= box.minY) {
                         deepest = Math.max(deepest, surface - box.minY);
                     }
@@ -170,13 +217,14 @@ public final class ACFluids {
         Level level = entity.level();
         double eyeY = entity.getEyeY() - EYE_DROP;
         BlockPos pos = BlockPos.containing(entity.getX(), eyeY, entity.getZ());
-        if (!level.hasChunkAt(pos)) {
+        LevelChunk chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+        if (chunk == null) {
             return false;
         }
-        FluidState fluid = level.getFluidState(pos);
+        FluidState fluid = chunk.getFluidState(pos);
         if (fluid.isEmpty() || !fluid.is(tag)) {
             return false;
         }
-        return pos.getY() + fluid.getHeight(level, pos) > eyeY;
+        return pos.getY() + fluid.getHeight(chunk, pos) > eyeY;
     }
 }

@@ -478,18 +478,28 @@ public class ACPlatform {
     }
 
     /**
-     * 1.20.3 deleted {@code new AABB(BlockPos, BlockPos)} in favour of
-     * {@code AABB.encapsulatingFullBlocks}.
+     * The corner-to-corner box between two block positions — {@code new AABB(BlockPos, BlockPos)},
+     * which 1.20.3 deleted.
      *
-     * <p>1.20.3, not 1.20.2 — javap on the vanilla 1.20.2 jar shows the old shape still there.
-     * Neither Forge nor NeoForge publishes a 1.20.2 or a 1.20.3 build, so this tree's walk went
-     * straight from 1.20.1 to 1.20.4 and could not tell the two apart until Fabric reached them.
+     * <p>⚠ Its replacement, {@code AABB.encapsulatingFullBlocks}, is <b>not the same box</b>, which
+     * is why this is now spelled out rather than gated. The old constructor took the two positions
+     * as plain coordinates ({@code new AABB(a.getX(), …, b.getX(), …)}, the six-double constructor
+     * sorting them); {@code encapsulatingFullBlocks} takes {@code min}/{@code max} and then adds
+     * <b>1 to each maximum</b> so that both blocks are enclosed whole. Every box built here was
+     * therefore one block larger on its +X/+Y/+Z face from 1.20.3 up.
+     *
+     * <p>That silently broke the quarry: {@code QuarryBlockEntity} builds its mining box from the
+     * four magnetic lights and {@code findMinableBlock} scans {@code minX + 1} up to (but not
+     * including) {@code maxX}, i.e. strictly between the corner torches. With {@code maxX} a block
+     * too high the scan reached the torch columns themselves, and the quarry smasher demolished its
+     * own machine — reported as "magnet quarry killing himself". The other eleven call sites are
+     * render bounds and entity searches, where the extra block is invisible but no more correct.
+     *
+     * <p>The six-double constructor exists unchanged on every version in the matrix and sorts its
+     * corners itself, so reproducing 1.20.1's behaviour needs no gate at all.
      */
     public static net.minecraft.world.phys.AABB encapsulating(net.minecraft.core.BlockPos a, net.minecraft.core.BlockPos b) {
-        //? if >=1.20.3
-        /*return net.minecraft.world.phys.AABB.encapsulatingFullBlocks(a, b);*/
-        //? if <1.20.3
-        return new net.minecraft.world.phys.AABB(a, b);
+        return new net.minecraft.world.phys.AABB(a.getX(), a.getY(), a.getZ(), b.getX(), b.getY(), b.getZ());
     }
 
     // ── The loader's own built-in registrations ─────────────────────────────────

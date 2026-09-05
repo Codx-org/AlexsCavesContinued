@@ -37,7 +37,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * <p>⚠⚠ Like {@link OutlineColorMixin} this is a {@code @WrapOperation} and was a
  * {@code @Redirect} once, for the same reason and with the same evidence. <b>Original Citadel
  * redirects this exact instruction too</b> — {@code citadel.mixins.json:client.LevelRendererMixin}'s
- * {@code citadel_getTimeOfDay}, which is where this code came from — so a player who installs
+ * {@code acc_citadel_getTimeOfDay}, which is where this code came from — so a player who installs
  * Citadel for some other mod (Rats, Ice and Fire, …) alongside this one used to get the
  * {@code "@Redirect conflict. Skipping …"} / {@code Critical injection failure … (0/1) succeeded}
  * crash at {@code Initializing game}, exactly as Alex's Mobs Continued did on {@code getTeamColor}.
@@ -81,7 +81,7 @@ public class SkyTimeOfDayMixin {
             expect = 2
             //?}
     )
-    private float citadel_getTimeOfDay(ClientLevel instance, float partialTicks, Operation<Float> original) {
+    private float acc_citadel_getTimeOfDay(ClientLevel instance, float partialTicks, Operation<Float> original) {
         //default implementation does not lerp the time of day
         float lerpBy = Citadel.PROXY.isGamePaused() ? 0F : partialTicks;
         float lerpedDayTime = (instance.dimensionType().fixedTime().orElse(instance.dayTime()) + lerpBy) / 24000.0F;

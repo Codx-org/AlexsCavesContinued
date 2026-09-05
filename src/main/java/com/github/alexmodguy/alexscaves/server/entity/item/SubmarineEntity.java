@@ -464,9 +464,15 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
     }
 
 
+    // ACCompat#riderXxa/#riderZza rather than the fields: this runs on the SERVER (the submarine
+    // is an Entity that never overrides getControllingPassenger, so it is not simulated by the
+    // rider's client), and 1.21.2 stopped writing xxa/zza server-side. Reading the fields here is
+    // what left the submarine unsteerable on every node from 1.21.2 up.
     private void tickController(Player passenger) {
-        if (passenger.xxa != 0) {
-            float turn = -Math.signum(passenger.xxa);
+        float acXxa = ACCompat.riderXxa(passenger);
+        float acZza = ACCompat.riderZza(passenger);
+        if (acXxa != 0) {
+            float turn = -Math.signum(acXxa);
             if (turn > 0.0F) {
                 turnLeftTicks = 5;
             } else {
@@ -474,8 +480,8 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
             }
             this.setYRot(this.getYRot() + turn * 2.5f);
         }
-        if (passenger.zza != 0) {
-            float back = -Math.signum(passenger.zza);
+        if (acZza != 0) {
+            float back = -Math.signum(acZza);
             if (back < 0.0F) {
                 this.setAcceleration(Mth.approach(this.getAcceleration(), 1.0F, 0.02F));
             } else {

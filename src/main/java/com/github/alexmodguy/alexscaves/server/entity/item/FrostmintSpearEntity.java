@@ -140,7 +140,10 @@ public class FrostmintSpearEntity extends AbstractArrow {
     }
 
     protected void onHit(HitResult hitResult) {
-        if(!exploded && tickCount > 1){
+        // Server side only -- same reason as ExtinctionSpearEntity#tick: from 1.21.2 an explosion
+        // off a ServerLevel has no Explosion object to show entities, so ACPlatform#explosion
+        // returns null and the opt-out question can no longer be asked.
+        if(!exploded && tickCount > 1 && !level().isClientSide()){
             exploded = true;
             explode();
         }

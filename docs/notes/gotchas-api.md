@@ -778,3 +778,155 @@ for the map of which archive holds what. Nothing here has been edited in the mov
   `<ns>:entity/<file>`; below 1.21.5 they are `DeferredRegister`-registered and take the **full**
   path `textures/entity/<file>.png`, so the two spellings genuinely differ and only the >=1.21.5
   half was wrong.
+
+## Added 2026-08-24 (the third bug-report wave)
+
+- ⚠️⚠️ **`TextureManager#register` stopped loading the texture at 1.21.4.** Through 1.21.3 it
+  called the texture's own `load()`; from 1.21.4 `javap -c` shows nothing but `byPath.put`,
+  `safeClose` and the tickable-set add, and the loading call is the **new**
+  `registerAndLoad(ResourceLocation, ReloadableTexture)` (absent on 1.21.2/1.21.3, present 1.21.4
+  → 26.2). Anything that registers a `SimpleTexture` and then reads pixels back out of its
+  `nativeImage` gets `null` from 1.21.4 up, with nothing thrown and nothing logged. Blanked this
+  mod's Cave Map to solid black on every node from 1.21.4 while the biome labels — which read the
+  biome array, not the textures — kept drawing, which is what made it look like a *map* bug rather
+  than a *texture* bug. A `DynamicTexture` is unaffected and must keep using plain `register`: it
+  is not reloadable, so there is nothing to load.
+- ⚠️ **`EMISSIVE` is not "unlit". Only the `NO_CARDINAL_LIGHTING` shader define removes the diffuse
+  term.** `EMISSIVE` gates the *lightmap* and leaves `minecraft_mix_light(...)` in place, so an
+  entity-translucent-emissive type is a fullbright-by-lightmap type that is still shaded by its
+  face normals. Verified in `core/entity.vsh` on 1.21.5, 1.21.6, 1.21.8, 1.21.9, 1.21.10, 1.21.11,
+  26.1, 26.1.2 and 26.2. Below 1.21.5, `rendertype_entity_translucent_emissive.vsh` calls
+  `minecraft_mix_light` too. The tell is a *hard bright/dark step between adjacent faces* of a
+  model that is supposed to be flat-lit — not a brightness that is merely wrong.
+  ⚠️ The loaders diverged here at 26.2 and **not in the same direction**: Forge 65.1.0 rewrote its
+  unlit factories onto plain `RenderPipelines.ENTITY_TRANSLUCENT` (so its unlit type is no longer
+  unlit), while NeoForge 26.2.0.66 still names `neoforge:pipeline/entity_unlit_translucent`, still
+  declares the define and still binds the lightmap. Probe each loader; the other one is not
+  evidence. This mod now owns the type (`ACInternalShaders.ENTITY_UNLIT_TRANSLUCENT` +
+  `ACRenderTypes#getUnlitTranslucent`) and only delegates on the 35 nodes whose loader is correct.
+- ⚠️ **`AABB.encapsulatingFullBlocks` is NOT a drop-in for `new AABB(BlockPos, BlockPos)`** (which
+  1.20.3 deleted). The old constructor passed the two positions through as plain coordinates and
+  let the six-double constructor sort them; the replacement takes min/max and **adds 1 to each
+  maximum** so both blocks are enclosed whole. Every box translated that way is one block larger on
+  its +X/+Y/+Z face — invisible in render bounds and entity searches, and a real behaviour bug
+  anywhere the box drives a scan. Here it made the quarry's mining box reach its own corner torches
+  and demolish its frame. **The six-double constructor is unchanged across the whole matrix and
+  sorts its own corners, so the faithful translation needs no gate at all.** General form: a
+  deletion whose replacement has a *different name* is worth reading for different *semantics*,
+  not just a different spelling.
+- ⚠️ **Registering a `PoiType` does not make its blockstates points of interest on Fabric.**
+  `PoiTypes` keeps a private static `TYPE_BY_STATE` filled only by its own `bootstrap`, and
+  `PoiTypes.forState` — the one question `PoiSection` asks — reads that map and nothing else.
+  Forge fills it from `GameData$PointOfInterestTypeCallbacks` and NeoForge rebuilds it in
+  `PoiTypeExtender.extendPoiTypes`; **Fabric does neither**, so a type that reached the registry is
+  a POI no chunk ever records — no error, no log line, every lookup empty. All nine of this mod's
+  POI types were dead on all 22 Fabric nodes (magnetism, moth balls, sundrops, the nuclear siren
+  and furnace, the abyssal altar, the conversion crucible, the gingerbarrel). `registerBlockStates`
+  is private but its descriptor is identical on 1.20.1, 1.20.5, 1.21.2, 1.21.5, 1.21.9, 1.21.11,
+  26.1 and 26.2, so `mixin/fabric/PoiTypesInvoker` needs no gate. Existing worlds heal themselves —
+  `checkConsistencyWithBlocks` runs from chunk deserialization.
+- ⚠️ **Cancelling `HumanoidArmorLayer#renderArmorPiece` also cancels the pose copy nobody names.**
+  Vanilla copies the wearer's pose onto the armour model *between* choosing the model and hiding
+  parts, so a mixin that substitutes its own model and cancels the method leaves that armour in its
+  **bind pose** — and any animation pass reading limb rotations off it reads zeros. The copy is
+  spelled `copyPropertiesTo` below 1.21.9 and `setupAnim(state)` from 1.21.9 (the `ArmorModelSet`
+  rewrite), and it has to run **before** the animation pass, not after model selection.
+- ⚠️⚠️ **`renderBackground` inside a screen's own `render` is upstream 1.20.1 idiom and is wrong on
+  every node above it — and inside `renderBg` it is a crash.** Two independent changes, both proven
+  with `javap -c` rather than remembered:
+  - From **1.20.2** vanilla's `Screen#render` opens by calling `renderBackground` itself, and from
+    **1.21.6** the `public final renderWithTooltip` does it *ahead of* `render` (on **26** `render`
+    is renamed `extractRenderState`). A screen that also calls it draws the dim gradient **twice**.
+    That is not subtle: `0xC0101010` → `0xD0101010` is α ≈ 0.8157 at the screen bottom, so one pass
+    leaves the frame at 18.4% and two at 3.4%. Players report it as *"it shows nothing"*, because
+    what is behind the gradient is still there and simply unreadable — there is no error, no log
+    line, and the screen's own widgets look fine.
+  - From **1.20.2** `AbstractContainerScreen#renderBackground` **calls `renderBg`**. So a `renderBg`
+    override that calls `renderBackground` is unbounded mutual recursion: a hard `StackOverflowError`
+    the moment the screen opens, on 1.20.2 → 1.21.11, every loader.
+
+  Both survive a version walk unnoticed when the **active node is 1.20.1**, where the old spelling is
+  correct and the two methods are unrelated. Upstream leaned on `fillGradient`'s `z` of `-1000` to
+  slide the gradient behind content already on screen; that `z` is gone from 1.21.6 anyway, where GUI
+  layering is bounds-based (`GuiRenderState.findAppropriateNode`) rather than depth-based. **Grep
+  every ported screen for a `renderBackground`/`renderBg` call of its own before trusting it** — in
+  this tree three of them had one, and only one of the three was ever reported.
+
+## Added 2026-08-25 (the seventh bug-report wave)
+
+- **An additive pass that was accidentally drawn twice was shipping at 2× alpha — so removing the
+  duplicate is a visible brightness regression, and players will report it as "the effect stopped
+  working".** `1.0.4` gave `ACRenderTypes` a `TYPE_CACHE` because a fresh `RenderType` per call
+  misses every identity-keyed vanilla map and so gets drawn more than once; that fixed the
+  tremorzilla's "borderline epileptic" flashing. The next report was that the same dorsal plates
+  "don't light up to begin with, even when fully charged" — from the *same* change, seen from the
+  other side. With `BlendFunction(SRC_ALPHA, ONE, …)` alpha **is** brightness and one pass caps at
+  1.0, so a duplicated pass at alpha 0.5 and a single pass at alpha 1.0 are the same peak; upstream's
+  `LayerGlow` pulses `sin(age * 0.2) * 0.15 + 0.5`, i.e. it had never asked for more than half.
+  When you fix a draws-twice bug, **check the intended single-pass value still looks like the effect
+  it is meant to be**, and if not raise it deliberately where it is one readable number. Measured
+  both directions on one node with only the client restarted between runs — the memoize itself is
+  brightness-neutral (per-call 297,646–405,676 vs memoized 290,794–408,198 green energy, peak 255
+  both), and the deliberate lift to 0.70–1.00 is 1.6–2.0×. Full numbers in
+  [`1.0.1-triage.md`](1.0.1-triage.md) ("Seventh wave").
+- **Being "powered"/"charged" is often only a *texture* swap, not a brightness change.** The
+  tremorzilla's powered glow sheet lights 6,191 more pixels than the idle one but is drawn at the
+  identical alpha, so "why doesn't charging it look like anything" is a fair question about upstream
+  rather than about the port. Check the alpha before concluding a state flag is not reaching the
+  client.
+
+## Added 2026-08-26 (the eighth bug-report wave)
+
+- **A `Map<BlockState, VoxelShape>` shape cache is a hard crash the moment ANY other mod adds a
+  blockstate property to that block.** `BlockState` equality is identity, so a map built by
+  enumerating *your* properties off `defaultBlockState()` has no key for the states that appear once
+  a foreign property widens the state definition's cartesian product; `map.get(state)` returns
+  `null`, and vanilla dereferences it without a guard —
+  `BlockBehaviour$BlockStateBase$Cache.<init>` assigns `this.collisionShape = block
+  .getCollisionShape(...)` and calls `.isEmpty()` on the next line. **Key the cache on the properties
+  that actually change the outline** (read them by name), never on the state object. Hit in
+  `AbyssmarineWallBlock`, which enumerated all eight of its properties into two 9720-entry maps;
+  now two 162-entry arrays indexed on `UP` + the four `WallSide`s.
+- **…and on Fabric that crash lands during YOUR registration call, in a stack that names neither the
+  block nor the mod that caused it.** `fabric-registry-sync-v0`'s `initShapeCache` mixes into
+  `Blocks.<clinit>` to add a `RegistryEntryAddedCallback` on `BuiltInRegistries.BLOCK` that runs
+  `BlockStateBase::initCache` over **every possible state** of each block *at registration time*. So
+  the NPE surfaces inside `DeferredRegister$Entry.resolve` in the mod constructor — a **startup**
+  crash, not a place-a-block one — and the only mod named in the whole trace is ours. The defect is
+  loader-neutral (Forge/NeoForge just defer it to first use), the *timing* is Fabric's.
+- **A reporter's "it only crashes when I add mod X" bisection is worthless when the crash is inside
+  your own registration.** Removing your mod removes the crash trivially, and every other
+  combination they tried still contained the mod actually at fault. Reproduce the named combination
+  yourself before spending any time on it — here `alexsmobs` + `accdelight` + `amcdelight` +
+  `farmersdelight` + `ferritecore` booted clean, and the real trigger was never identified among the
+  743 installed mods (nor did it need to be).
+
+## Added 2026-08-27 (the ninth bug-report wave)
+
+- **`accessTransformers` must be ABSENT from a generated `mods.toml`, never present-and-empty.**
+  Forge's `ModFile` falls back to `META-INF/accesstransformer.cfg` (where loom puts it) **only when
+  the key is missing**. `accessTransformers = [ ]` is a positive statement that the mod has none, so
+  the file is never read and every AT-widened member stays inaccessible — an `IllegalAccessError` at
+  registration, on Forge only (NeoForge resolves the file either way), and worst on the oldest Forge
+  builds. Shipped that way from the port through `1.0.6`; the field is now gone from
+  `LoaderMetadata.kt`'s `ForgeManifest`. General form: **for a manifest key with a
+  "fall back if unset" rule, emitting the empty value is not the same as omitting it.**
+- **A `//?` gate keyed on the MC version is not enough when a LOADER adds an overload and moves the
+  call to it.** `HumanoidArmorLayer` on **NeoForge 1.21.1** has both vanilla's 6-argument
+  `renderArmorPiece` and a NeoForge-added **12-argument** one
+  `(PoseStack, MultiBufferSource, LivingEntity, EquipmentSlot, int, HumanoidModel, FFFFFF)V`;
+  `render` calls the 12-arg one and the 6-arg one is a bridge *into* it. AC's `@Inject` targeted the
+  6-arg method, so it resolved, passed `verify_mixins.py`, applied — and never ran, i.e. armour drew
+  nothing on exactly that loader+version. **`verify_mixins.py` proves a target exists, not that it is
+  the one on the call path**; when a hook is silently inert, `javap` the *caller* and check which
+  overload it invokes. Fixed with a `neoforge && >=1.21.1 && <1.21.2` arm on the 12-arg descriptor.
+- **A `BlockBehaviour.Properties` shared between blocks cannot carry a per-block id (>=1.21.2).**
+  From 1.21.2 the id lives on the `Properties`, so a `static final X_PROPERTIES` constant built in
+  `<clinit>` — outside every registration window — is a null id for every block but (at best) the
+  first. Symptom is `NullPointerException: Block id not set` from whichever mod reads
+  `effectiveDrops()` / `effectiveDescriptionId()` earliest; here Forgified Fabric API's
+  `FabricBlock$FabricProperties.blockIdOrThrow`, reached through Sinytra Connector + Farmer's Delight
+  Refabricated, which asks *before* any vanilla or NeoForge path does. Two halves to the fix: stamp
+  the pending id in `Properties.<init>` (`@Inject(method = "<init>", at = @At("RETURN"))`) rather
+  than only on builder calls, and make every shared `_PROPERTIES` constant a **per-use factory
+  method** so each block builds its own inside `ACRegistryIds.constructing`.

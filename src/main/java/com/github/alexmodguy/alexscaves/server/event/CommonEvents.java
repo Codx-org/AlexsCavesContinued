@@ -223,8 +223,30 @@ public class CommonEvents {
     }
     //?}
 
-    /** A vallumraptor that is still hiding is not a target anything may pick. */
+    /**
+     * Two targets nothing may pick: itself, and a vallumraptor that is still hiding.
+     *
+     * <p>A mob holding itself as its target melees itself every attack cooldown, and a self-hit
+     * knocks the victim straight up rather than sideways — {@code knockback} builds its direction
+     * from {@code targetX - attackerX}, which is zero on both axes, so below 26.2 the normalise of
+     * the zero vector leaves only the vertical term and above it a random direction is substituted.
+     * Either way the mob launches itself, which is what the "they keep hitting themselves and fly
+     * away" reports describe. Nothing in this mod hands a mob itself (every {@code setTarget} call
+     * site is guarded and vanilla's {@code TargetingConditions.test} refuses {@code attacker ==
+     * target}), but vanilla's own {@code HurtByTargetGoal} copies {@code getLastHurtByMob()}
+     * unchecked, so any damage whose attacker resolves back to the victim — its own returning
+     * projectile, another mod's damage source — produces it. This is the one place all three
+     * loaders funnel every {@code Mob#setTarget} through, so the guard costs no new mixin and
+     * covers all 58 nodes.
+     *
+     * <p>The self-target half is behind {@code mobs_can_target_themselves} because the launch is
+     * also the funniest thing the mod has ever done by accident, and players asked to be able to
+     * keep it. Off (the default) is the guard; on is the old behaviour.
+     */
     private boolean acLivingFindTarget(LivingChangeTargetEvent event) {
+        if (event.getEntity() == event.getNewTarget() && !AlexsCaves.COMMON_CONFIG.mobsCanTargetThemselves.get()) {
+            return true;
+        }
         if (event.getEntity() instanceof Mob mob && event.getNewTarget() instanceof VallumraptorEntity vallumraptor && vallumraptor.getHideFor() > 0) {
             mob.setTarget(null);
             return true;

@@ -448,6 +448,15 @@ public class QuarrySmasherEntity extends Entity implements ACMultipartOwner {
         return true;
     }
 
+    // A client never gave these parts an entity id -- see ACMultipartOwner#acAssignPartIds, which
+    // this mirrors from the vanilla ender dragon. Without it the first interact or attack aimed at
+    // a part takes the whole client down from 26.2 up.
+    @Override
+    public void setId(int id) {
+        super.setId(id);
+        this.acAssignPartIds(id);
+    }
+
     @Override
     public PartEntity<?>[] getParts() {
         return allParts;

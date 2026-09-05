@@ -189,6 +189,13 @@ public class HullbreakerEntity extends WaterAnimal implements IAnimatedEntity, K
             }
         }
         if (this.getAnimation() == ANIMATION_DIE && this.getAnimationTick() > 45 && !this.level().isClientSide() && !this.isRemoved()) {
+            // The loop above has exactly five drop windows (ticks 14 to 42, one every seven), which
+            // is exactly how many stacks the table rolls by default. A sixth — another mod's loot
+            // modifier, a bigger roll — would sink with the corpse, so flush whatever is left.
+            for (ItemStack leftover : deathItems) {
+                ACCompat.spawnAtLocation(this, leftover.copy());
+            }
+            deathItems.clear();
             this.level().broadcastEntityEvent(this, (byte)60);
             this.remove(Entity.RemovalReason.KILLED);
         }
@@ -201,16 +208,22 @@ public class HullbreakerEntity extends WaterAnimal implements IAnimatedEntity, K
         if (resourcelocation == null) {
             return;
         }
+        // getLastDamageSource() nulls itself out 40 ticks after the last hit and is never written to
+        // NBT, but the death animation runs for 50. So a hullbreaker whose death is interrupted at
+        // all — the chunk unloading, the player leaving or dying, a server restart — comes back with
+        // no source. Upstream returned here and still set collectedLoot below, i.e. the boss stayed
+        // defeated and dropped nothing, permanently. Roll the table off a generic source instead.
         DamageSource damageSource = getLastDamageSource();
-        if(damageSource != null){
-            LootTable loottable = ACCompat.lootTable(this.level().getServer(), resourcelocation);
-            LootParams.Builder lootparams$builder = (new LootParams.Builder((ServerLevel)this.level())).withParameter(LootContextParams.THIS_ENTITY, this).withParameter(LootContextParams.ORIGIN, this.position()).withParameter(LootContextParams.DAMAGE_SOURCE, damageSource).withOptionalParameter(LootContextParams.KILLER_ENTITY, damageSource.getEntity()).withOptionalParameter(LootContextParams.DIRECT_KILLER_ENTITY, damageSource.getDirectEntity());
-            if (this.lastHurtByPlayer != null) {
-                lootparams$builder = lootparams$builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, this.lastHurtByPlayer).withLuck(this.lastHurtByPlayer.getLuck());
-            }
-            LootParams lootparams = lootparams$builder.create(LootContextParamSets.ENTITY);
-            loottable.getRandomItems(lootparams, this.getLootTableSeed(), deathItems::add);
+        if (damageSource == null) {
+            damageSource = this.damageSources().generic();
         }
+        LootTable loottable = ACCompat.lootTable(this.level().getServer(), resourcelocation);
+        LootParams.Builder lootparams$builder = (new LootParams.Builder((ServerLevel)this.level())).withParameter(LootContextParams.THIS_ENTITY, this).withParameter(LootContextParams.ORIGIN, this.position()).withParameter(LootContextParams.DAMAGE_SOURCE, damageSource).withOptionalParameter(LootContextParams.KILLER_ENTITY, damageSource.getEntity()).withOptionalParameter(LootContextParams.DIRECT_KILLER_ENTITY, damageSource.getDirectEntity());
+        if (this.lastHurtByPlayer != null) {
+            lootparams$builder = lootparams$builder.withParameter(LootContextParams.LAST_DAMAGE_PLAYER, this.lastHurtByPlayer).withLuck(this.lastHurtByPlayer.getLuck());
+        }
+        LootParams lootparams = lootparams$builder.create(LootContextParamSets.ENTITY);
+        loottable.getRandomItems(lootparams, this.getLootTableSeed(), deathItems::add);
         collectedLoot = true;
     }
 
@@ -391,6 +404,15 @@ public class HullbreakerEntity extends WaterAnimal implements IAnimatedEntity, K
     @Override
     public boolean isMultipartEntity() {
         return true;
+    }
+
+    // A client never gave these parts an entity id -- see ACMultipartOwner#acAssignPartIds, which
+    // this mirrors from the vanilla ender dragon. Without it the first interact or attack aimed at
+    // a part takes the whole client down from 26.2 up.
+    @Override
+    public void setId(int id) {
+        super.setId(id);
+        this.acAssignPartIds(id);
     }
 
     @Override
