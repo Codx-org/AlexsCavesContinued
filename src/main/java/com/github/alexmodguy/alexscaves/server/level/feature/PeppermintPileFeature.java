@@ -9,21 +9,18 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class PeppermintPileFeature extends Feature<NoneFeatureConfiguration> {
+public class PeppermintPileFeature extends ACSimpleFeature {
 
-    public PeppermintPileFeature(Codec<NoneFeatureConfiguration> codec) {
+    public PeppermintPileFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos below = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos below = acOrigin;
         if (!level.getBlockState(below.below()).isSolid()) {
             return false;
         }

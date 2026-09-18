@@ -59,7 +59,9 @@ public class BiomeSampler {
         double d1 = quartPos.y() - (double)j;
         double d2 = quartPos.z() - (double)k;
         double d3 = 0.0D;
-        float f = 0;
+        // Summed as a double, like the weights: a float running total drifts past the weight sum, so a
+        // column that is 100% one biome could come back as 1.0000001 and a 0 as a hair below zero.
+        double f = 0;
         BiomeManager biomeManager = level.getBiomeManager();
 
         for(int l = 0; l < 6; ++l) {
@@ -80,7 +82,7 @@ public class BiomeSampler {
             }
         }
 
-        return f / (float) d3;
+        return (float) (f / d3);
     }
 
     @FunctionalInterface

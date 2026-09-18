@@ -26,7 +26,11 @@ public class ClientClockManagerMixin {
 
     @ModifyExpressionValue(
             method = "tick(J)V",
+            //? if >=26.3 {
+            /*at = @At(value = "FIELD", target = "Lnet/minecraft/client/ClientClockManager$ClientClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
+            *///?} else {
             at = @At(value = "FIELD", target = "Lnet/minecraft/client/ClientClockManager$ClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
+            //?}
     private float acc_citadel_clockRate(float rate) {
         return rate * ClientTickRateTracker.getForClient(Minecraft.getInstance()).getDayTimeRateMultiplier();
     }

@@ -26,3 +26,30 @@ __pycache__/
 # into src/main/java/.../citadel. It carries its own .git and is not part of this mod.
 Citadel/
 testmods/
+
+# ---------------------------------------------------------------------------
+# Working material, not the mod. None of this is needed to build or to satisfy
+# the LGPL source offer -- the build system itself (build-logic/, build*.gradle.kts,
+# settings.gradle.kts, gradle/, stonecutter.properties.toml) stays tracked.
+# ---------------------------------------------------------------------------
+
+# Local development notes and the log they pull in.
+CLAUDE.md
+DEVELOPMENT.md
+
+# Deep notes, per-wave post-mortems and the live triage state.
+docs/
+
+# Player bug reports, their logs and the drafted replies.
+reports/
+screenshots/
+
+# Audit, probe, asset-generation and release-upload tooling.
+scripts/
+
+# Stonecutter's generated per-node trees (the build/ and run/ rules above only
+# covered part of it; nothing under here was ever tracked).
+versions/
+
+# One-off test plan.
+TESTPLAN-1.0.0.md

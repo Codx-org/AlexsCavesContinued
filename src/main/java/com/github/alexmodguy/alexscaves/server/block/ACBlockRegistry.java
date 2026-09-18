@@ -509,9 +509,16 @@ public class ACBlockRegistry {
      * filling. Fabric keeps the vanilla constructor, so every one of these calls has already
      * happened by the time this method would run and the whole body is gated out there. See
      * {@code ACBlockFactory#flowerPot}.
+     *
+     * <p>NeoForge closed the same gap from 26.3 and then deleted the hook: {@code addPlant} is present
+     * in 26.3.0.1-beta and gone in .4-beta. In its place {@code NeoForgeRegistryCallbacks$BlockCallbacks
+     * #onBake} walks the block registry and files every {@code FlowerPotBlock} whose
+     * {@code getEmptyPot()} is not itself, straight off the deferred pair the pot was built with. All
+     * ten of this mod's pots already go through that constructor, so the filing still happens -- there
+     * is simply nothing left for this method to do, exactly as on Fabric.
      */
     public static void setup() {
-        //? if !fabric {
+        //? if !fabric && <26.3 {
         FlowerPotBlock flowerPotBlock = (FlowerPotBlock) Blocks.FLOWER_POT;
         flowerPotBlock.addPlant(BuiltInRegistries.BLOCK.getKey(FLYTRAP.get()), POTTED_FLYTRAP);
         flowerPotBlock.addPlant(BuiltInRegistries.BLOCK.getKey(CURLY_FERN.get()), POTTED_CURLY_FERN);

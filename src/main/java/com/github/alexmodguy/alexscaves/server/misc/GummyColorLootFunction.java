@@ -23,8 +23,17 @@ public class GummyColorLootFunction extends LootItemConditionalFunction {
     // 1.20.2 rewrote loot functions from hand-written Gson serializers to codecs, and moved the
     // conditions from an array to a List on the way; 1.20.5 then narrowed LootItemFunctionType to a
     // MapCodec. This function carries no data of its own, so its codec is nothing but the conditions
-    // every conditional function has. Three-way rather than nested — Stonecutter blocks cannot nest.
-    //? if >=1.20.5 {
+    // every conditional function has. 26.3 then made the conditions a single optional Holder, so
+    // there are four arms, flat rather than nested — Stonecutter blocks cannot nest.
+    //? if >=26.3 {
+    /*public static final com.mojang.serialization.MapCodec<GummyColorLootFunction> CODEC =
+            com.mojang.serialization.codecs.RecordCodecBuilder.mapCodec(
+                    instance -> commonFields(instance).apply(instance, GummyColorLootFunction::new));
+
+    protected GummyColorLootFunction(java.util.Optional<net.minecraft.core.Holder<LootItemCondition>> lootItemConditions) {
+        super(lootItemConditions);
+    }
+    *///?} elif >=1.20.5 {
     /*public static final com.mojang.serialization.MapCodec<GummyColorLootFunction> CODEC =
             com.mojang.serialization.codecs.RecordCodecBuilder.mapCodec(
                     instance -> commonFields(instance).apply(instance, GummyColorLootFunction::new));

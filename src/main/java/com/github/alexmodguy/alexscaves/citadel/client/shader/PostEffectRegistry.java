@@ -193,7 +193,15 @@ public class PostEffectRegistry {
         }
     }
 
-    //? if >=26.2 {
+    // 26.3 replaced the boolean "give it a depth attachment" with the depth format itself, so the
+    // constructor now takes a pair. The parent constructor's own parameter order settles which is
+    // which — colour first, depth second — read out of the bytecode rather than guessed, and
+    // D32_FLOAT is the plain 32-bit depth buffer the old `true` produced.
+    //? if >=26.3 {
+    /*private static RenderTarget createEffectTarget(Minecraft minecraft, ResourceLocation id) {
+        return new com.mojang.blaze3d.pipeline.TextureTarget(id.toString(), minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight(), com.mojang.blaze3d.GpuFormat.RGBA8_UNORM, com.mojang.blaze3d.GpuFormat.D32_FLOAT);
+    }
+    *///?} elif >=26.2 {
     /*private static RenderTarget createEffectTarget(Minecraft minecraft, ResourceLocation id) {
         // 26.2 made the colour format explicit rather than always-RGBA8. RGBA8_UNORM is what
         // PostChain gives every one of its own internal targets, and it is what the old constructor
@@ -274,7 +282,16 @@ public class PostEffectRegistry {
     // takes a GpuSampler alongside the view. NEAREST clamp-to-edge is what vanilla's own PostPass
     // gives a non-bilinear input, and this blit is a 1:1 full-screen copy, so there is nothing to
     // filter. The cache hands back a shared instance, so nothing here owns or closes it.
-    //? if >=1.21.11 {
+    // 26.3 has no texture-binding call left at all: a pass sets uniforms, and a sampled texture is
+    // one of them, so the view and the sampler go through the same three-argument setter that a
+    // buffer uniform uses. Same arguments, same cached sampler, different verb. The parameter type
+    // is untouched here because the package move onto renderpearl is a replacement rule.
+    //? if >=26.3 {
+    /*private static void bindEffectSource(com.mojang.blaze3d.systems.RenderPass pass, RenderTarget source) {
+        pass.setUniform("InSampler", source.getColorTextureView(),
+                RenderSystem.getSamplerCache().getClampToEdge(com.mojang.blaze3d.textures.FilterMode.NEAREST));
+    }
+    *///?} elif >=1.21.11 {
     /*private static void bindEffectSource(com.mojang.blaze3d.systems.RenderPass pass, RenderTarget source) {
         pass.bindTexture("InSampler", source.getColorTextureView(),
                 RenderSystem.getSamplerCache().getClampToEdge(com.mojang.blaze3d.textures.FilterMode.NEAREST));
@@ -285,7 +302,21 @@ public class PostEffectRegistry {
     }
     *///?}
 
-    //? if >=26.2 {
+    // 26.3 changed one argument: a pass is handed a compiled pipeline rather than the pipeline
+    // description. The device's own compile call is asynchronous, but RenderSystem keeps the
+    // already-compiled instance for a registered pipeline and hands it back directly, which is what
+    // vanilla's own passes use. Everything else about the draw is unchanged.
+    //? if >=26.3 {
+    /*private static void blitEffect(RenderTarget source) {
+        try (com.mojang.blaze3d.systems.RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
+                .createRenderPass(() -> "alexscaves post effect blit",
+                        Minecraft.getInstance().getMainRenderTarget().getColorTextureView(), java.util.Optional.empty())) {
+            pass.setPipeline(RenderSystem.getCompiledPipeline(com.github.alexmodguy.alexscaves.client.render.ACInternalShaders.POST_EFFECT_BLIT));
+            bindEffectSource(pass, source);
+            pass.draw(3, 1, 0, 0);
+        }
+    }
+    *///?} elif >=26.2 {
     /*private static void blitEffect(RenderTarget source) {
         // 26.2 spells the pass's optional clear colour as an Optional<Vector4fc> rather than an
         // OptionalInt, and draw's arguments became (vertexCount, instanceCount, firstVertex,

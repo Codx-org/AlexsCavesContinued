@@ -33,7 +33,7 @@ public class NuclearFurnaceBlock extends BaseEntityBlock {
 
     // 1.20.3 made Block#codec() abstract for datapack-defined blocks; Alex's Caves' blocks
     // are never described by value, so they all share one placeholder. See ACPlatform.
-    //? if >=1.20.3 {
+    //? if >=1.20.3 && <26.3 {
     /*@Override
     public com.mojang.serialization.MapCodec<? extends NuclearFurnaceBlock> codec() {
         return com.github.alexmodguy.alexscaves.server.misc.ACPlatform.unsupportedBlockCodec();
@@ -110,7 +110,13 @@ public class NuclearFurnaceBlock extends BaseEntityBlock {
         return InteractionResult.PASS;
     }
 
+    // 26.3 narrowed playerDestroy's first two parameters to ServerLevel/ServerPlayer.
+    // Only the signature moves; the body is identical on both sides.
+    //? if >=26.3 {
+    /*public void playerDestroy(net.minecraft.server.level.ServerLevel level, net.minecraft.server.level.ServerPlayer player, BlockPos blockPos, BlockState state, @javax.annotation.Nullable BlockEntity entity, ItemStack itemStack) {
+    *///?} else {
     public void playerDestroy(Level level, Player player, BlockPos blockPos, BlockState state, @javax.annotation.Nullable BlockEntity entity, ItemStack itemStack) {
+    //?}
         checkCriticalityExplosion(level, blockPos);
         super.playerDestroy(level, player, blockPos, state, entity, itemStack);
     }

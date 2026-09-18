@@ -241,6 +241,15 @@ public class ACSubmitBuffers implements MultiBufferSource {
             return this;
         }
 
+        // New abstract method in 26.3. Not annotated @Override: this class body is inside a
+        // Stonecutter arm, which cannot nest a gate, and below 26.3 the interface has no such
+        // method. Deliberately NOT recorded, unlike setLineWidth: UV3 is a declared vertex element
+        // in 26.3 but nothing in the game ever writes one -- the only classes naming setUv3 are the
+        // interface, BufferBuilder, and two vanilla forwarding wrappers. There is nothing to replay.
+        public VertexConsumer setUv3(float u, float v) {
+            return this;
+        }
+
         @Override
         public void render(PoseStack.Pose pose, VertexConsumer out) {
             for (int i = 0; i < this.count; i++) {

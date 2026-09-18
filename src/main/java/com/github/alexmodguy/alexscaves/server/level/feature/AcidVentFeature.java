@@ -9,21 +9,18 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class AcidVentFeature extends Feature<NoneFeatureConfiguration> {
+public class AcidVentFeature extends ACSimpleFeature {
 
-    public AcidVentFeature(Codec<NoneFeatureConfiguration> codec) {
+    public AcidVentFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos ventBottom = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos ventBottom = acOrigin;
         if (level.getBlockState(ventBottom.below()).equals(Blocks.MUD.defaultBlockState())) {
             drawVent(level, ventBottom, randomsource);
             for (int i = 0; i < 1 + randomsource.nextInt(2); i++) {

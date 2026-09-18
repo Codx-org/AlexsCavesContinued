@@ -49,7 +49,9 @@ public abstract class GameRendererMixin {
     // handler wants is the pause-aware residual the two old arguments already carried, which is
     // what getGameTimeDeltaPartialTick(true) returns — see ACClientCompat#frameTime.
     @Inject(
-            //? if >=1.21 {
+            //? if >=26.3 {
+            /*method = {"Lnet/minecraft/client/renderer/GameRenderer;render()V"},
+            *///?} elif >=1.21 {
             /*method = {"Lnet/minecraft/client/renderer/GameRenderer;render(Lnet/minecraft/client/DeltaTracker;Z)V"},
             *///?} else {
             method = {"Lnet/minecraft/client/renderer/GameRenderer;render(FJZ)V"},
@@ -69,7 +71,10 @@ public abstract class GameRendererMixin {
                     shift = At.Shift.AFTER
             )
     )
-    //? if >=1.21 {
+    //? if >=26.3 {
+    /*public void ac_render(CallbackInfo ci) {
+        float partialTick = com.github.alexmodguy.alexscaves.client.ACClientCompat.frameTime();
+    *///?} elif >=1.21 {
     /*public void ac_render(net.minecraft.client.DeltaTracker deltaTracker, boolean idk, CallbackInfo ci) {
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
     *///?} else {
@@ -87,7 +92,9 @@ public abstract class GameRendererMixin {
     // flag in its place; renderLevel itself is unchanged, and still builds the same local PoseStack
     // the @Local recovers.
     @Inject(
-            //? if >=1.21 {
+            //? if >=26.3 {
+            /*method = {"Lnet/minecraft/client/renderer/GameRenderer;renderLevel()V"},
+            *///?} elif >=1.21 {
             /*method = {"Lnet/minecraft/client/renderer/GameRenderer;renderLevel(Lnet/minecraft/client/DeltaTracker;)V"},
             *///?} elif >=1.20.5 {
             /*method = {"Lnet/minecraft/client/renderer/GameRenderer;renderLevel(FJ)V"},
@@ -97,7 +104,9 @@ public abstract class GameRendererMixin {
             remap = true,
             at = @At(
                     value = "INVOKE",
-                    //? if >=1.21.6 {
+                    //? if >=26.3 {
+                    /*target = "Lnet/minecraft/client/renderer/GameRenderer;render3dHud(Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;Lnet/minecraft/client/renderer/state/OptionsRenderState;Z)V",
+                    *///?} elif >=1.21.6 {
                     /*target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(FZLorg/joml/Matrix4f;)V",
                     *///?} elif >=1.20.5 {
                     /*target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(Lnet/minecraft/client/Camera;FLorg/joml/Matrix4f;)V",
@@ -107,7 +116,10 @@ public abstract class GameRendererMixin {
                     shift = At.Shift.BEFORE
             )
     )
-    //? if >=1.21 {
+    //? if >=26.3 {
+    /*public void ac_renderLevel(CallbackInfo ci, @com.llamalad7.mixinextras.sugar.Local PoseStack poseStack) {
+        float partialTicks = com.github.alexmodguy.alexscaves.client.ACClientCompat.frameTime();
+    *///?} elif >=1.21 {
     /*public void ac_renderLevel(net.minecraft.client.DeltaTracker deltaTracker, CallbackInfo ci, @com.llamalad7.mixinextras.sugar.Local PoseStack poseStack) {
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
     *///?} elif >=1.20.5 {
@@ -127,7 +139,9 @@ public abstract class GameRendererMixin {
 
     // Same three shapes as ac_renderLevel above; only the shift differs.
     @Inject(
-            //? if >=1.21 {
+            //? if >=26.3 {
+            /*method = {"Lnet/minecraft/client/renderer/GameRenderer;renderLevel()V"},
+            *///?} elif >=1.21 {
             /*method = {"Lnet/minecraft/client/renderer/GameRenderer;renderLevel(Lnet/minecraft/client/DeltaTracker;)V"},
             *///?} elif >=1.20.5 {
             /*method = {"Lnet/minecraft/client/renderer/GameRenderer;renderLevel(FJ)V"},
@@ -137,7 +151,9 @@ public abstract class GameRendererMixin {
             remap = true,
             at = @At(
                     value = "INVOKE",
-                    //? if >=1.21.6 {
+                    //? if >=26.3 {
+                    /*target = "Lnet/minecraft/client/renderer/GameRenderer;render3dHud(Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;Lnet/minecraft/client/renderer/state/OptionsRenderState;Z)V",
+                    *///?} elif >=1.21.6 {
                     /*target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(FZLorg/joml/Matrix4f;)V",
                     *///?} elif >=1.20.5 {
                     /*target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(Lnet/minecraft/client/Camera;FLorg/joml/Matrix4f;)V",
@@ -147,7 +163,9 @@ public abstract class GameRendererMixin {
                     shift = At.Shift.AFTER
             )
     )
-    //? if >=1.21 {
+    //? if >=26.3 {
+    /*public void ac_renderLevelAfterHand(CallbackInfo ci, @com.llamalad7.mixinextras.sugar.Local PoseStack poseStack) {
+    *///?} elif >=1.21 {
     /*public void ac_renderLevelAfterHand(net.minecraft.client.DeltaTracker deltaTracker, CallbackInfo ci, @com.llamalad7.mixinextras.sugar.Local PoseStack poseStack) {
     *///?} elif >=1.20.5 {
     /*public void ac_renderLevelAfterHand(float partialTicks, long time, CallbackInfo ci, @com.llamalad7.mixinextras.sugar.Local PoseStack poseStack) {

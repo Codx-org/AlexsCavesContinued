@@ -38,7 +38,7 @@ public class PathJobMoveToLocation extends AbstractPathJob {
     public PathJobMoveToLocation(final Level world, final BlockPos start, final BlockPos end, final int range, final LivingEntity entity) {
         super(world, start, end, range, entity);
 
-        this.destination = new BlockPos(end);
+        this.destination = end.immutable();
     }
 
     /**

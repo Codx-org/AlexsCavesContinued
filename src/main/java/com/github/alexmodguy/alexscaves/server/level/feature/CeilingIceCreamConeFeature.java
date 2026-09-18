@@ -14,23 +14,20 @@ import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.StairsShape;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class CeilingIceCreamConeFeature extends Feature<NoneFeatureConfiguration> {
+public class CeilingIceCreamConeFeature extends ACSimpleFeature {
 
-    public CeilingIceCreamConeFeature(Codec<NoneFeatureConfiguration> config) {
+    public CeilingIceCreamConeFeature(Object config) {
         super(config);
     }
 
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
         BlockPos blockpos;
-        WorldGenLevel worldgenlevel = context.level();
-        RandomSource randomsource = context.random();
+        WorldGenLevel worldgenlevel = acLevel;
+        RandomSource randomsource = acRandom;
         int iceCreamType = randomsource.nextInt(3);
         Block iceCreamBlock = iceCreamType == 1 ? ACBlockRegistry.CHOCOLATE_ICE_CREAM.get() : iceCreamType == 2 ? ACBlockRegistry.SWEETBERRY_ICE_CREAM.get() : ACBlockRegistry.VANILLA_ICE_CREAM.get();
-        for (blockpos = context.origin(); blockpos.getY() >= worldgenlevel.getMaxBuildHeight() - 3; blockpos = blockpos.above()) {
+        for (blockpos = acOrigin; blockpos.getY() >= worldgenlevel.getMaxBuildHeight() - 3; blockpos = blockpos.above()) {
             if (!worldgenlevel.isEmptyBlock(blockpos.above())) {
                 break;
             }

@@ -12,25 +12,23 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 import net.minecraft.world.level.material.Fluids;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MagneticNodeFeature extends Feature<MagneticNodeFeatureConfiguration> {
+public class MagneticNodeFeature extends ACFeature<MagneticNodeFeatureConfiguration> {
 
-    public MagneticNodeFeature(Codec<MagneticNodeFeatureConfiguration> codec) {
+    public MagneticNodeFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<MagneticNodeFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(MagneticNodeFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         if (canReplace(level.getBlockState(pos))) {
             List<Direction> possiblities = new ArrayList<>();
             for (Direction possible : Direction.values()) {
@@ -42,14 +40,14 @@ public class MagneticNodeFeature extends Feature<MagneticNodeFeatureConfiguratio
             Direction direction = selectDirection(possiblities, randomSource);
             if (direction != null) {
                 int centerHeight = 3 + randomSource.nextInt(3);
-                generatePillar(level, pos, context.config().pillarBlock, context.config().nodeBlock, direction, randomSource, centerHeight);
+                generatePillar(level, pos, acConfig.pillarBlock, acConfig.nodeBlock, direction, randomSource, centerHeight);
                 int pillarSpread = 2;
                 Vec3i inverseVec = new Vec3i(1, 1, 1).subtract(new Vec3i(Math.abs(direction.getStepX()), Math.abs(direction.getStepY()), Math.abs(direction.getStepZ())));
                 for (int pillar = 0; pillar < 2 + randomSource.nextInt(3); pillar++) {
                     BlockPos genAt = pos.offset((randomSource.nextInt(pillarSpread * 2) - pillarSpread) * inverseVec.getX(), (randomSource.nextInt(pillarSpread * 2) - pillarSpread) * inverseVec.getY(), (randomSource.nextInt(pillarSpread * 2) - pillarSpread) * inverseVec.getZ());
                     if (genAt.distManhattan(pos) > 0) {
                         int pillarHeight = (int) Math.max(centerHeight - genAt.distManhattan(pos) - randomSource.nextInt(2), 1) + 2;
-                        generatePillar(level, genAt, context.config().pillarBlock, context.config().nodeBlock, direction, randomSource, pillarHeight);
+                        generatePillar(level, genAt, acConfig.pillarBlock, acConfig.nodeBlock, direction, randomSource, pillarHeight);
                     }
                 }
                 return true;

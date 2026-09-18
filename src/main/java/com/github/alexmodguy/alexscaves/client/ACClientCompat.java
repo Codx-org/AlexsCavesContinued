@@ -170,6 +170,37 @@ public class ACClientCompat {
     }
     *///?}
 
+    // 26.2 answered "which target is being drawn into right now" with two public statics on
+    // RenderSystem, outputColorTextureOverride / outputDepthTextureOverride, which vanilla set
+    // around the three places that render somewhere other than the main target -- GuiItemAtlas
+    // #drawToSlot, PictureInPictureRenderer#prepare and LevelRenderer's always-on-top pass -- and
+    // which PreparedRenderType read when it opened its own pass. 26.3 DELETED both: a render pass
+    // is created by its caller and handed down as a parameter now, so vanilla never has to ask.
+    //
+    // drawImmediate has no such parameter (see its own note), so it does have to ask -- and with
+    // the globals gone it would answer "the main target" while the GUI item atlas is halfway
+    // through a 32x32 slot of a texture of its own. That is not a silent mis-draw: the scissor
+    // the atlas set is in ATLAS coordinates, so the pass rejects it outright with "Scissor at
+    // 32, 480 with size 32x32 is out of bounds for render area ... 854, 480" the first time an
+    // AC item with a special renderer is shown in any inventory slot.
+    //
+    // So the two globals come back as mod state, pushed and popped by two >=26.3 mixins on the
+    // two sites whose contents this mod draws into. A stack rather than a pair of fields because
+    // the sites nest: a picture-in-picture renderer submits item stacks of its own.
+    //? if >=26.3 {
+    /*private static final java.util.ArrayDeque<com.mojang.renderpearl.api.textures.GpuTextureView[]> immediateTargets =
+            new java.util.ArrayDeque<>();
+
+    public static void pushImmediateTarget(com.mojang.renderpearl.api.textures.GpuTextureView color,
+                                           com.mojang.renderpearl.api.textures.GpuTextureView depth) {
+        immediateTargets.push(new com.mojang.renderpearl.api.textures.GpuTextureView[]{color, depth});
+    }
+
+    public static void popImmediateTarget() {
+        immediateTargets.poll();
+    }
+    *///?}
+
     /**
      * Opens the shared tesselator for one immediate-mode draw.
      *
@@ -360,7 +391,65 @@ public class ACClientCompat {
     /** Draws and closes what {@link #beginImmediate} opened, and undoes its setup. */
     public static void drawImmediate(ImmediateDraw kind, com.mojang.blaze3d.vertex.BufferBuilder buffer,
                                      @javax.annotation.Nullable net.minecraft.resources.ResourceLocation texture) {
-        //? if >=26.2 {
+        // 26.3 keeps the buffer-building half of the arm below verbatim and changes only the draw.
+        // The six-argument drawFromBuffer is gone; what survives is drawFromBuffer(ExecuteInfo,
+        // RenderPass), so the same six values are packed into an ExecuteInfo record and a render
+        // pass has to come from somewhere.
+        //
+        // Vanilla never opens one per draw — the only caller outside the prepared type itself is
+        // RenderTypeFeatureRenderer, whose executeGroup RECEIVES the pass as a parameter from the
+        // frame dispatcher. This method has no such parameter and is called from screen overlays,
+        // two GUI screens, an item-stack renderer, a debug macro and an entity layer, so it opens
+        // its own against the main target. Two details of that decide whether it draws or ruins
+        // the frame, and both follow the GUI renderer's own mid-frame pass rather than the level
+        // renderer's: an EMPTY clear colour and an EMPTY clear depth, i.e. load what is already
+        // there. The level renderer's variant passes a depth value instead, which CLEARS depth —
+        // correct when it is starting the world pass, a wiped frame if copied to here. The depth
+        // attachment itself is not optional either: without one the in-level call sites silently
+        // stop depth-testing.
+        //
+        // The index buffer is handed over explicitly rather than left null. ExecuteInfo does
+        // resolve the shared sequential buffer itself when the custom one is null — but through
+        // the no-argument getBuffer, i.e. at whatever size it already happens to be, which is why
+        // vanilla's own null path calls requestIndexCount first. Passing the buffer keeps the
+        // sizing call that is already here and reaches the identical object.
+        //? if >=26.3 {
+        /*try (com.mojang.blaze3d.vertex.MeshData mesh = buffer.buildOrThrow()) {
+            com.mojang.blaze3d.vertex.MeshData.DrawState drawState = mesh.drawState();
+            com.mojang.blaze3d.systems.RenderSystem.AutoStorageIndexBuffer sequential =
+                    com.mojang.blaze3d.systems.RenderSystem.getSequentialBuffer(drawState.primitiveTopology());
+            com.mojang.blaze3d.buffers.GpuBuffer indices = sequential.getBuffer(drawState.indexCount());
+            com.mojang.blaze3d.buffers.GpuBuffer vertices = com.mojang.blaze3d.systems.RenderSystem.getDevice()
+                    .createBuffer(() -> "Alex's Caves immediate draw", com.mojang.blaze3d.buffers.GpuBuffer.USAGE_VERTEX, mesh.vertexBuffer());
+            com.mojang.renderpearl.api.textures.GpuTextureView[] override = immediateTargets.peek();
+            com.mojang.blaze3d.pipeline.RenderTarget target = net.minecraft.client.Minecraft.getInstance().getMainRenderTarget();
+            com.mojang.renderpearl.api.textures.GpuTextureView colorView = override != null ? override[0] : target.getColorTextureView();
+            com.mojang.renderpearl.api.textures.GpuTextureView depthView = override != null ? override[1] : target.getDepthTextureView();
+            // prepare() BEFORE the pass is opened, never inside it. RenderType#prepare resolves the
+            // type's textures through TextureManager#getTexture, and the first time a texture is
+            // asked for that is a registerAndLoad -> writeToTexture, i.e. a command on the encoder.
+            // The encoder refuses one while a render pass is open -- IllegalStateException "Close
+            // the existing render pass before performing additional commands" -- so the same call
+            // that works on every later frame crashes on the frame that first shows the texture.
+            // Vanilla has the same split: GuiRenderer prepares in prepare() and draws in a pass.
+            net.minecraft.client.renderer.rendertype.PreparedRenderType prepared =
+                    com.github.alexmodguy.alexscaves.client.render.ACRenderTypes.getImmediate(kind, texture).prepare();
+            try (com.mojang.blaze3d.systems.RenderPass pass = com.mojang.blaze3d.systems.RenderSystem.getDevice()
+                    .createCommandEncoder()
+                    .createRenderPass(() -> "Alex's Caves immediate draw",
+                            colorView, java.util.Optional.empty(),
+                            depthView, java.util.OptionalDouble.empty())) {
+                prepared.drawFromBuffer(new net.minecraft.client.renderer.StagedVertexBuffer.ExecuteInfo(
+                                vertices, indices, sequential.type(), 0, 0,
+                                drawState.indexCount(), drawState.primitiveTopology()), pass);
+            } finally {
+                vertices.close();
+            }
+        } finally {
+            closeImmediateScratch();
+            immediateTint = null;
+        }
+        *///?} elif >=26.2 {
         /*// 26.2 deleted RenderType#draw(MeshData) with the rest of immediate mode: a render type
         // no longer owns a draw call, it hands out a PreparedRenderType — pipeline, output target,
         // dynamic transforms, scissor and textures resolved for this frame — which draws from GPU
@@ -736,14 +825,19 @@ public class ACClientCompat {
         // reason renderEntity's did — extractEntity fills lightCoords in from the entity's block
         // position, so the caller's value is written back over it. The offset is still passed to
         // submit rather than folded into the pose stack, exactly as before.
-        com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers submit =
+        com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers ours =
                 com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers.of(buffers);
-        if (submit != null) {
-            net.minecraft.client.renderer.entity.state.EntityRenderState state = dispatcher.extractEntity(entity, partialTick);
-            state.lightCoords = packedLight;
-            submit.flush();
-            dispatcher.submit(state, submit.camera(), x, y, z, poseStack, submit.collector());
-        }
+        // A caller that was handed a plain buffer source rather than ours (the Cave Compendium's
+        // picture-in-picture renderer below 26.2) still has to draw, so it gets a collector that
+        // writes straight into those buffers. Without this every mob with a custom book renderer
+        // was missing from the book.
+        com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers submit = ours != null ? ours
+                : new com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers(
+                        new com.github.alexmodguy.alexscaves.client.render.compat.ACDrawCollector(buffers::getBuffer));
+        net.minecraft.client.renderer.entity.state.EntityRenderState state = dispatcher.extractEntity(entity, partialTick);
+        state.lightCoords = packedLight;
+        submit.flush();
+        dispatcher.submit(state, submit.camera(), x, y, z, poseStack, submit.collector());
         *///?} elif >=1.21.2 {
         /*dispatcher.render(entity, x, y, z, partialTick, poseStack, buffers, packedLight);
         *///?} else {
@@ -1110,9 +1204,14 @@ public class ACClientCompat {
      * {@code PostChain} so the caller could read its name, with {@code currentPostEffect()}, which
      * hands back the id directly — the chain itself is now resolved lazily, once per frame, out of
      * the shader manager.
+     *
+     * <p>26.3 renamed the getter and the field behind it to say whose effect it is: the selection
+     * belongs to the spectated entity, not to the renderer at large. Same type, same meaning.
      */
     public static boolean isPostEffect(net.minecraft.client.renderer.GameRenderer renderer, net.minecraft.resources.ResourceLocation effect) {
-        //? if >=1.21.2 {
+        //? if >=26.3 {
+        /*return effect.equals(renderer.spectatedEntityPostEffect());
+        *///?} elif >=1.21.2 {
         /*return effect.equals(renderer.currentPostEffect());
         *///?} else {
         return renderer.currentEffect() != null && effect.toString().equals(renderer.currentEffect().getName());
@@ -1127,13 +1226,22 @@ public class ACClientCompat {
      * the id and sets the flag unconditionally, so the missing-shader question has to be asked of
      * the shader manager instead — which is also where the resolution happens each frame.
      *
+     * <p>26.3 renamed that setter along with the getter above, and the 26.3 arm drops the loader
+     * split entirely: whether NeoForge widened the <i>renamed</i> method cannot be read out of a
+     * vanilla jar, and it does not need to be, because the invoker reaches a private method on every
+     * loader. One arm, no per-loader claim to be wrong about.
+     *
      * <p>{@code setPostEffect} is private in vanilla; NeoForge widened it and neither Forge nor
      * Fabric did, hence the invoker on the arm those two share. An {@code @Invoker} reaches a private
      * method on any loader, so that arm needs no access widener of its own. See
      * {@code mixin.client.GameRendererAccessor}.
      */
     public static boolean loadPostEffect(net.minecraft.client.renderer.GameRenderer renderer, net.minecraft.resources.ResourceLocation effect) {
-        //? if !neoforge && >=1.21.2 {
+        //? if >=26.3 {
+        /*((com.github.alexmodguy.alexscaves.mixin.client.GameRendererAccessor) renderer).ac$setPostEffect(effect);
+        return net.minecraft.client.Minecraft.getInstance().getShaderManager()
+                .getPostChain(effect, net.minecraft.client.renderer.LevelTargetBundle.MAIN_TARGETS) != null;
+        *///?} elif !neoforge && >=1.21.2 {
         /*((com.github.alexmodguy.alexscaves.mixin.client.GameRendererAccessor) renderer).ac$setPostEffect(effect);
         return net.minecraft.client.Minecraft.getInstance().getShaderManager()
                 .getPostChain(effect, net.minecraft.client.renderer.LevelTargetBundle.MAIN_TARGETS) != null;
@@ -1759,16 +1867,46 @@ public class ACClientCompat {
     }
 
     /**
-     * Renders a held item through the shared {@code ItemInHandRenderer}.
+     * Answers the shared item-in-hand renderer, or {@code null} where there is no longer one.
+     *
+     * <p>26.3 deleted {@code ItemInHandRenderer} and took its accessor off
+     * {@code EntityRenderDispatcher} with it — a held item is drawn straight from an
+     * {@code ItemStackRenderState} now, so there is no object to hand around. The eight call sites
+     * that used to fetch one all funnel through here so the deletion is a single gate rather than
+     * eight, and what they carry afterwards is an opaque {@code Object} that only
+     * {@code renderItemInHand} ever looks inside.
+     *
+     * <p>The two arms deliberately differ in RETURN TYPE rather than both answering {@code Object}.
+     * Below 1.21.2 four of those call sites feed <b>vanilla's</b> {@code ItemInHandLayer}
+     * constructor, which takes the real type; only from 1.21.2 does a rule swap that layer for this
+     * mod's own compat class, whose parameter we control. An {@code Object} everywhere would compile
+     * on 26.3 and fail on the eight nodes at the bottom of the range.
+     */
+    //? if >=26.3 {
+    /*public static Object itemInHandRenderer() {
+        return null;
+    }
+    *///?} else {
+    public static net.minecraft.client.renderer.ItemInHandRenderer itemInHandRenderer() {
+        return net.minecraft.client.Minecraft.getInstance().getEntityRenderDispatcher().getItemInHandRenderer();
+    }
+    //?}
+
+    /**
+     * Renders a held item through the shared item-in-hand renderer.
      *
      * <p>1.21.5 dropped the {@code leftHand} argument: the flag is derived from the display context
      * ({@code ItemDisplayContext#leftHand}), which already distinguishes the two hand contexts. Every
      * call site here is a {@code renderArmWithItem} override, where vanilla hands down the context
      * matching the arm, or passes {@code GROUND} with {@code false} — so the two are the same value
      * and dropping the argument changes nothing.
+     *
+     * <p>{@code renderer} is an {@code Object} because 26.3 has no type to declare here — see
+     * {@code itemInHandRenderer()}. Each arm below 26.3 casts it back; the 26.3 arm ignores it and
+     * reproduces what vanilla's deleted {@code renderItem} did, which is four statements.
      */
     public static void renderItemInHand(
-            net.minecraft.client.renderer.ItemInHandRenderer renderer,
+            Object renderer,
             net.minecraft.world.entity.LivingEntity entity,
             net.minecraft.world.item.ItemStack stack,
             net.minecraft.world.item.ItemDisplayContext displayContext,
@@ -1780,16 +1918,35 @@ public class ACClientCompat {
         // than writing vertices, so what arrives here as a MultiBufferSource has to be unwrapped
         // back to the collector it is recording for. Every call site is a renderArmWithItem
         // override reached through the compat renderer, so there always is one.
-        //? if >=1.21.9 {
+        //
+        // 26.3 keeps that unwrapping and loses the renderer: the deleted renderItem was itself only
+        // "resolve the stack into an ItemStackRenderState and submit it", so the body is vanilla's
+        // own four statements, read out of the 26.2 bytecode rather than inferred from the shape of
+        // 26.3's ItemInHandLayer — which would have suggested updateForLiving, the wrong one.
+        // entity satisfies the ItemOwner parameter because Entity implements it.
+        //? if >=26.3 {
+        /*if (stack.isEmpty()) {
+            return;
+        }
+        net.minecraft.client.renderer.SubmitNodeCollector acCollector =
+                com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers.collectorOf(bufferSource);
+        if (acCollector != null) {
+            net.minecraft.client.renderer.item.ItemStackRenderState acState =
+                    new net.minecraft.client.renderer.item.ItemStackRenderState();
+            net.minecraft.client.Minecraft.getInstance().getItemModelResolver().updateForTopItem(
+                    acState, stack, displayContext, entity.level(), entity, entity.getId() + displayContext.ordinal());
+            acState.submit(poseStack, acCollector, packedLight, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 0);
+        }
+        *///?} elif >=1.21.9 {
         /*net.minecraft.client.renderer.SubmitNodeCollector acCollector =
                 com.github.alexmodguy.alexscaves.client.render.compat.ACSubmitBuffers.collectorOf(bufferSource);
         if (acCollector != null) {
-            renderer.renderItem(entity, stack, displayContext, poseStack, acCollector, packedLight);
+            ((net.minecraft.client.renderer.ItemInHandRenderer) renderer).renderItem(entity, stack, displayContext, poseStack, acCollector, packedLight);
         }
         *///?} elif >=1.21.5 {
-        /*renderer.renderItem(entity, stack, displayContext, poseStack, bufferSource, packedLight);
+        /*((net.minecraft.client.renderer.ItemInHandRenderer) renderer).renderItem(entity, stack, displayContext, poseStack, bufferSource, packedLight);
         *///?} else {
-        renderer.renderItem(entity, stack, displayContext, leftHand, poseStack, bufferSource, packedLight);
+        ((net.minecraft.client.renderer.ItemInHandRenderer) renderer).renderItem(entity, stack, displayContext, leftHand, poseStack, bufferSource, packedLight);
         //?}
     }
 
@@ -1938,6 +2095,24 @@ public class ACClientCompat {
     public static void setLineWidth(com.mojang.blaze3d.vertex.VertexConsumer delegate, float width) {
         //? if >=1.21.11 {
         /*delegate.setLineWidth(width);
+        *///?}
+    }
+
+    /**
+     * The same shape as {@link #setLineWidth}, and for the same reason: 26.3 added
+     * {@code VertexConsumer#setUv3(float, float)} as a new <em>abstract</em> method, so the five
+     * hand-written consumers in this mod each have to answer it -- and each lives inside a
+     * Stonecutter arm that starts well below 26.3, which cannot hold a nested gate. They declare it
+     * unconditionally without {@code @Override} and route the version difference through here.
+     *
+     * <p>⚠️ The direct-call spelling the sibling consumers use for {@code setLineWidth} is NOT
+     * available here. {@code VertexMultiConsumer}'s arm is {@code >=26.2}, which is entirely above
+     * 1.21.11 but straddles 26.3, so {@code first.setUv3(...)} would fail to compile on 26.2.
+     * Every caller goes through this hop.
+     */
+    public static void setUv3(com.mojang.blaze3d.vertex.VertexConsumer delegate, float u, float v) {
+        //? if >=26.3 {
+        /*delegate.setUv3(u, v);
         *///?}
     }
 

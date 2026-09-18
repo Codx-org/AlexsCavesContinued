@@ -55,7 +55,32 @@ public abstract class CompositeRenderTypeMixin {
     // different shape: a @Redirect standing in for a two-argument call, not a @ModifyExpressionValue
     // on a constructed value. The two older arms therefore repeat the body verbatim — there is no
     // shared tail an arm chain can leave behind once the signatures disagree.
-    //? if >=26.2 {
+    //
+    // 26.3 needs a fourth arm for two independent reasons, and only the first is visible as a
+    // compile error. (1) DynamicUniforms is DELETED — RenderSystem#getDynamicUniforms now answers
+    // net.minecraft.client.renderer.DynamicGpuData, which carries both overloads this handler
+    // chooses between, so the redirect is a pure retarget and the body is unchanged. (2) The
+    // descriptor STRINGS still had to be rewritten by hand: GpuBufferSlice moved to
+    // com.mojang.renderpearl.api.buffers, but the rule that follows that move keys on the DOTTED
+    // FQN, and a descriptor spells it with slashes — so `Lcom/mojang/blaze3d/buffers/GpuBufferSlice;`
+    // in an @At target sails through every rule and would have failed at mixin apply, long after a
+    // green build. Any @At/@Redirect string naming a moved class needs the same manual pass.
+    //? if >=26.3 {
+    /*@org.spongepowered.asm.mixin.injection.Redirect(
+            method = "Lnet/minecraft/client/renderer/rendertype/RenderType;writeDynamicTransforms(Lorg/joml/Matrix4f;)Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/DynamicGpuData;writeTransform(Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;)Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;"
+            ),
+            remap = true
+    )
+    private com.mojang.renderpearl.api.buffers.GpuBufferSlice ac_immediateTint(net.minecraft.client.renderer.DynamicGpuData uniforms, org.joml.Matrix4f modelView, org.joml.Matrix4f textureMatrix) {
+        Vector4f tint = ACClientCompat.immediateTint;
+        return tint == null
+                ? uniforms.writeTransform(modelView, textureMatrix)
+                : uniforms.writeTransform(modelView, tint, new org.joml.Vector3f(), textureMatrix);
+    }
+    *///?} elif >=26.2 {
     /*@org.spongepowered.asm.mixin.injection.Redirect(
             method = "Lnet/minecraft/client/renderer/rendertype/RenderType;writeDynamicTransforms(Lorg/joml/Matrix4f;)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;",
             at = @At(

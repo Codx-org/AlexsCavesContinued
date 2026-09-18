@@ -18,7 +18,10 @@ public class StrippableLogBlock extends RotatedPillarBlock {
         if (!com.github.alexmodguy.alexscaves.server.misc.ACCompat.canPerform(itemStack, toolAction))
             return null;
 
-        if (ToolActions.AXE_STRIP == toolAction) {
+        // Not a bare ToolActions.AXE_STRIP comparison: NeoForge 26.3 deleted both axe constants when
+        // stripping became a data-driven item component. ACCompat.isAxeStrip answers false there and
+        // data/neoforge/data_maps/block/strippables.json carries these four mappings instead.
+        if (com.github.alexmodguy.alexscaves.server.misc.ACCompat.isAxeStrip(toolAction)) {
             if(this == ACBlockRegistry.PEWEN_LOG.get()){
                 return ACBlockRegistry.STRIPPED_PEWEN_LOG.get().defaultBlockState().setValue(RotatedPillarBlock.AXIS, state.getValue(RotatedPillarBlock.AXIS));
             }

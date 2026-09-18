@@ -57,12 +57,19 @@ public class FertilizerItem extends Item {
         }
         if (blockstate.getBlock() instanceof BonemealableBlock) {
             BonemealableBlock bonemealableblock = (BonemealableBlock) blockstate.getBlock();
-            //? if >=1.20.2
+            // Three bands, matching the BonemealableBlock methods themselves: 26.3 wants the source
+            // of the bonemeal, and a fertilizer a player rubs on a block is an INTERACTION.
+            //? if >=26.3
+            /*if (bonemealableblock.isValidBonemealTarget(level, blockPos, blockstate, net.minecraft.world.level.block.BonemealSource.INTERACTION)) {*/
+            //? if >=1.20.2 && <26.3
             /*if (bonemealableblock.isValidBonemealTarget(level, blockPos, blockstate)) {*/
             //? if <1.20.2
             if (bonemealableblock.isValidBonemealTarget(level, blockPos, blockstate, level.isClientSide())) {
                 if (level instanceof ServerLevel) {
                     for (int boneMealAttempts = 0; boneMealAttempts < 4; boneMealAttempts++) {
+                        //? if >=26.3
+                        /*bonemealableblock.performBonemeal((ServerLevel) level, level.getRandom(), blockPos, blockstate, net.minecraft.world.level.block.BonemealSource.INTERACTION);*/
+                        //? if <26.3
                         bonemealableblock.performBonemeal((ServerLevel) level, level.getRandom(), blockPos, blockstate);
                         blockstate = level.getBlockState(blockPos);
                         if (!(blockstate.getBlock() instanceof BonemealableBlock)) {

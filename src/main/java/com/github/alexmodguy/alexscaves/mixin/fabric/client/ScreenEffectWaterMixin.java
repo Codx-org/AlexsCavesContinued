@@ -20,7 +20,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>The target is private static on every node and no node declares a second overload of the name,
  * so a name-only selector is enough inside each arm. Three bands: it gained a
  * {@code MultiBufferSource} at 1.21.4 and was renamed {@code submitWater} with a
- * {@code SubmitNodeCollector} at 26.2. A mixin handler's static-ness must match its target's, hence
+ * {@code SubmitNodeCollector} at 26.2, and at 26.3 it lost the leading
+ * {@code Minecraft} for the {@code PlayerRenderState$WaterOverlay} the caller had already resolved. A mixin handler's static-ness must match its target's, hence
  * the static handlers, and cancelling at HEAD is what skips the draw.
  */
 @Mixin(net.minecraft.client.renderer.ScreenEffectRenderer.class)
@@ -35,7 +36,14 @@ public class ScreenEffectWaterMixin {
         return MinecraftForge.EVENT_BUS.post(new RenderBlockScreenEffectEvent(player, RenderBlockScreenEffectEvent.OverlayType.WATER));
     }
 
-    //? if >=26.2 {
+    //? if >=26.3 {
+    /*@Inject(method = "submitWater", remap = true, cancellable = true, at = @At(value = "HEAD"))
+    private static void ac_fabricRenderWater(net.minecraft.client.renderer.state.level.PlayerRenderState.WaterOverlay overlay, com.mojang.blaze3d.vertex.PoseStack poseStack, net.minecraft.client.renderer.SubmitNodeCollector collector, CallbackInfo ci) {
+        if (ac_fabricCancelWater()) {
+            ci.cancel();
+        }
+    }
+    *///?} elif >=26.2 {
     /*@Inject(method = "submitWater", remap = true, cancellable = true, at = @At(value = "HEAD"))
     private static void ac_fabricRenderWater(Minecraft minecraft, com.mojang.blaze3d.vertex.PoseStack poseStack, net.minecraft.client.renderer.SubmitNodeCollector collector, CallbackInfo ci) {
         if (ac_fabricCancelWater()) {

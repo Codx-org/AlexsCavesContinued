@@ -10,8 +10,10 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 
@@ -27,8 +29,11 @@ public class DarkArrowEntity extends AbstractArrow {
 
     public DarkArrowEntity(EntityType entityType, Level level) {
         // 1.20.3 gave AbstractArrow the stack it drops when picked up, stored and saved on the
-        // entity. This mod's arrows answer that with their own getPickupItem() override on every
-        // version, so the stack passed here only has to match it.
+        // entity. That stack must NOT be empty: from 1.20.5 the constructor strips a data component
+        // off it (an empty stack's component map is immutable, so UnsupportedOperationException —
+        // the dreadbow crashed on fire) and saving encodes it (IllegalStateException "Cannot encode
+        // empty ItemStack"). A plain arrow is carried instead; tryPickup below is what keeps anyone
+        // from actually collecting it.
         //
         // 1.21 then took it off the two-argument form again and appended a nullable weapon stack to
         // the other two, the item the shot was fired from, which vanilla reads for the piercing and
@@ -37,25 +42,25 @@ public class DarkArrowEntity extends AbstractArrow {
         //? if >=1.21
         /*super(entityType, level);*/
         //? if >=1.20.3 && <1.21
-        /*super(entityType, level, ItemStack.EMPTY);*/
+        /*super(entityType, level, new ItemStack(Items.ARROW));*/
         //? if <1.20.3
         super(entityType, level);
     }
 
     public DarkArrowEntity(Level level, LivingEntity shooter) {
         //? if >=1.21
-        /*super(ACEntityRegistry.DARK_ARROW.get(), shooter, level, ItemStack.EMPTY, null);*/
+        /*super(ACEntityRegistry.DARK_ARROW.get(), shooter, level, new ItemStack(Items.ARROW), null);*/
         //? if >=1.20.3 && <1.21
-        /*super(ACEntityRegistry.DARK_ARROW.get(), shooter, level, ItemStack.EMPTY);*/
+        /*super(ACEntityRegistry.DARK_ARROW.get(), shooter, level, new ItemStack(Items.ARROW));*/
         //? if <1.20.3
         super(ACEntityRegistry.DARK_ARROW.get(), shooter, level);
     }
 
     public DarkArrowEntity(Level level, double x, double y, double z) {
         //? if >=1.21
-        /*super(ACEntityRegistry.DARK_ARROW.get(), x, y, z, level, ItemStack.EMPTY, null);*/
+        /*super(ACEntityRegistry.DARK_ARROW.get(), x, y, z, level, new ItemStack(Items.ARROW), null);*/
         //? if >=1.20.3 && <1.21
-        /*super(ACEntityRegistry.DARK_ARROW.get(), x, y, z, level, ItemStack.EMPTY);*/
+        /*super(ACEntityRegistry.DARK_ARROW.get(), x, y, z, level, new ItemStack(Items.ARROW));*/
         //? if <1.20.3
         super(ACEntityRegistry.DARK_ARROW.get(), x, y, z, level);
     }
@@ -68,9 +73,22 @@ public class DarkArrowEntity extends AbstractArrow {
         this.entityData.define(PERFECT_SHOT, false);
     }
 
+    // Also the fallback AbstractArrow stores when built by the two-argument constructor or loaded
+    // without an item tag, so from 1.20.3 it has to be non-empty for the reason given above.
     @Override
     protected ItemStack getPickupItem() {
+        //? if >=1.20.3
+        /*return new ItemStack(Items.ARROW);*/
+        //? if <1.20.3
         return ItemStack.EMPTY;
+    }
+
+    // Dark arrows are summoned by the dreadbow, not shot from the player's quiver, so they must
+    // never be collected. DreadbowItem marks them Pickup.ALLOWED, which used to be harmless only
+    // because the pickup stack was empty; now that it holds an arrow, refuse here instead.
+    @Override
+    protected boolean tryPickup(Player player) {
+        return false;
     }
 
     @Override

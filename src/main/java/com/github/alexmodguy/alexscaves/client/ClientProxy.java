@@ -629,14 +629,18 @@ public class ClientProxy extends CommonProxy {
     // definition now. The same five colours are computed by ACItemModelShims.Tint there — the
     // colorIn index each lambda guards on became the entry's position in that list. The block half
     // is untouched on every version.
+    //
+    // From 1.20.5 the item tint's alpha byte is used rather than ignored, and these colours are plain
+    // 0xRRGGBB, so a tinted layer came out fully transparent: a blank white tablet or codex. The wrap
+    // adds the missing alpha and leaves a colour that already has one alone.
     //? if <1.21.4 {
     public void onItemColors(RegisterColorHandlersEvent.Item event) {
         AlexsCaves.LOGGER.info("loaded in item colorizer");
-        event.register((stack, colorIn) -> colorIn != 1 ? -1 : CaveInfoItem.getBiomeColorOf(Minecraft.getInstance().level, stack, false), ACItemRegistry.CAVE_TABLET.get());
-        event.register((stack, colorIn) -> colorIn != 1 ? -1 : CaveInfoItem.getBiomeColorOf(Minecraft.getInstance().level, stack, false), ACItemRegistry.CAVE_CODEX.get());
-        event.register((stack, colorIn) -> colorIn != 0 ? -1 : GazingPearlItem.getPearlColor(stack), ACItemRegistry.GAZING_PEARL.get());
-        event.register((stack, colorIn) -> colorIn != 0 ? -1 : JellyBeanItem.getBeanColor(stack), ACItemRegistry.JELLY_BEAN.get());
-        event.register((stack, colorIn) -> colorIn != 1 ? -1 : BiomeTreatItem.getBiomeTreatColorOf(Minecraft.getInstance().level, stack), ACItemRegistry.BIOME_TREAT.get());
+        event.register((stack, colorIn) -> colorIn != 1 ? -1 : com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(CaveInfoItem.getBiomeColorOf(Minecraft.getInstance().level, stack, false)), ACItemRegistry.CAVE_TABLET.get());
+        event.register((stack, colorIn) -> colorIn != 1 ? -1 : com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(CaveInfoItem.getBiomeColorOf(Minecraft.getInstance().level, stack, false)), ACItemRegistry.CAVE_CODEX.get());
+        event.register((stack, colorIn) -> colorIn != 0 ? -1 : com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(GazingPearlItem.getPearlColor(stack)), ACItemRegistry.GAZING_PEARL.get());
+        event.register((stack, colorIn) -> colorIn != 0 ? -1 : com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(JellyBeanItem.getBeanColor(stack)), ACItemRegistry.JELLY_BEAN.get());
+        event.register((stack, colorIn) -> colorIn != 1 ? -1 : com.github.alexmodguy.alexscaves.server.misc.ACColors.opaque(BiomeTreatItem.getBiomeTreatColorOf(Minecraft.getInstance().level, stack)), ACItemRegistry.BIOME_TREAT.get());
     }
     //?}
 
@@ -722,6 +726,7 @@ public class ClientProxy extends CommonProxy {
             e.registerShader(new ShaderInstance(e.getResourceProvider(), ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "rendertype_sepia"), DefaultVertexFormat.NEW_ENTITY), ACInternalShaders::setRenderTypeSepiaShader);
             e.registerShader(new ShaderInstance(e.getResourceProvider(), ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "rendertype_red_ghost"), DefaultVertexFormat.NEW_ENTITY), ACInternalShaders::setRenderTypeRedGhostShader);
             e.registerShader(new ShaderInstance(e.getResourceProvider(), ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "rendertype_purple_witch"), DefaultVertexFormat.NEW_ENTITY), ACInternalShaders::setRenderTypePurpleWitchShader);
+            e.registerShader(new ShaderInstance(e.getResourceProvider(), ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "rendertype_unlit_translucent"), DefaultVertexFormat.NEW_ENTITY), ACInternalShaders::setRenderTypeUnlitTranslucentShader);
             AlexsCaves.LOGGER.info("registered internal shaders");
         } catch (IOException exception) {
             AlexsCaves.LOGGER.error("could not register internal shaders");
@@ -770,7 +775,7 @@ public class ClientProxy extends CommonProxy {
         if (blocked.contains(at)) {
             return false;
         } else {
-            blocked.add(new BlockPos(at));
+            blocked.add(at.immutable());
             return true;
         }
     }

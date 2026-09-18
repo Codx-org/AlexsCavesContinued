@@ -125,7 +125,9 @@ public class LevelRendererMixin {
     // widening but a second predicate in the same arm. javap the jar on every new Fabric node
     // rather than trusting the number: an intermediary index is not an API.
     @Redirect(
-            //? if >=26 {
+            //? if >=26.3 {
+            /*method = "Lnet/minecraft/client/renderer/LevelRenderer;executeOutline(Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher$PreparedFrame;)V",
+            *///?} elif >=26 {
             /*method = "lambda$addMainPass$0",
             *///?} elif (forge && >=1.21.9) || (fabric && >=1.21.2) {
             /*method = "method_62214",
@@ -161,7 +163,9 @@ public class LevelRendererMixin {
             // terrain is prepared by a public prepareChunkRenders(Matrix4fc) the caller invokes
             // separately and hands to addMainPass. Everything else about the signature, and TAIL's
             // position after execute(), is unchanged.
-            //? if >=26.2 {
+            //? if >=26.3 {
+            /*method = "Lnet/minecraft/client/renderer/LevelRenderer;render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;Lorg/joml/Vector4f;ZZ)V",
+            *///?} elif >=26.2 {
             /*method = "Lnet/minecraft/client/renderer/LevelRenderer;render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V",
             *///?} elif >=26 {
             /*method = "Lnet/minecraft/client/renderer/LevelRenderer;renderLevel(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;ZLnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;)V",

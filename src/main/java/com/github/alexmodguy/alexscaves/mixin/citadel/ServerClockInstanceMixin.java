@@ -41,13 +41,31 @@ import org.spongepowered.asm.mixin.injection.At;
  * predicate. The rate field and the {@code partialTick} accumulator around it are identical in
  * both spellings, so the two arms differ in nothing but the selector.
  */
+//? if >=26.3 {
+/*@Mixin(targets = "net.minecraft.world.clock.ServerClockManager$ServerClockInstance")
+*///?} else {
 @Mixin(targets = "net.minecraft.world.clock.ServerClockManager$ClockInstance")
+//?}
 public class ServerClockInstanceMixin {
 
-    //? if neoforge && >=26.1.1 {
+    //? if neoforge && >=26.3 {
+    /*@ModifyExpressionValue(
+            method = "tick(Z)V",
+            at = @At(value = "FIELD", target = "Lnet/minecraft/world/clock/ServerClockManager$ServerClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
+    private float acc_citadel_clockRate(float rate) {
+        return acc_citadel_scaleClockRate(rate);
+    }
+    *///?} elif neoforge && >=26.1.1 {
     /*@ModifyExpressionValue(
             method = "tick(Z)V",
             at = @At(value = "FIELD", target = "Lnet/minecraft/world/clock/ServerClockManager$ClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
+    private float acc_citadel_clockRate(float rate) {
+        return acc_citadel_scaleClockRate(rate);
+    }
+    *///?} elif >=26.3 {
+    /*@ModifyExpressionValue(
+            method = "tick()V",
+            at = @At(value = "FIELD", target = "Lnet/minecraft/world/clock/ServerClockManager$ServerClockInstance;rate:F", opcode = org.objectweb.asm.Opcodes.GETFIELD))
     private float acc_citadel_clockRate(float rate) {
         return acc_citadel_scaleClockRate(rate);
     }

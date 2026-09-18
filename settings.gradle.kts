@@ -34,15 +34,15 @@ rootProject.name = "AlexsCavesContinued"
 // carries that exact source forward across MC versions on Forge + NeoForge + Fabric, using the
 // harness proven on AlexsMobsContinued.
 //
-// The target is the FULL 58-node matrix — the same set codxlib ships, so every node of every
-// codx mod has a companion library build. 58 is not 20 MC versions × 3 loaders; the loaders
+// The target is the FULL 60-node matrix — the same set codxlib ships, so every node of every
+// codx mod has a companion library build. 60 is not 21 MC versions × 3 loaders; the loaders
 // genuinely differ in what exists upstream:
-//   Forge     — no upstream build at all for 1.20.2 / 1.20.3 / 1.20.5 / 1.21.2
+//   Forge     — no upstream build at all for 1.20.2 / 1.20.3 / 1.20.5 / 1.21.2 / 26.3
 //               (1.20.3's userdev resolves but its bootstrap-dev:2.0.0 is gone from the maven)
 //   NeoForge  — no usable modern bundle below 1.20.4 (1.20.1 NeoForge is the legacy toolchain),
 //               and none for 1.20.5
 //   Fabric    — the only loader that reaches 1.20.2 / 1.20.3 / 1.20.5
-// That leaves 18 Forge + 18 NeoForge + 22 Fabric = 58.
+// That leaves 18 Forge + 19 NeoForge + 23 Fabric = 60.
 // A version gets a node only once it actually compiles, so the tree never carries a
 // known-broken node. Uncomment each line as its port lands.
 stonecutter {
@@ -88,6 +88,7 @@ stonecutter {
 		forgeNoRemap("26.1.1"); neoforge("26.1.1")
 		forgeNoRemap("26.1.2"); neoforge("26.1.2")
 		forgeNoRemap("26.2");   neoforge("26.2")  // ← Gui→Hud, EntityType→EntityTypes constants
+		                        neoforge("26.3")  // Forge: no 26.3 build upstream (as 1.21.2)
 
 		// ── planned (uncomment as each version is ported) ─────────────────────
 
@@ -113,6 +114,7 @@ stonecutter {
 		fabricNoRemap("26.1.1")
 		fabricNoRemap("26.1.2")
 		fabricNoRemap("26.2")
+		fabricNoRemap("26.3")
 
 		vcsVersion = "1.20.1-forge"
 	}

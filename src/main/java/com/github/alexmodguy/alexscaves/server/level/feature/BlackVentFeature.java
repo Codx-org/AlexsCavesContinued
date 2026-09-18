@@ -9,22 +9,19 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class BlackVentFeature extends Feature<NoneFeatureConfiguration> {
+public class BlackVentFeature extends ACSimpleFeature {
 
-    public BlackVentFeature(Codec<NoneFeatureConfiguration> codec) {
+    public BlackVentFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
         BlockPos.MutableBlockPos ventBottom = new BlockPos.MutableBlockPos();
-        ventBottom.set(context.origin());
+        ventBottom.set(acOrigin);
         while (!level.getBlockState(ventBottom).getFluidState().isEmpty() && ventBottom.getY() > level.getMinBuildHeight()) {
             ventBottom.move(0, -1, 0);
         }

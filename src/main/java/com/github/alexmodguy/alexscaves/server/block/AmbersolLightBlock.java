@@ -89,7 +89,7 @@ public class AmbersolLightBlock extends Block {
         }
         if (levelAccessor.getBlockState(blockPos.below()).getBlock() != this) {
             BlockPos top = getTopOfColumn(blockPos, levelAccessor, state2 -> !state2.is(ACBlockRegistry.AMBERSOL.get()));
-            levelAccessor.scheduleTick(new BlockPos(top), ACBlockRegistry.AMBERSOL.get(), 3);
+            levelAccessor.scheduleTick(top.immutable(), ACBlockRegistry.AMBERSOL.get(), 3);
         }
         if (!state.canSurvive(levelAccessor, blockPos)) {
             return Blocks.AIR.defaultBlockState();

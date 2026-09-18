@@ -1966,7 +1966,11 @@ stonecutter parameters {
 		// loot package to the shared net.minecraft.util.context.ContextKey. The keys themselves
 		// are still spelled LootContextParams.X, so the two method names are the whole change.
 		string("!mc2102-loot-hasparam", true) { replace("hasParam(", "hasParameter(") }
-		string("!mc2102-loot-getparam", true) { replace("getParam(", "getParameter(") }
+		// ...and 26.3 renamed the getter again, to getOptional, while leaving hasParameter alone.
+		// A val rather than a second rule: two rules rewriting the same source token fail
+		// configuration with "Ambiguous replacement".
+		val lootGet = if (eval(current.version, ">=26.3")) "getOptional(" else "getParameter("
+		string("!mc2102-loot-getparam", true) { replace("getParam(", lootGet) }
 
 		// ── Direction.getNearest split in two ──────────────────────────────────
 		// The old "which axis does this vector mostly point along" became getApproximateNearest;
@@ -2133,14 +2137,24 @@ stonecutter parameters {
 		string("!mc2102-delta-tracker", true) {
 			replace("getTimer()", "getDeltaTracker()")
 		}
-		// 1.21.11 moved every static factory off RenderType onto a sibling RenderTypes class, so the
-		// owner this rule emits is version-dependent. It CANNOT be a second rule in the 1.21.11 group:
-		// replacement rules do not chain — every rule matches the ORIGINAL file text, so one keyed on
-		// `RenderType.entityGlint()` would never see what this rule produced. Same shape as the
-		// entityInside tail the 1.21.10 wave had to grow.
-		val glintOwner = if (eval(current.version, ">=1.21.11")) "RenderTypes" else "RenderType"
+		// 1.21.11 moved every static factory off RenderType onto a sibling RenderTypes class, and
+		// 26.3 then deleted the parameterless entityGlint() outright. Its successor is
+		// patternedShieldGlint(), identified by CONSTRUCTION rather than by how the name reads: it is
+		// the one carrying ENTITY_GLINT_TEXTURING, the entity-space glint transform this call site
+		// wants. (trimmedArmorGlint() is the other survivor and is the ARMOR one; the item-sheet
+		// glint()'s GLINT_TEXTURING has no parameterless successor at all. Reading the names instead
+		// of the constructions gets two of those three rows wrong.)
+		//
+		// So BOTH halves of what this rule emits are version-dependent, and neither may become a rule
+		// of its own: replacement rules do not chain — every rule matches the ORIGINAL file text, so
+		// one keyed on what this produced would never fire — and a second rule on the SAME source span
+		// fails configuration as an ambiguous replacement. Same shape as the entityInside tail the
+		// 1.21.10 wave had to grow.
+		val glintCall = if (eval(current.version, ">=26.3")) "RenderTypes.patternedShieldGlint()"
+				else if (eval(current.version, ">=1.21.11")) "RenderTypes.entityGlint()"
+				else "RenderType.entityGlint()"
 		string("!mc2102-entity-glint-direct", true) {
-			replace("RenderType.entityGlintDirect()", "$glintOwner.entityGlint()")
+			replace("RenderType.entityGlintDirect()", glintCall)
 		}
 		string("!mc2102-direction-unit-vec", true) {
 			replace("getNormal()", "getUnitVec3i()")
@@ -2265,20 +2279,26 @@ stonecutter parameters {
 		string("!mc2105-spawnerdata-type", true) {
 			replace("spawnerData.type", "spawnerData.type()")
 		}
+		// 26.3 reshaped SpawnerData a second time: its two int fields became a single IntProvider,
+		// so the accessor this 1.21.5 rule generates has to land on a different spelling at the top
+		// of the range. That is a version-dependent replacement on the EXISTING rule, never a second
+		// rule — two rules sharing a target fail configuration with "Ambiguous replacement".
+		val spawnerMin = if (eval(current.version, ">=26.3")) "count().minInclusive()" else "minCount()"
+		val spawnerMax = if (eval(current.version, ">=26.3")) "count().maxInclusive()" else "maxCount()"
 		string("!mc2105-spawnerdata-mincount", true) {
-			replace("spawnerData.minCount", "spawnerData.minCount()")
+			replace("spawnerData.minCount", "spawnerData.$spawnerMin")
 		}
 		string("!mc2105-spawnerdata-maxcount", true) {
-			replace("spawnerData.maxCount", "spawnerData.maxCount()")
+			replace("spawnerData.maxCount", "spawnerData.$spawnerMax")
 		}
 		string("!mc2105-mixin-spawnerdata-type", true) {
 			replace("mobspawnsettings\$spawnerdata.type", "mobspawnsettings\$spawnerdata.type()")
 		}
 		string("!mc2105-mixin-spawnerdata-mincount", true) {
-			replace("mobspawnsettings\$spawnerdata.minCount", "mobspawnsettings\$spawnerdata.minCount()")
+			replace("mobspawnsettings\$spawnerdata.minCount", "mobspawnsettings\$spawnerdata.$spawnerMin")
 		}
 		string("!mc2105-mixin-spawnerdata-maxcount", true) {
-			replace("mobspawnsettings\$spawnerdata.maxCount", "mobspawnsettings\$spawnerdata.maxCount()")
+			replace("mobspawnsettings\$spawnerdata.maxCount", "mobspawnsettings\$spawnerdata.$spawnerMax")
 		}
 
 		// ── ArmorItem is gone ──────────────────────────────────────────────
@@ -3566,8 +3586,15 @@ stonecutter parameters {
 		// >=26, because replacement rules never chain.
 		val cutoutCull = if (eval(current.version, ">=26")) "entityCutoutCull" else "entityCutout"
 		val cutoutNoCull = if (eval(current.version, ">=26")) "entityCutout" else "entityCutoutNoCull"
-		val itemTranslucentCull =
-			if (eval(current.version, ">=26")) "entityTranslucentCullItemTarget" else "itemEntityTranslucentCull"
+		// 26.3 deleted OutputTarget, and with it the whole point of the ItemTarget suffix: the
+		// item-entity framebuffer is gone, so the factory reverted to the plain descriptive name
+		// `entityTranslucentCull(Identifier)`. A third band on this existing val rather than a new
+		// rule, because two rules sharing this span is exactly the ambiguous-replacement failure.
+		val itemTranslucentCull = when {
+			eval(current.version, ">=26.3") -> "entityTranslucentCull"
+			eval(current.version, ">=26") -> "entityTranslucentCullItemTarget"
+			else -> "itemEntityTranslucentCull"
+		}
 		string("!mc2111-rendertypes-entityCutout", true) {
 			replace("RenderType.entityCutout(", "RenderTypes.$cutoutCull(")
 		}
@@ -3606,10 +3633,21 @@ stonecutter parameters {
 		// `RenderType.create(name, …)` line — without it the shim would call itself forever.
 		val acRenderSetup = "com.github.alexmodguy.alexscaves.client.render.ACRenderSetup"
 		val rendertypePkg = "net.minecraft.client.renderer.rendertype"
+		// 26.3 deleted OutputTarget with no successor at all — RenderSetupBuilder kept its layering
+		// and texturing setters and simply lost the output half — so the two output constants have
+		// nothing vanilla left to name. They become null placeholders on ACRenderSetup, which that
+		// version's setOutputState accepts and discards. This is a version-dependent `val` and not
+		// a second rule for the usual reason: two bands rewriting the same span must resolve to one
+		// rule, since rules never chain. The two placeholders are deliberately DISTINCT constants
+		// rather than one shared `null`, because two rules sharing a replacement target fail
+		// configuration with "Ambiguous replacement".
+		val on263 = eval(current.version, ">=26.3")
+		val mainTarget = if (on263) "$acRenderSetup.MAIN_TARGET" else "$rendertypePkg.OutputTarget.MAIN_TARGET"
+		val itemEntityTarget = if (on263) "$acRenderSetup.ITEM_ENTITY_TARGET" else "$rendertypePkg.OutputTarget.ITEM_ENTITY_TARGET"
 		mapOf(
 			"OutputStateShard" to "$rendertypePkg.OutputTarget",
-			"MAIN_TARGET" to "$rendertypePkg.OutputTarget.MAIN_TARGET",
-			"ITEM_ENTITY_TARGET" to "$rendertypePkg.OutputTarget.ITEM_ENTITY_TARGET",
+			"MAIN_TARGET" to mainTarget,
+			"ITEM_ENTITY_TARGET" to itemEntityTarget,
 			"NO_LAYERING" to "$rendertypePkg.LayeringTransform.NO_LAYERING",
 			"VIEW_OFFSET_Z_LAYERING" to "$rendertypePkg.LayeringTransform.VIEW_OFFSET_Z_LAYERING",
 			"DEFAULT_TEXTURING" to "$rendertypePkg.TextureTransform.DEFAULT_TEXTURING",
@@ -3846,11 +3884,19 @@ stonecutter parameters {
 		// its matrix is the read-only Matrix4fc interface now. Two identical `@At` targets in
 		// GameRendererMixin, so a rule rather than a fourth arm in each; the whole descriptor is the
 		// source string, which cannot collide with anything else in the tree.
+		// 26.3 reshapes it again: the deferred renderer hands the hand render the frame's
+		// PlayerRenderState and the colour target it draws into, and the projection matrix is gone.
+		// Two rules may not share a source string ("Ambiguous replacement"), so the second band is a
+		// version-dependent val rather than a second rule — the same shape as `cutoutCull` above.
+		// The GpuTextureView is spelled slashed on purpose: the renderpearl package rule keys on the
+		// DOTTED name, so a hand-written descriptor sails past it and has to be final as written.
+		val renderItemInHandTarget = if (eval(current.version, ">=26.3")) {
+			"renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;Lcom/mojang/renderpearl/api/textures/GpuTextureView;)V"
+		} else {
+			"renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;FLorg/joml/Matrix4fc;)V"
+		}
 		string("!mc261-renderiteminhand", true) {
-			replace(
-				"renderItemInHand(FZLorg/joml/Matrix4f;)V",
-				"renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;FLorg/joml/Matrix4fc;)V"
-			)
+			replace("renderItemInHand(FZLorg/joml/Matrix4f;)V", renderItemInHandTarget)
 		}
 
 		// ── package moves ───────────────────────────────────────────────────
@@ -4067,6 +4113,27 @@ stonecutter parameters {
 
 	// ══ 26.2 ═════════════════════════════════════════════════════════════════════════════════
 	if (eval(current.version, ">=26.2")) replacements {
+		// ── 26.3 moved most of the render backend out of com.mojang.blaze3d ───────────────────
+		//
+		// Three rules in this group emit a fully-qualified blaze3d name that 26.3 relocated into
+		// com.mojang.renderpearl. Rules do NOT chain — every rule matches the ORIGINAL file text —
+		// so the >=26.3 group further down can never rewrite what this group produces. The
+		// documented fix for two bands rewriting one span is a version-dependent Kotlin val, not a
+		// second rule, and this is it.
+		//
+		// PrimitiveTopology is the only one that needs it. GpuFormat and ColorTargetState are also
+		// emitted here, by the two !mc262-colortarget-* rules, but their only target file
+		// (ACPipelineState) gets a whole >=26.3 arm of its own instead — so on 26.3 those two rules
+		// match nothing except a commented-out arm, which is harmless. That is deliberate rather
+		// than lazy: a general rule on com.mojang.blaze3d.pipeline.ColorTargetState would start
+		// EARLIER in the text than !mc262-colortarget-blend-no-alpha's match and consume the span,
+		// so the GpuFormat argument would never be inserted on 26.3 and nothing would say why.
+		val topology = if (eval(current.version, ">=26.3")) {
+			"com.mojang.renderpearl.api.pipeline.PrimitiveTopology"
+		} else {
+			"com.mojang.blaze3d.PrimitiveTopology"
+		}
+
 		// ── MultiBufferSource is gone ─────────────────────────────────────────────────────────
 		// 26.2 deleted immediate-mode rendering outright: no MultiBufferSource, no
 		// VertexMultiConsumer, no Minecraft#renderBuffers(). Roughly 150 files in this tree name
@@ -4356,8 +4423,11 @@ stonecutter parameters {
 		// that keep using VertexFormat itself keep theirs. Source must therefore spell the nested
 		// type SHORT everywhere — a fully-qualified `com.mojang.blaze3d.vertex.VertexFormat.Mode`
 		// would be rewritten in place and yield a doubled package prefix.
+		//
+		// 26.3 then moved the lifted enum again, to com.mojang.renderpearl.api.pipeline — hence the
+		// `topology` val at the top of this group rather than a second rule down in the 26.3 one.
 		string("!mc262-vertexformat-mode", true) {
-			replace("VertexFormat.Mode", "com.mojang.blaze3d.PrimitiveTopology")
+			replace("VertexFormat.Mode", topology)
 		}
 
 		// ── samplers and uniforms became bind group layouts ──
@@ -4443,7 +4513,7 @@ stonecutter parameters {
 		// ambiguous replacement. Spelling the whole expression, mode included, makes the target
 		// distinct — and the mode rule above never fires inside it, since this match starts earlier.
 		string("!mc262-vertexbinding-position-tex-color-quads", true) {
-			replace(".withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)", ".withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR).withPrimitiveTopology(com.mojang.blaze3d.PrimitiveTopology.QUADS)")
+			replace(".withVertexFormat(DefaultVertexFormat.POSITION_TEX_COLOR, VertexFormat.Mode.QUADS)", ".withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR).withPrimitiveTopology($topology.QUADS)")
 		}
 
 		// DefaultVertexFormat.EMPTY is gone with the call that consumed it: a screenquad pass binds
@@ -4453,7 +4523,7 @@ stonecutter parameters {
 		// rather than translated. Both sites (the lightmap and the post-effect blit) are the same
 		// whole expression, which is what lets one rule serve them.
 		string("!mc262-vertexbinding-empty", true) {
-			replace(".withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES)", ".withPrimitiveTopology(com.mojang.blaze3d.PrimitiveTopology.TRIANGLES)")
+			replace(".withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES)", ".withPrimitiveTopology($topology.TRIANGLES)")
 		}
 
 		// ── ColorTargetState gained the target's format ──
@@ -4525,20 +4595,48 @@ stonecutter parameters {
 		//
 		// Three rules rather than one gate because the @Redirect this belongs to already carries a
 		// six-arm `method` chain and Stonecutter cannot nest a second condition inside it.
+		// 26.3 threads the frame's render pass through the stage — executeOutline takes the pass it
+		// records into — so all three of these spans change again on exactly the nodes above 26.2.
+		// That makes each replacement a version-dependent value rather than a fourth, fifth and sixth
+		// rule: two rules sharing a target fail configuration as an ambiguous replacement.
+		//
+		// The handler grows a second parameter, which is why the param rule is not a pure retype: a
+		// @Redirect mirrors the redirected CALL, so a redirected method that gained an argument gives
+		// the handler one too, and the call rule passes it straight back through.
+		//
+		// ⚠️ The descriptor is hand-slashed. The rule that follows the renderpearl package move keys on
+		// the DOTTED name, and a descriptor spells it with slashes, so it sails through untouched and
+		// would have failed at mixin apply long after a green build — the same trap CompositeRenderTypeMixin
+		// documents.
+		val outlineAt = if (eval(current.version, ">=26.3")) {
+			"Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher\$PreparedFrame;executeOutline(Lcom/mojang/renderpearl/api/commands/RenderPass;)V"
+		} else {
+			"Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher\$PreparedFrame;executeOutline()V"
+		}
+		val outlineParam = if (eval(current.version, ">=26.3")) {
+			"net.minecraft.client.renderer.feature.FeatureRenderDispatcher.PreparedFrame outlineBufferSource, com.mojang.renderpearl.api.commands.RenderPass acOutlinePass"
+		} else {
+			"net.minecraft.client.renderer.feature.FeatureRenderDispatcher.PreparedFrame outlineBufferSource"
+		}
+		val outlineCall = if (eval(current.version, ">=26.3")) {
+			"outlineBufferSource.executeOutline(acOutlinePass);"
+		} else {
+			"outlineBufferSource.executeOutline();"
+		}
 		string("!mc262-outline-at", true) {
 			replace(
 				"Lnet/minecraft/client/renderer/OutlineBufferSource;endOutlineBatch()V",
-				"Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher\$PreparedFrame;executeOutline()V"
+				outlineAt
 			)
 		}
 		string("!mc262-outline-param", true) {
 			replace(
 				"net.minecraft.client.renderer.OutlineBufferSource outlineBufferSource",
-				"net.minecraft.client.renderer.feature.FeatureRenderDispatcher.PreparedFrame outlineBufferSource"
+				outlineParam
 			)
 		}
 		string("!mc262-outline-call", true) {
-			replace("outlineBufferSource.endOutlineBatch();", "outlineBufferSource.executeOutline();")
+			replace("outlineBufferSource.endOutlineBatch();", outlineCall)
 		}
 
 		// ── the three GameRenderer getters lost their get- ────────────────────────────────────
@@ -4637,6 +4735,296 @@ stonecutter parameters {
 		// spelled with a `this.` in front of it.
 		string("!mc262-particlegroup-getall", true) {
 			replace("this.getAll()", "this.particles")
+		}
+	}
+
+	// ══ 26.3 ═════════════════════════════════════════════════════════════════════════════════
+	if (eval(current.version, ">=26.3")) replacements {
+		// ── setInvulnerable renamed ────────────────────────────────────────────
+		// Only the setter moved; isInvulnerable() is untouched, which is why the two call sites
+		// here read one and write the other. Distinct from !mc2102-invulnerable-super's
+		// `super.isInvulnerableTo(` — different source and different target, so not ambiguous.
+		string("!mc263-setinvulnerable", true) { replace("setInvulnerable(", "setPermanentlyInvulnerable(") }
+		// ── the quaternion overload of mulPose became rotate ──────────────────────────────────
+		// 26.3 renamed PoseStack#mulPose(Quaternionfc) to #rotate(Quaternionfc) — 282 of this
+		// node's compile errors, the single largest class in the port.
+		//
+		// ⚠️ It is NOT a rename of the method NAME. `mulPose(Matrix4fc)` and
+		// `mulPose(Transformation)` both SURVIVE on 26.3 (verified with javap against the vanilla
+		// client jar), so a rule keyed on a bare `mulPose` token would rewrite those too — and
+		// since matching is boundary-checked on neither edge, it would hit them wherever they
+		// appear. This tree has exactly three such sites and every one of them must be left alone:
+		// ACClientCompat#submitTextTo's `stack.mulPose(pose)` (pose is an org.joml.Matrix4f),
+		// LevelRendererSkyMixin's `poseStack.mulPose(frustumMatrix)`, and the dead
+		// `forge && >=1.20.5 && <1.21.2` arm of ACClientCompat#poseStack.
+		//
+		// So each rule carries enough of the ARGUMENT to prove the overload, not just the method
+		// name. The first covers 298 of the 311 call sites in the tree (`Axis.<D>.rotation` and
+		// `.rotationDegrees` alike, since `Axis.` is the whole discriminator); the other six are
+		// the remaining quaternion sites, each spelled uniquely. No two sources overlap — after
+		// `.mulPose(camera` one reads `)` and the other `.rotation()`, so neither is a substring
+		// of the other — and every target differs, so this is not an ambiguous replacement.
+		//
+		// The leading `.` is load-bearing twice over: it keeps the rules off the two mixin
+		// @At descriptor strings in SplashRendererMixin, which spell `;mulPose(Lorg/joml/…`
+		// and describe vanilla bytecode on the versions where those arms are live.
+		string("!mc263-posestack-rotate-axis", true) {
+			replace(".mulPose(Axis.", ".rotate(Axis.")
+		}
+		string("!mc263-posestack-rotate-facing", true) {
+			replace(".mulPose(dir.getOpposite().getRotation())", ".rotate(dir.getOpposite().getRotation())")
+		}
+		string("!mc263-posestack-rotate-camera", true) {
+			replace(".mulPose(camera)", ".rotate(camera)")
+		}
+		string("!mc263-posestack-rotate-camera-rotation", true) {
+			replace(".mulPose(camera.rotation())", ".rotate(camera.rotation())")
+		}
+		string("!mc263-posestack-rotate-cameraorientation", true) {
+			replace(".mulPose(com.github.alexmodguy.alexscaves.client.ACClientCompat.cameraOrientation())",
+					".rotate(com.github.alexmodguy.alexscaves.client.ACClientCompat.cameraOrientation())")
+		}
+		string("!mc263-posestack-rotate-angleaxis", true) {
+			replace(".mulPose((new Quaternionf())", ".rotate((new Quaternionf())")
+		}
+		string("!mc263-posestack-rotate-pitch", true) {
+			replace(".mulPose(pitchRotation)", ".rotate(pitchRotation)")
+		}
+
+		// ── RandomState lost its no-argument climate sampler ──────────────────────────────────
+		// 26.3 made sampling contextual: RandomState#sampler() is gone and
+		// #createClimateSampler(SamplerContext) takes its place, returning the same
+		// Climate$Sampler every call site here already wants. SamplerContext.EMPTY_UNCACHED is a
+		// public constant (javap, vanilla 26.3), so the whole migration is one substring rule over
+		// 16 sites rather than 16 gated arms — and "uncached" is the correct choice twice over:
+		// these are one-shot probes that would gain nothing from a cache, and CaveBiomeMapWorldWorker
+		// runs off the main thread, where sharing a caching sampler would be a hazard.
+		//
+		// ⚠️ Never write a bare dot-sampler-parens token in a source comment anywhere in this tree;
+		// replacements hit prose and commented-out arms alike. The near-misses are all safe: the
+		// surviving getSampler(, samplersWithContext( and cachingSamplers( spellings contain no
+		// such substring, so none of them can be caught by this rule.
+		string("!mc263-climate-sampler", true) {
+			replace(".sampler()", ".createClimateSampler(net.minecraft.world.level.levelgen.densityfunction.SamplerContext.EMPTY_UNCACHED)")
+		}
+
+		// ── three straight renames ────────────────────────────────────────────────────────────
+		// Each is a pure rename carrying an identical descriptor (javap, both client jars), and each
+		// source token was counted in the tree first — with `find … -exec grep` rather than `grep -r`,
+		// which this box's shell function silently skips.
+		//
+		//   LivingEntity#getAttackAnim -> getSwingAnimation   (10 sites.) 26.3 also moved the public
+		//       swinging / swingingArm / swingTime / oAttackAnim / attackAnim fields into a private
+		//       SwingState with no getter and deleted updateSwingTime(), so a tree that WROTE those
+		//       would need far more than a rename. This one only ever reads the animation scale.
+		//   MinecraftServer#getStructureManager -> getStructureTemplateManager   (3 sites, every one
+		//       spelled getServer().getStructureManager() in the three template features.)
+		//   Recipe.CODEC -> Recipe.DIRECT_CODEC   (1 site.) NOT a reshape and NOT a value needing
+		//       unwrapping: 26.3 kept a Codec<Recipe<?>> and renamed it, then re-used the vacated name
+		//       for a Codec<Holder<Recipe<?>>>. The call site wants the renamed constant. A
+		//       "cannot be converted" error on a constant is worth reading as a possible RENAME before
+		//       reaching for .value().
+		string("!mc263-swing-animation", true) {
+			replace("getAttackAnim(", "getSwingAnimation(")
+		}
+		string("!mc263-structure-template-manager", true) {
+			replace("getStructureManager()", "getStructureTemplateManager()")
+		}
+		string("!mc263-recipe-direct-codec", true) {
+			replace("Recipe.CODEC", "Recipe.DIRECT_CODEC")
+		}
+
+		// ── PushReaction is a DIFFERENT ENUM, not a renamed set of constants ───────────────────
+		// 26.2 spells it NORMAL / DESTROY / BLOCK / IGNORE / PUSH_ONLY; 26.3 spells it
+		// PUSH_PULL / PUSH / POPPED / IMMOVEABLE / IGNORE_ENTITY. The mapping is NOT ordinal-aligned
+		// and had to be recovered from vanilla bytecode rather than guessed:
+		//   * constant frequency in `javap -c Blocks` matches the pairs one-to-one —
+		//     26.2 DESTROY 209 / BLOCK 12 / PUSH_ONLY 1 / NORMAL 1 against
+		//     26.3 POPPED 215 / IMMOVEABLE 16 / PUSH 1 / PUSH_PULL 1;
+		//   * PistonBaseBlock compares getPistonPushReaction() == PUSH_PULL on 26.3 where 26.2 read
+		//     NORMAL, which fixes that pair independently of the counts;
+		//   * IGNORE -> IGNORE_ENTITY is then the only assignment left.
+		// This tree uses exactly three of the five (DESTROY x35, BLOCK x1, IGNORE x1), so the other
+		// two pairs are recorded above but deliberately have no rule — a rule with no call site is
+		// indistinguishable from a wrong one.
+		string("!mc263-pushreaction-destroy", true) {
+			replace("PushReaction.DESTROY", "PushReaction.POPPED")
+		}
+		string("!mc263-pushreaction-block", true) {
+			replace("PushReaction.BLOCK", "PushReaction.IMMOVEABLE")
+		}
+		string("!mc263-pushreaction-ignore", true) {
+			replace("PushReaction.IGNORE", "PushReaction.IGNORE_ENTITY")
+		}
+
+		// ── EntityRenderer culling grew a partialTick ─────────────────────────────────────────
+		// 26.3: shouldRender(T, Frustum, double, double, double) -> (..., float) and
+		// getBoundingBoxForCulling(T) -> (T, float). Both are @Override sites here, so on 26.3 the
+		// old arity silently stops overriding anything and the culling shim goes dead — which is
+		// exactly the class of bug the override audit exists for. Rewritten rather than gated
+		// because the bodies are identical either side; only the signature moves.
+		//
+		// The declaration rule keys on the whole parameter TAIL, not on the method name: all 14
+		// renderers spell it `(<Entity> entity, Frustum camera, double x, double y, double z)` with
+		// only the entity type differing, and `, Frustum camera, double x, double y, double z)`
+		// occurs nowhere else in the tree — the two other Frustum-taking methods
+		// (ACParticleBuffers, ParticleEngineMixin) name the parameter `frustum`. The `super.` call
+		// is a separate rule and cannot overlap this one: it contains no `Frustum` token. The tree's
+		// one other `super.shouldRender(x, y, z)` is a different, three-argument method and is left
+		// alone by both.
+		string("!mc263-shouldrender-partialtick-decl", true) {
+			replace(", Frustum camera, double x, double y, double z)",
+					", Frustum camera, double x, double y, double z, float acPartialTick)")
+		}
+		string("!mc263-shouldrender-partialtick-super", true) {
+			replace("super.shouldRender(entity, camera, x, y, z)",
+					"super.shouldRender(entity, camera, x, y, z, acPartialTick)")
+		}
+		// The two culling shims under client/render/compat/. `culled.getBoundingBoxForCulling()` —
+		// the mod's OWN no-argument CullingBoundsEntity method, on the same line as the super call —
+		// matches neither rule, which is why both carry their argument list.
+		string("!mc263-cullingbox-partialtick-decl", true) {
+			replace("getBoundingBoxForCulling(T entity) {", "getBoundingBoxForCulling(T entity, float acPartialTick) {")
+		}
+		string("!mc263-cullingbox-partialtick-super", true) {
+			replace("super.getBoundingBoxForCulling(entity)", "super.getBoundingBoxForCulling(entity, acPartialTick)")
+		}
+
+		// ── BlockStateProvider's dispatch codec was renamed ───────────────────────────────────
+		// 26.3 renamed BlockStateProvider.CODEC to DIRECT_CODEC and widened it: it is now
+		// Codec.xor(BlockState.FULL_CODEC, TYPED_CODEC), so it reads BOTH a bare block state and the
+		// {"type": "minecraft:weighted", ...} form. That matches what DataPackMigration.respellTo263
+		// already writes into this mod's feature JSON, so the data and the codec agree. Covers all 8
+		// sites across the 6 configs that carry a provider. Cannot self-match: the target begins
+		// `.D`, the source `.C`.
+		string("!mc263-blockstateprovider-direct-codec", true) {
+			replace("BlockStateProvider.CODEC", "BlockStateProvider.DIRECT_CODEC")
+		}
+
+		// ── Feature's ore helper moved to the new AbstractOreFeature ──────────────────────────
+		// 26.3 turned Feature into an interface with no statics and introduced AbstractOreFeature to
+		// hold them. isAdjacentToAir is the ONLY such helper this tree calls — the ~30 other isAir
+		// hits are BlockState#isAir() instance calls, and CoveredBlockBlobFeature's isDirt/isStone
+		// already have their own >=26 gate. AbstractOreFeature does not exist below 26.3 (javap:
+		// class not found), so the call site is authored in the old spelling and qualified in full,
+		// since the Feature import is gone from the feature classes.
+		string("!mc263-isadjacenttoair-owner", true) {
+			replace("feature.Feature.isAdjacentToAir(", "feature.AbstractOreFeature.isAdjacentToAir(")
+		}
+
+		// ── ConfiguredFeature was folded into Feature ─────────────────────────────────────────
+		// A 26.3 Feature carries its own configuration, so the separate ConfiguredFeature type is
+		// gone and the datapack registry that held it — CONFIGURED_FEATURE — is now spelled FEATURE.
+		// (The registry of feature *implementations*, which 26.2 called FEATURE, became FEATURE_TYPE;
+		// that side is written literally per-arm in ACFeatureRegistry rather than rewritten here,
+		// because a rule producing `Registries.FEATURE` beside a rule consuming it would be a chain,
+		// and rules do not chain.)
+		//
+		// Neither .place() call site moves: ConfiguredFeature#place(WorldGenLevel, ChunkGenerator,
+		// RandomSource, BlockPos) is the same four-argument shape as 26.3's Feature#place, so the
+		// growers need only these renames. Every one of the 13 sites spells the generics
+		// `ConfiguredFeature<?, ?>` identically, and `getConfiguredFeature(` carries no generics, so
+		// the method name cannot be hit. The import rule cannot overlap the type rule — an import
+		// line ends in `;` and contains no `<`.
+		string("!mc263-configuredfeature-type", true) {
+			replace("ConfiguredFeature<?, ?>", "Feature")
+		}
+		string("!mc263-configuredfeature-import", true) {
+			replace("import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;",
+					"import net.minecraft.world.level.levelgen.feature.Feature;")
+		}
+		string("!mc263-configuredfeature-registry", true) {
+			replace("Registries.CONFIGURED_FEATURE", "Registries.FEATURE")
+		}
+		// 26.3 moved RegistryCodecs out of net.minecraft.core into net.minecraft.core.registries.codec.
+		// Nothing else about it changed — an A/B listing of the two jars finds exactly one class of that
+		// basename on each side, in those two packages — so unlike the feature types above this really is
+		// a pure relocation, and the tree's only reference is one import in LollipopProcessor.
+		//
+		// No other rule in this tree names RegistryCodecs (grepped), and the search text is the fully
+		// qualified name, so it cannot overlap the span of any rule keyed on a bare `Registries` token.
+		string("!mc263-registrycodecs-pkg", true) {
+			replace("net.minecraft.core.RegistryCodecs", "net.minecraft.core.registries.codec.RegistryCodecs")
+		}
+
+		// ── com.mojang.blaze3d → com.mojang.renderpearl ───────────────────────────────────────
+		//
+		// 26.3 split the render backend out of blaze3d into a new com.mojang.renderpearl tree. The
+		// tempting shape for this is a handful of package-prefix rules; that is WRONG, and an A/B
+		// listing of the two jars' class names is what proves it. Every package involved SPLITS:
+		// 23 classes stay in blaze3d.platform (NativeImage, Lighting, InputConstants, Window, …),
+		// 14 stay in blaze3d.vertex (PoseStack, VertexConsumer, BufferBuilder, DefaultVertexFormat,
+		// MeshData, …), 5 stay in blaze3d.pipeline (RenderTarget, TextureTarget, MainTarget, …),
+		// 4 stay in blaze3d.systems (RenderSystem, ScissorState, …) and 3 stay in blaze3d.buffers
+		// (Std140Builder, Std140SizeCalculator). A prefix rule would have moved PoseStack (222
+		// sites in this tree), VertexConsumer (160) and RenderSystem (17) to packages that do not
+		// exist. So these are per-CLASS, and only blaze3d.textures is a whole-package move.
+		//
+		// Everything here is a relocation only — no member, constructor or constant changed name —
+		// which is why a rule is the right instrument for all of them except the pipeline-state
+		// surface, whose file gets a gated arm instead (see ACPipelineState for why).
+		string("!mc263-pkg-renderpipeline", true) {
+			replace("com.mojang.blaze3d.pipeline.RenderPipeline", "com.mojang.renderpearl.api.pipeline.RenderPipeline")
+		}
+		string("!mc263-pkg-blendfunction", true) {
+			replace("com.mojang.blaze3d.pipeline.BlendFunction", "com.mojang.renderpearl.api.pipeline.BlendFunction")
+		}
+		// BlendFactor comes from blaze3d.platform rather than blaze3d.pipeline and lands in
+		// api.pipeline all the same — the 26.2 collapse of SourceFactor/DestFactor put it in the
+		// platform package, and 26.3 filed it with the other pipeline state. Its one site is the
+		// import in ACInternalShaders' >=26.2 arm, which IS live here.
+		string("!mc263-pkg-blendfactor", true) {
+			replace("com.mojang.blaze3d.platform.BlendFactor", "com.mojang.renderpearl.api.pipeline.BlendFactor")
+		}
+		string("!mc263-pkg-uniformtype", true) {
+			replace("com.mojang.blaze3d.shaders.UniformType", "com.mojang.renderpearl.api.pipeline.UniformType")
+		}
+		// Covers VertexFormatElement too, as a prefix — and deliberately does NOT match
+		// DefaultVertexFormat, which is spelled `vertex.DefaultVertexFormat` and stays in blaze3d.
+		// The short `VertexFormat.Mode` spelling this group's sibling rule rewrites is a separate,
+		// non-overlapping span, so the two never contend.
+		string("!mc263-pkg-vertexformat", true) {
+			replace("com.mojang.blaze3d.vertex.VertexFormat", "com.mojang.renderpearl.api.vertex.VertexFormat")
+		}
+		// ONE rule on purpose: as a plain substring this also rewrites GpuBufferSlice (literally
+		// GpuBuffer + "Slice"), which moved to the same package. A second rule naming GpuBufferSlice
+		// would begin at the SAME offset, where "the earlier-starting match wins" has no answer.
+		string("!mc263-pkg-gpubuffer", true) {
+			replace("com.mojang.blaze3d.buffers.GpuBuffer", "com.mojang.renderpearl.api.buffers.GpuBuffer")
+		}
+		// The only clean whole-package move in the split: all five of AddressMode, FilterMode,
+		// GpuSampler, GpuTexture and GpuTextureView went across together and nothing stayed.
+		string("!mc263-pkg-textures", true) {
+			replace("com.mojang.blaze3d.textures.", "com.mojang.renderpearl.api.textures.")
+		}
+		// blaze3d.systems is the package that splits hardest — RenderSystem itself stays put, so
+		// these two are named one at a time.
+		string("!mc263-pkg-renderpass", true) {
+			replace("com.mojang.blaze3d.systems.RenderPass", "com.mojang.renderpearl.api.commands.RenderPass")
+		}
+		string("!mc263-pkg-commandencoder", true) {
+			replace("com.mojang.blaze3d.systems.CommandEncoder", "com.mojang.renderpearl.api.commands.CommandEncoder")
+		}
+		// GpuFormat sat at the blaze3d root and lands at the renderpearl.api root. No rule in this
+		// group's 26.2 sibling has it in a SEARCH string — only in a replacement — so there is no
+		// span to contend for.
+		string("!mc263-pkg-gpuformat", true) {
+			replace("com.mojang.blaze3d.GpuFormat", "com.mojang.renderpearl.api.GpuFormat")
+		}
+		// ACRenderSetup's output slot has no type to hold once OutputTarget is gone. It has to be a
+		// rule rather than a gated arm: that whole class body is ONE `//? if >=1.21.11` arm and
+		// Stonecutter does not nest gates, so there is nowhere to put a sibling branch. The span
+		// `OutputTarget output` is exact and unambiguous at all three sites — the Composite field,
+		// the Builder field and the setter parameter — and `setOutputTarget(` does not contain it,
+		// so nothing contends for the same offset.
+		string("!mc263-outputtarget-slot", true) {
+			replace("OutputTarget output", "java.lang.Object output")
+		}
+		// …and the single place the slot is handed back to vanilla. The guard above it is dead code
+		// on 26.3 (every constant feeding the slot resolves to a null placeholder), but it still has
+		// to name a method that exists, so it becomes a no-op that consumes the same expression.
+		string("!mc263-outputtarget-apply", true) {
+			replace("builder.setOutputTarget(state.output);", "java.util.Objects.requireNonNull(state.output);")
 		}
 	}
 

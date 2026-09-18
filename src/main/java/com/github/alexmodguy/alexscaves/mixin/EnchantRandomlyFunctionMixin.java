@@ -1,6 +1,7 @@
 package com.github.alexmodguy.alexscaves.mixin;
 
 import com.github.alexmodguy.alexscaves.AlexsCaves;
+import com.github.alexmodguy.alexscaves.server.enchantment.ACLootEnchantments;
 import com.github.alexmodguy.alexscaves.server.enchantment.ACWeaponEnchantment;
 import net.minecraft.Util;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -67,7 +68,7 @@ public class EnchantRandomlyFunctionMixin {
             at = @At(value = "HEAD"),
             cancellable = true)
     private static void ac_enchantItem(ItemStack stack, Enchantment enchantment, RandomSource randomSource, CallbackInfoReturnable<ItemStack> cir) {
-        if(enchantment instanceof ACWeaponEnchantment && !AlexsCaves.COMMON_CONFIG.enchantmentsInLoot.get()){
+        if(enchantment instanceof ACWeaponEnchantment && (!AlexsCaves.COMMON_CONFIG.enchantmentsInLoot.get() || !ACLootEnchantments.allowOnThisRoll(randomSource))){
             Enchantment enchantment1 = enchantment;
             boolean flag = stack.is(Items.BOOK);
             List<Enchantment> list = BuiltInRegistries.ENCHANTMENT.stream().filter(Enchantment::isDiscoverable).filter((enchantment2) -> {
@@ -94,4 +95,28 @@ public class EnchantRandomlyFunctionMixin {
         return itemStack;
     }
     //?}
+
+    // `enchantment_loot_chance` (see ACLootEnchantments). From 1.21 run() gathers every candidate —
+    // from the table's `options` or from the whole registry — into one list and picks with
+    // Util#getRandomSafe, so filtering that list covers both sources, and with the toggle off the
+    // pick lands on a vanilla enchantment instead of the HEAD cancel above leaving the item bare.
+    // Below 1.21 the reroll in the else arm above does the same job. 1.21.11 moved Util into
+    // net.minecraft.util and the package rule is dotted-form only, hence two target strings.
+    //? if >=1.21.11 {
+    /*@com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(
+            method = {"Lnet/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction;run(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/storage/loot/LootContext;)Lnet/minecraft/world/item/ItemStack;"},
+            remap = true,
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Util;getRandomSafe(Ljava/util/List;Lnet/minecraft/util/RandomSource;)Ljava/util/Optional;"))
+    private java.util.Optional<net.minecraft.core.Holder<Enchantment>> ac_rarerModEnchantments(List<net.minecraft.core.Holder<Enchantment>> candidates, RandomSource random, com.llamalad7.mixinextras.injector.wrapoperation.Operation<java.util.Optional<net.minecraft.core.Holder<Enchantment>>> original) {
+        return original.call(ACLootEnchantments.randomlyCandidates(candidates, random), random);
+    }
+    *///?} elif >=1.21 {
+    /*@com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(
+            method = {"Lnet/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction;run(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/storage/loot/LootContext;)Lnet/minecraft/world/item/ItemStack;"},
+            remap = true,
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/Util;getRandomSafe(Ljava/util/List;Lnet/minecraft/util/RandomSource;)Ljava/util/Optional;"))
+    private java.util.Optional<net.minecraft.core.Holder<Enchantment>> ac_rarerModEnchantments(List<net.minecraft.core.Holder<Enchantment>> candidates, RandomSource random, com.llamalad7.mixinextras.injector.wrapoperation.Operation<java.util.Optional<net.minecraft.core.Holder<Enchantment>>> original) {
+        return original.call(ACLootEnchantments.randomlyCandidates(candidates, random), random);
+    }
+    *///?}
 }

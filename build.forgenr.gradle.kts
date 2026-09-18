@@ -135,6 +135,12 @@ configurations.configureEach {
 tasks.named<ProcessResources>("processResources") {
 	exclude("META-INF/accesstransformer.cfg")
 	rename("accesstransformer_mojmap.cfg", "accesstransformer.cfg")
+	// The source file opens with a commented header, and accesstransformers 8.2.x (Forge 26.2's)
+	// logs "Invalid access transformer line" for a bare "#". Ship only the entries: drop comment
+	// and blank lines. Matched under both names since the rename may already have run.
+	filesMatching(listOf("META-INF/accesstransformer_mojmap.cfg", "META-INF/accesstransformer.cfg")) {
+		filter { line -> if (line.isBlank() || line.trimStart().startsWith("#")) null else line }
+	}
 
 	// Forge 62+ (the 26.x fork) uses a stricter securemodules that, in a dev run, scans each
 	// classpath entry for transformer services and derives an automatic module name for it. The

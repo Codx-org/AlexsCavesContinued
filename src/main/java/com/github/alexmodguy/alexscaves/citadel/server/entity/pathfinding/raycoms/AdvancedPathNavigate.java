@@ -611,7 +611,7 @@ public class AdvancedPathNavigate extends AbstractAdvancedPathNavigate {
 
     private boolean handlePathPointOnLadder(final PathPointExtended pEx) {
         Vec3 vec3 = this.getEntityPosAtNode(this.path.getNextNodeIndex());
-        final BlockPos entityPos = new BlockPos(this.ourEntity.blockPosition());
+        final BlockPos entityPos = this.ourEntity.blockPosition().immutable();
         if (vec3.distanceToSqr(ourEntity.getX(), vec3.y, ourEntity.getZ()) < 0.6 && Math.abs(vec3.y - entityPos.getY()) <= 2.0) {
             //This way he is less nervous and gets up the ladder
             double newSpeed = 0.3;
@@ -769,7 +769,7 @@ public class AdvancedPathNavigate extends AbstractAdvancedPathNavigate {
                 if (mob.blockPosition().closerThan(tempoPosI, 1.0)) {
                     this.path.setNextNodeIndex(currentIndex);
                 } else if (isTracking) {
-                    reached.add(new BlockPos(tempoPosI));
+                    reached.add(new BlockPos(tempoPosI.getX(), tempoPosI.getY(), tempoPosI.getZ()));
                 }
                 currentIndex--;
             }
@@ -868,7 +868,7 @@ public class AdvancedPathNavigate extends AbstractAdvancedPathNavigate {
     @Nullable
     @Override
     public PathResult moveAwayFromLivingEntity(final Entity e, final double distance, final double speed) {
-        return moveAwayFromXYZ(new BlockPos(e.blockPosition()), distance, speed, true);
+        return moveAwayFromXYZ(e.blockPosition().immutable(), distance, speed, true);
     }
 
     @Override

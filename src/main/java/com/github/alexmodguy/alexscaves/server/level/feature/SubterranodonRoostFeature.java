@@ -16,26 +16,23 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SubterranodonRoostFeature extends Feature<NoneFeatureConfiguration> {
+public class SubterranodonRoostFeature extends ACSimpleFeature {
 
-    public SubterranodonRoostFeature(Codec<NoneFeatureConfiguration> codec) {
+    public SubterranodonRoostFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         Direction direction = getCliffDirection(level, pos, randomSource);
         if (direction != null) {
             int centerLength = 2 + randomSource.nextInt(1);

@@ -13,6 +13,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.item.crafting.Ingredient;
+// 26.3 deleted PotionBrewing and with it NeoForge's whole brewing package: there is no
+// IBrewingRecipe left to import and no event that would consume one. Fabric's own stand-in under
+// fabric/forge/ still exists and the !fab-brewing rule re-points this line at it, so the import has
+// to disappear on NeoForge alone.
+//? if fabric || forge || <26.3
 import net.minecraftforge.common.brewing.IBrewingRecipe;
 //? if fabric || <1.20.5
 import net.minecraftforge.common.brewing.BrewingRecipeRegistry;
@@ -58,6 +63,11 @@ public class ACEffectRegistry {
      * {@code IBrewingRecipe} these eleven are — {@code ProperBrewingRecipe} matches its input bottle
      * on the whole stack. So the recipes stay in the vendored registry and
      * {@code mixin.fabric.PotionBrewingMixin} consults it after vanilla, on both sides of 1.20.5.
+     *
+     * <p>Gated because 26.3 deleted {@code PotionBrewing} along with every loader API built on it,
+     * so on NeoForge from there the parameter type itself is gone. The recipes are not lost with it:
+     * the same eleven ship as {@code minecraft:brewing} recipe JSON instead. Fabric keeps its own
+     * stand-in types, so NeoForge 26.3 is the only place this method has to disappear.
      */
     public static void setup() {
         // ⚠ Fabric DEFERS rather than fills. An IBrewingRecipe holds finished ItemStacks and from
@@ -80,6 +90,7 @@ public class ACEffectRegistry {
      * NeoForge's {@code PotionBrewing.Builder#addRecipe} reached through its own event. All three are
      * {@code IBrewingRecipe} consumers, which is the whole reason this reads as one list.
      */
+    //? if fabric || forge || <26.3 {
     public static void registerBrewing(Consumer<IBrewingRecipe> out) {
         out.accept(new ProperBrewingRecipe(createPotion(ACCompat.vanillaPotion(Potions.AWKWARD)), Ingredient.of(ACItemRegistry.FERROUSLIME_BALL.get()), createPotion(MAGNETIZING_POTION)));
         out.accept(new ProperBrewingRecipe(createPotion(MAGNETIZING_POTION), Ingredient.of(Items.REDSTONE), createPotion(LONG_MAGNETIZING_POTION)));
@@ -93,6 +104,7 @@ public class ACEffectRegistry {
         out.accept(new ProperBrewingRecipe(createPotion(ACCompat.vanillaPotion(Potions.STRONG_SWIFTNESS)), Ingredient.of(ACItemRegistry.SWEET_TOOTH.get()), createPotion(SUGAR_RUSH_POTION)));
         out.accept(new ProperBrewingRecipe(createPotion(SUGAR_RUSH_POTION), Ingredient.of(Items.REDSTONE), createPotion(LONG_SUGAR_RUSH_POTION)));
     }
+    //?}
 
     public static ItemStack createPotion(Supplier<Potion> potion) {
         return createPotion(potion.get());

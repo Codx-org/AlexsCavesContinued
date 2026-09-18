@@ -103,6 +103,26 @@ public class GuanoLayerBlock extends SnowLayerBlock implements Fallable {
         }
     }
 
+    // Snow! Real Magic! mixes its own pick-block answer into the snow layer class and returns snow for
+    // any layer without its block entity, guano included. Answering here wins over the inherited one.
+    // Forge dropped this extension from 1.21.4, and Fabric never had it.
+    //? if neoforge && >=1.21.4 {
+    /*@Override
+    public net.minecraft.world.item.ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData, net.minecraft.world.entity.player.Player player) {
+        return new net.minecraft.world.item.ItemStack(this);
+    }
+    *///?} elif neoforge || (forge && >=1.20.4 && <1.21.4) {
+    /*@Override
+    public net.minecraft.world.item.ItemStack getCloneItemStack(BlockState state, net.minecraft.world.phys.HitResult target, LevelReader level, BlockPos pos, net.minecraft.world.entity.player.Player player) {
+        return new net.minecraft.world.item.ItemStack(this);
+    }
+    *///?} elif forge && <1.20.4 {
+    @Override
+    public net.minecraft.world.item.ItemStack getCloneItemStack(BlockState state, net.minecraft.world.phys.HitResult target, BlockGetter level, BlockPos pos, net.minecraft.world.entity.player.Player player) {
+        return new net.minecraft.world.item.ItemStack(this);
+    }
+    //?}
+
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos blockPos, CollisionContext context) {
         return context instanceof EntityCollisionContext entityCollisionContext && entityCollisionContext.getEntity() != null && (GuanoBlock.isForlornEntity(entityCollisionContext.getEntity()) || entityCollisionContext.getEntity() instanceof FallingBlockEntity) ? super.getShape(state, level, blockPos, context) : super.getCollisionShape(state, level, blockPos, context);
     }

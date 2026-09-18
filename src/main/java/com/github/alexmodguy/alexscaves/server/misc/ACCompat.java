@@ -2440,9 +2440,16 @@ public class ACCompat {
      * and would silently drop the remote detonator's attribution to the player who fired it.
      *
      * <p>⚠️ 1.21.5 renamed that method {@code prime} and gave it a {@code boolean} return, in the
-     * same change that put a boolean on the loaders' hook — hence the two Fabric arms, which is also
-     * why the {@code fabric} arm cannot simply be left unbounded. It stays a flat chain because a
-     * Stonecutter gate does not nest inside another arm.
+     * same change that put a boolean on the loaders' hook. 26.3 then deleted the three-argument
+     * overload outright for a public four-argument one carrying the igniting stack — hence the
+     * three Fabric arms, which is also why the {@code fabric} arm cannot simply be left unbounded.
+     * It stays a flat chain because a Stonecutter gate does not nest inside another arm.
+     *
+     * <p>26.3 put the same igniting stack on the loader hook itself — {@code IBlockStateExtension
+     * #onCaughtFire} grew a trailing {@code ItemStack} — so the non-Fabric side needs its own arm
+     * above the catch-all. Both 26.3 arms pass {@code ItemStack.EMPTY}: the remote detonator lights
+     * the block from a distance, so there is no stack in contact with it to attribute, and the only
+     * thing vanilla reads the parameter for is the igniter's own item.
      *
      * <p>Returns nothing on every node even though the hook itself reports a {@code boolean} from
      * 1.21.5: the one call site ignores the answer, and a bare invocation is a legal statement
@@ -2453,7 +2460,13 @@ public class ACCompat {
                                     net.minecraft.core.BlockPos pos,
                                     net.minecraft.core.Direction face,
                                     net.minecraft.world.entity.LivingEntity igniter) {
-        //? if fabric && >=1.21.5 {
+        //? if fabric && >=26.3 {
+        /*if (state.getBlock() instanceof com.github.alexmodguy.alexscaves.server.block.ACIgnitableBlock typed) {
+            typed.onCaughtFire(state, level, pos, face, igniter);
+        } else if (state.getBlock() instanceof net.minecraft.world.level.block.TntBlock) {
+            net.minecraft.world.level.block.TntBlock.prime(level, pos, igniter, net.minecraft.world.item.ItemStack.EMPTY);
+        }
+        *///?} elif fabric && >=1.21.5 {
         /*if (state.getBlock() instanceof com.github.alexmodguy.alexscaves.server.block.ACIgnitableBlock typed) {
             typed.onCaughtFire(state, level, pos, face, igniter);
         } else if (state.getBlock() instanceof net.minecraft.world.level.block.TntBlock) {
@@ -2465,6 +2478,8 @@ public class ACCompat {
         } else if (state.getBlock() instanceof net.minecraft.world.level.block.TntBlock) {
             net.minecraft.world.level.block.TntBlock.explode(level, pos, igniter);
         }
+        *///?} elif >=26.3 {
+        /*state.onCaughtFire(level, pos, face, igniter, net.minecraft.world.item.ItemStack.EMPTY);
         *///?} else {
         state.onCaughtFire(level, pos, face, igniter);
         //?}
@@ -2891,6 +2906,42 @@ public class ACCompat {
         //?}
     }
 
+    // "is this the strip-a-log job?" — the question the three getToolModifiedState overrides ask
+    // before answering with a stripped block.
+    //
+    // 26.3 replaced the whole tool-ability approach to stripping with a data-driven item component
+    // (DataComponents.BLOCK_TRANSFORMER keyed on BlockTransformers.AXE), and NeoForge bridges its
+    // own `strippables` data map into it — so ItemAbilities kept its eleven other constants and
+    // lost both axe ones outright. Nothing on that loader ever invokes the hook with an axe token
+    // any more, which makes the branch dead code that also cannot compile; the seven mappings are
+    // declared in data/neoforge/data_maps/block/strippables.json instead. NeoForge's bridge builds
+    // the stripped state with Block#withPropertiesOf, and every stripped block here is the same
+    // class as its source, so log axis and the pole's five connection properties survive the move.
+    //
+    // ⚠️ neoforge && >=26.3, NOT a plain version gate: Fabric has no ItemAbilities at all — the
+    // stand-in under fabric/forge/common interns its own AXE_STRIP and answers the hook itself —
+    // so a version-only gate would silently stop every Fabric 26.3 world from stripping a log,
+    // with no compile error anywhere to say so.
+    public static boolean isAxeStrip(net.minecraftforge.common.ToolAction action) {
+        //? if neoforge && >=26.3 {
+        /*return false;
+        *///?} else {
+        return net.minecraftforge.common.ToolActions.AXE_STRIP == action;
+        //?}
+    }
+
+    // "can this tool scrape the oxidation off?" — the submarine's only tool-ability question, and
+    // the other casualty of the 26.3 change described above. The axe tag is what the question has
+    // always meant: it is exactly what the Fabric stand-in answers with, and unlike an instanceof
+    // on the vanilla class it still covers a modded axe.
+    public static boolean canAxeScrape(net.minecraft.world.item.ItemStack stack) {
+        //? if neoforge && >=26.3 {
+        /*return stack.is(net.minecraft.tags.ItemTags.AXES);
+        *///?} else {
+        return canPerform(stack, net.minecraftforge.common.ToolActions.AXE_SCRAPE);
+        //?}
+    }
+
     // "is the thing this player is holding up a shield?". Blocking became a vanilla data component
     // in 1.21.5 (BlocksAttacks, which is what gives a shield its cooldown and its damage cap), and
     // both loaders dropped the tool-action/item-ability that used to answer this — NeoForge's
@@ -3216,5 +3267,115 @@ public class ACCompat {
         }
         *///?}
         return player.zza;
+    }
+
+    /**
+     * Swing the entity's arm -- the plain, one-argument swing every call site in this mod means.
+     *
+     * <p>26.3 deleted both {@code LivingEntity#swing(InteractionHand)} and
+     * {@code swing(InteractionHand, boolean)} and left a single
+     * {@code swing(InteractionHand, SwingAnimation, boolean)}. {@code SwingAnimation.DEFAULT} is the
+     * item-less animation the old one-argument form used, and the trailing boolean is
+     * {@code updateSelf} -- vanilla's own name for "also play this on the caller's own client".
+     * The deleted one-argument form passed {@code false} there, so {@code false} is what reproduces
+     * it rather than merely what compiles.
+     */
+    public static void swing(net.minecraft.world.entity.LivingEntity entity, net.minecraft.world.InteractionHand hand) {
+        //? if >=26.3 {
+        /*entity.swing(hand, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
+        *///?} else {
+        entity.swing(hand);
+        //?}
+    }
+
+    /**
+     * Drop a stack from the player's inventory, returning the spawned item entity (nullable).
+     *
+     * <p>26.3 removed {@code Player#drop(ItemStack, boolean)} entirely; the surviving form is
+     * {@code LivingEntity#drop(ItemStack, boolean, Prediction)}, which a {@code Player} inherits --
+     * so this keeps taking a {@code Player} and resolves to a different declaring class per node.
+     *
+     * <p>⚠️ The boolean is {@code includeThrowerName}, NOT {@code dropAround}, on both sides. Read
+     * out of the bytecode rather than the parameter names: 26.2's {@code Player.drop(stack, b)}
+     * compiles to {@code drop(stack, false, b)} and 26.3's {@code drop(stack, b, prediction)} to
+     * {@code createItemStackToDrop(stack, false, b)} -- the same two constants in the same two
+     * positions, so the 3-arg form is byte-for-byte the old 2-arg one plus a swing.
+     *
+     * <p>{@code Prediction.PREDICTED} is what suppresses that new swing's {@code updateSelf}
+     * ({@code prediction != PREDICTED}), which is exactly the pre-26.3 behaviour.
+     */
+    public static net.minecraft.world.entity.item.ItemEntity drop(net.minecraft.world.entity.player.Player player, ItemStack stack, boolean includeThrowerName) {
+        //? if >=26.3 {
+        /*return player.drop(stack, includeThrowerName, net.minecraft.util.Prediction.PREDICTED);
+        *///?} else {
+        return player.drop(stack, includeThrowerName);
+        //?}
+    }
+
+    /**
+     * Does this state stop an entity from walking into it?
+     *
+     * <p>26.3 deleted {@code BlockState}'s own motion predicate. It was never a tag lookup: the
+     * 26.2 bytecode is exactly two identity comparisons plus a solidity read -- cobweb and bamboo
+     * sapling are solid yet deliberately walk-through -- so the 26.3 arm reproduces that body
+     * verbatim rather than guessing at a replacement predicate.
+     */
+    public static boolean blocksMotion(net.minecraft.world.level.block.state.BlockState state) {
+        //? if >=26.3 {
+        /*net.minecraft.world.level.block.Block block = state.getBlock();
+        return block != net.minecraft.world.level.block.Blocks.COBWEB
+                && block != net.minecraft.world.level.block.Blocks.BAMBOO_SAPLING
+                && state.isSolid();
+        *///?} else {
+        return state.blocksMotion();
+        //?}
+    }
+
+    /**
+     * A biome's natural-spawn settings.
+     *
+     * <p>26.3 dissolved the dedicated getter on Biome into the new environment-attribute map, so
+     * the settings are now read as one attribute among many and fall back to that attribute's own
+     * declared default when a biome does not override it.
+     */
+    public static net.minecraft.world.level.biome.MobSpawnSettings mobSettings(net.minecraft.world.level.biome.Biome biome) {
+        //? if >=26.3 {
+        /*net.minecraft.world.attribute.EnvironmentAttribute<net.minecraft.world.level.biome.MobSpawnSettings> attr =
+                net.minecraft.world.attribute.EnvironmentAttributes.NATURAL_MOB_SPAWNS;
+        return biome.getAttributes().applyModifier(attr, attr.defaultValue());
+        *///?} else {
+        return biome.getMobSettings();
+        //?}
+    }
+
+    /**
+     * The weighted spawn list for one category.
+     *
+     * <p>26.3 renamed the getter and grew a second, similarly-named one beside it. They are not
+     * interchangeable: the one used here answers an empty list for a category the biome never
+     * defined, while its neighbour is a bare map read that returns null. Read out of the bytecode,
+     * because the names alone suggest the opposite of what they do.
+     */
+    public static net.minecraft.util.random.WeightedRandomList<net.minecraft.world.level.biome.MobSpawnSettings.SpawnerData> mobsOf(
+            net.minecraft.world.level.biome.MobSpawnSettings settings, net.minecraft.world.entity.MobCategory category) {
+        //? if >=26.3 {
+        /*return settings.getMobsToSpawn(category);
+        *///?} else {
+        return settings.getMobs(category);
+        //?}
+    }
+
+    /**
+     * How likely a biome is to roll a worldgen creature group. Moved off the spawn settings and
+     * onto the same attribute map at 26.3.
+     */
+    public static float creatureProbability(net.minecraft.world.level.biome.Biome biome) {
+        //? if >=26.3 {
+        /*net.minecraft.world.attribute.EnvironmentAttribute<Float> attr =
+                net.minecraft.world.attribute.EnvironmentAttributes.CREATURE_WORLD_GEN_SPAWN_PROBABILITY;
+        return biome.getAttributes().applyModifier(attr, attr.defaultValue());
+        *///?} else {
+        return biome.getMobSettings().getCreatureProbability();
+        //?}
     }
 }

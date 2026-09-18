@@ -462,9 +462,8 @@ public class SpelunkeryTableScreen extends AbstractContainerScreen<SpelunkeryTab
 
     public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double x, double y) {
         boolean prev = super.mouseDragged(event, x, y);
-        if (prev) {
-            lastMouseX = (int) event.x();
-            lastMouseY = (int) event.y();
+        lastMouseX = (int) event.x();
+        lastMouseY = (int) event.y();
     *///?} else {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         boolean prev = super.mouseClicked(mouseX, mouseY, button);
@@ -476,18 +475,19 @@ public class SpelunkeryTableScreen extends AbstractContainerScreen<SpelunkeryTab
 
     public boolean mouseDragged(double width, double height, int button, double x, double y) {
         boolean prev = super.mouseDragged(width, height, button, x, y);
-        if (prev) {
-            lastMouseX = (int) width;
-            lastMouseY = (int) height;
+        lastMouseX = (int) width;
+        lastMouseY = (int) height;
     //?}
-            if (!draggingMagnify && lastMouseX >= this.magnifyPosX && lastMouseX <= this.magnifyPosX + 38 && lastMouseY >= this.magnifyPosY && lastMouseY <= this.magnifyPosY + 38) {
-                draggingMagnify = true;
-                if (tutorialStep > 2) {
-                    hasClickedLens = true;
-                }
+        // Picking up the lens used to wait for the container screen to report the drag as handled.
+        // From 1.21.9 it only does that when the drag is over a slot, and the lens never is, so the
+        // monocle could not be moved at all.
+        if (!draggingMagnify && lastMouseX >= this.magnifyPosX && lastMouseX <= this.magnifyPosX + 38 && lastMouseY >= this.magnifyPosY && lastMouseY <= this.magnifyPosY + 38) {
+            draggingMagnify = true;
+            if (tutorialStep > 2) {
+                hasClickedLens = true;
             }
         }
-        return prev;
+        return prev || draggingMagnify;
     }
 
     //? if >=1.21.9 {

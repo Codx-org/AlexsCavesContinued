@@ -29,14 +29,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * <p>Priority -100, as it was on {@code MinecraftMixin}, so anything else that wants the last word on
  * this query still gets it.
  */
-//? if >=26.2 {
+//? if >=26.3 {
+/*@Mixin(value = net.minecraft.client.renderer.GameRenderer.class, priority = -100)
+*///?} elif >=26.2 {
 /*@Mixin(value = net.minecraft.client.renderer.state.GameRenderState.class, priority = -100)
 *///?} else {
 @Mixin(value = net.minecraft.client.Minecraft.class, priority = -100)
 //?}
 public class ShaderTransparencyMixin {
 
-    //? if >=26.2 {
+    //? if >=26.3 {
+    /*@Inject(method = "Lnet/minecraft/client/renderer/GameRenderer;useImprovedTransparency()Z",
+            at = @At("HEAD"),
+            cancellable = true)
+    private void ac_useShaderTransparency(CallbackInfoReturnable<Boolean> cir) {
+        if (com.github.alexmodguy.alexscaves.client.ACClientCompat.isForcingFancy()) {
+            cir.setReturnValue(false);
+        }
+    }
+    *///?} elif >=26.2 {
     /*@Inject(method = "Lnet/minecraft/client/renderer/state/GameRenderState;useShaderTransparency()Z",
             at = @At("HEAD"),
             cancellable = true)

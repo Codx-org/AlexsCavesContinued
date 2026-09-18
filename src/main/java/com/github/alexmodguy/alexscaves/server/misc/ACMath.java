@@ -116,6 +116,40 @@ public class ACMath {
         return Mth.clamp((float) (Math.round(clampTo100 / (float) scaleTo)) / (float) scaleTo, 0F, 1F);
     }
 
+    /**
+     * A biome lookup with the sampler already bound, so a loop pays for the binding once rather
+     * than per cell.
+     *
+     * <p>26.3 pulled {@code BiomeSource} and {@code BiomeResolver} apart. A source no longer
+     * answers {@code getNoiseBiome} itself — it hands out a resolver through
+     * {@code createResolver(Climate.Sampler)}, and that resolver's lookup drops the sampler
+     * argument it no longer needs. Below 26.3 a {@code BiomeSource} <i>is</i> a
+     * {@code BiomeResolver} and carries the sampler on every call. Both shapes fit behind this
+     * one interface, which is why the eight call sites in this tree stayed version-neutral and
+     * the whole split is expressed by the single gate in {@code biomeLookup} below.
+     */
+    @FunctionalInterface
+    public interface ACBiomeLookup {
+        Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ);
+    }
+
+    public static ACBiomeLookup biomeLookup(BiomeSource biomeSource, Climate.Sampler sampler) {
+        //? if >=26.3 {
+        /*net.minecraft.world.level.biome.BiomeResolver resolver = biomeSource.createResolver(sampler);
+        return resolver::getNoiseBiome;
+        *///?} else {
+        return (quartX, quartY, quartZ) -> biomeSource.getNoiseBiome(quartX, quartY, quartZ, sampler);
+        //?}
+    }
+
+    /**
+     * One-shot form of {@code biomeLookup}, for the handful of sites that ask a single column.
+     * Anything in a loop should hoist the lookup instead.
+     */
+    public static Holder<Biome> noiseBiomeAt(BiomeSource biomeSource, int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
+        return biomeLookup(biomeSource, sampler).getNoiseBiome(quartX, quartY, quartZ);
+    }
+
     public static Set<Holder<Biome>> getBiomesWithinAtY(BiomeSource biomeSource, int x, int y, int z, int xzDist, Climate.Sampler sampler) {
         int i = QuartPos.fromBlock(x - xzDist);
         int j = QuartPos.fromBlock(y);
@@ -125,12 +159,13 @@ public class ACMath {
         int k1 = l - i + 1;
         int i2 = j1 - k + 1;
         Set<Holder<Biome>> set = Sets.newHashSet();
+        ACBiomeLookup lookup = biomeLookup(biomeSource, sampler);
 
         for(int j2 = 0; j2 < i2; ++j2) {
             for(int k2 = 0; k2 < k1; ++k2) {
                 int i3 = i + k2;
                 int k3 = k + j2;
-                set.add(biomeSource.getNoiseBiome(i3, j, k3, sampler));
+                set.add(lookup.getNoiseBiome(i3, j, k3));
             }
         }
         return set;

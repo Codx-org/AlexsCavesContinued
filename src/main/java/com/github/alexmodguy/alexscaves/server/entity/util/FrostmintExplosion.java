@@ -22,7 +22,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
-import net.minecraft.world.entity.monster.EnderMan;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
@@ -168,7 +167,12 @@ public class FrostmintExplosion {
 
         for (int k2 = 0; k2 < list.size(); ++k2) {
             Entity entity = list.get(k2);
-            if (!ACPlatform.ignoreExplosion(entity, mirror) && !(entity instanceof EnderMan)) {
+            // 26.3 renamed EnderMan to Enderman.
+            //? if >=26.3 {
+            /*if (!ACPlatform.ignoreExplosion(entity, mirror) && !(entity instanceof net.minecraft.world.entity.monster.Enderman)) {
+            *///?} else {
+            if (!ACPlatform.ignoreExplosion(entity, mirror) && !(entity instanceof net.minecraft.world.entity.monster.EnderMan)) {
+            //?}
                 double d12 = Math.sqrt(entity.distanceToSqr(vec3)) / (double) f2;
                 if (d12 <= 1.0D) {
                     double d5 = entity.getX() + (random.nextFloat() - 0.5F) - this.x;

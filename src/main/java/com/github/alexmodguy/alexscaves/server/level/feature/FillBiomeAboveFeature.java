@@ -1,5 +1,6 @@
 package com.github.alexmodguy.alexscaves.server.level.feature;
 
+import net.minecraft.util.RandomSource;
 import com.github.alexmodguy.alexscaves.server.level.feature.config.FillBiomeAboveConfiguration;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
@@ -9,21 +10,19 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.PalettedContainer;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 
-public class FillBiomeAboveFeature extends Feature<FillBiomeAboveConfiguration> {
+public class FillBiomeAboveFeature extends ACFeature<FillBiomeAboveConfiguration> {
 
-    public FillBiomeAboveFeature(Codec<FillBiomeAboveConfiguration> codec) {
+    public FillBiomeAboveFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<FillBiomeAboveConfiguration> context) {
-        WorldGenLevel level = context.level();
+    public boolean acPlace(FillBiomeAboveConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        WorldGenLevel level = acLevel;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        int startY = level.getSeaLevel() + context.config().yAboveSeaLevel;
-        pos.set(context.origin().getX(), startY, context.origin().getZ());
+        int startY = level.getSeaLevel() + acConfig.yAboveSeaLevel;
+        pos.set(acOrigin.getX(), startY, acOrigin.getZ());
         ChunkAccess chunkAccess = level.getChunk(pos);
         if (chunkAccess != null) {
             int lastSectionIndex = -1;
@@ -38,7 +37,7 @@ public class FillBiomeAboveFeature extends Feature<FillBiomeAboveConfiguration> 
                         for (int biomeX = 0; biomeX < 4; ++biomeX) {
                             for (int biomeY = 0; biomeY < 4; ++biomeY) {
                                 for (int biomeZ = 0; biomeZ < 4; ++biomeZ) {
-                                    container.getAndSetUnchecked(biomeX, biomeY, biomeZ, context.config().newBiome);
+                                    container.getAndSetUnchecked(biomeX, biomeY, biomeZ, acConfig.newBiome);
                                 }
                             }
                         }

@@ -43,6 +43,18 @@ public class EnvironmentAttributeProbeMixin {
             return;
         }
         if (attribute == EnvironmentAttributes.SKY_COLOR) {
+            // 26.3 retyped every colour attribute from a packed sRGB int to a joml vector
+            // (SKY_COLOR and FOG_COLOR to Vector3fc, SUNRISE_SUNSET_COLOR and CLOUD_COLOR to
+            // Vector4fc). The typed call sites in ClientEvents took a >=26.3 arm for it; this one
+            // could not be caught the same way, because a CallbackInfoReturnable<Object> makes the
+            // cast invisible to the compiler — it is a ClassCastException the first frame the
+            // override is active, i.e. only inside an AC cave biome.
+            //? if >=26.3 {
+            /*Vec3 prevVec3 = new Vec3((org.joml.Vector3fc) cir.getReturnValue());
+            Vec3 sampledVec3 = ClientProxy.processSkyColor(ClientProxy.acSkyOverrideColor, partialTick);
+            Vec3 mixed = prevVec3.add(sampledVec3.subtract(prevVec3).scale(ClientProxy.acSkyOverrideAmount));
+            cir.setReturnValue(new org.joml.Vector3f((float) mixed.x, (float) mixed.y, (float) mixed.z));
+            *///?} else {
             int packed = (Integer) cir.getReturnValue();
             Vec3 prevVec3 = new Vec3(
                     ARGB.red(packed) / 255.0D,
@@ -53,6 +65,7 @@ public class EnvironmentAttributeProbeMixin {
             cir.setReturnValue(ARGB.colorFromFloat(
                     ARGB.alpha(packed) / 255.0F,
                     (float) mixed.x, (float) mixed.y, (float) mixed.z));
+            //?}
         } else if (attribute == EnvironmentAttributes.SKY_LIGHT_FACTOR) {
             cir.setReturnValue(Math.max((Float) cir.getReturnValue(), ClientProxy.acSkyOverrideAmount * 0.95F + 0.05F));
         }

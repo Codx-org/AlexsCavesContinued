@@ -7,28 +7,26 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 
-public class FloatingOrbFeature extends Feature<FloatingOrbFeatureConfig> {
+public class FloatingOrbFeature extends ACFeature<FloatingOrbFeatureConfig> {
 
-    public FloatingOrbFeature(Codec<FloatingOrbFeatureConfig> codec) {
+    public FloatingOrbFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<FloatingOrbFeatureConfig> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(FloatingOrbFeatureConfig acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         if (!canReplace(level.getBlockState(pos))) {
             return false;
         }
-        int minRadius = context.config().minRadius;
-        int radAdd = Math.max(1, context.config().maxRadius - context.config().minRadius);
+        int minRadius = acConfig.minRadius;
+        int radAdd = Math.max(1, acConfig.maxRadius - acConfig.minRadius);
         int radius = minRadius + randomSource.nextInt(radAdd);
-        drawOrb(level, pos, randomSource, context.config().orbBlock, radius + randomSource.nextInt(2) - 1, radius + randomSource.nextInt(2) - 1, radius + randomSource.nextInt(2) - 1);
+        drawOrb(level, pos, randomSource, acConfig.orbBlock, radius + randomSource.nextInt(2) - 1, radius + randomSource.nextInt(2) - 1, radius + randomSource.nextInt(2) - 1);
         return true;
     }
 

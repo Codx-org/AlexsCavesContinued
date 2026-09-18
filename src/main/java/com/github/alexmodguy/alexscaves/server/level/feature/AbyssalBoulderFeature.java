@@ -10,20 +10,17 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class AbyssalBoulderFeature extends Feature<NoneFeatureConfiguration> {
+public class AbyssalBoulderFeature extends ACSimpleFeature {
 
-    public AbyssalBoulderFeature(Codec<NoneFeatureConfiguration> config) {
+    public AbyssalBoulderFeature(Object config) {
         super(config);
     }
 
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos blockpos = context.origin();
-        WorldGenLevel worldgenlevel = context.level();
-        RandomSource randomsource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos blockpos = acOrigin;
+        WorldGenLevel worldgenlevel = acLevel;
+        RandomSource randomsource = acRandom;
 
         for (; blockpos.getY() > worldgenlevel.getMinBuildHeight() + 1; blockpos = blockpos.below()) {
             if (!worldgenlevel.isEmptyBlock(blockpos.below())) {

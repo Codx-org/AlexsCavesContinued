@@ -2353,6 +2353,137 @@ object DataPackMigration {
 		return changed
 	}
 
+	/**
+	 * MC 26.3 put a SPIR-V generator in front of the driver's GLSL compiler, and it rejects three
+	 * spellings every shader in this tree still carries.
+	 *
+	 *  * `#moj_import <x.glsl>` is gone — the directive is `#include <x.glsl>`, and an include with
+	 *    no namespace no longer defaults to one, so `<fog.glsl>` has to become `<minecraft:fog.glsl>`.
+	 *  * Every user `in`/`out` needs an explicit `layout(location = N)`. Without one the compile dies
+	 *    with `'location' : SPIR-V requires location for user input/output`, naming the line.
+	 *  * Which in turn needs `#extension GL_ARB_separate_shader_objects : require` on the line after
+	 *    `#version`, and `#version 330` rather than the `#version 150` the core shaders still carry
+	 *    (the post ones were raised to 330 by the >=1.21.6 pass).
+	 *
+	 * Established by diffing vanilla's own `shaders/post/box_blur.fsh` and `shaders/core/entity.vsh`
+	 * between the cached 26.2 and 26.3 jars: byte-identical but for exactly those three changes.
+	 *
+	 * ⚠️ The location NUMBERS are not free, and this is the half that fails SILENTLY. A varying's
+	 * number only has to agree between the two stages that are linked together, so a mod vsh/fsh
+	 * PAIR could use any numbering at all. But `ACInternalShaders` replaces only the FRAGMENT stage
+	 * for sepia and red_ghost (line 291/296 — the vertex stage stays vanilla's `core/entity`) and
+	 * for `ac_lightmap` (line 318, over vanilla's screen-quad vsh). Those three have to match the
+	 * vanilla vertex shader they link against, number for number. Numbering them sequentially would
+	 * compile clean and then read the wrong varying — a mis-render with nothing in the log.
+	 *
+	 * So `varyingLocations` is the numbering of the vanilla vertex stages this mod actually links
+	 * against, read out of 26.3's `core/entity.vsh`, `core/screenquad.vsh` and `post/rotscale.vsh`.
+	 * Note this is NOT a global per-name table — vanilla numbers each pair densely in declaration
+	 * order, so `texCoord0` is 6 in `core/entity.vsh` but 0 in `core/position_tex_color.vsh`, and
+	 * entity's apparent gaps are just `#ifdef` alternatives sharing a slot. The mod's own pairs are
+	 * numbered from the same table, which costs nothing and keeps this one rule. An unknown varying
+	 * name THROWS rather than being guessed — and if a fragment shader is ever pointed at a
+	 * different vanilla vertex stage, its varyings must be renumbered to THAT stage's order.
+	 *
+	 * Vertex ATTRIBUTES are the other way round: their locations follow the vertex format's element
+	 * order, not a name table — `core/entity.vsh` has Color at 1 and UV0 at 2, while
+	 * `core/position_tex_color.vsh` has UV0 at 1 and Color at 2. So they are numbered sequentially in
+	 * declaration order, which is the order this mod declares each format in. Same for a fragment
+	 * shader's outputs, of which every file here has exactly one.
+	 *
+	 * Expect 18: the 13 core shaders and the 5 post fragment shaders.
+	 */
+	private val varyingLocations = mapOf(
+		"sphericalVertexDistance" to 0,
+		"cylindricalVertexDistance" to 1,
+		"vertexColor" to 2,
+		"vertexPerFaceColorBack" to 2,
+		"vertexPerFaceColorFront" to 3,
+		"lightMapColor" to 4,
+		"overlayColor" to 5,
+		"texCoord0" to 6,
+		"texCoordGlint" to 7,
+		// Not vanilla's — bubbled and ferrouslime_gel pass a normal to their OWN fragment stage, so
+		// any number free of the table above will do as long as both sides agree, which they do.
+		"normal" to 8,
+		// The full-screen pair, from core/screenquad.vsh and post/rotscale.vsh.
+		"texCoord" to 0,
+		"scaledCoord" to 1,
+	)
+
+	private val glslDeclaration = Regex("""^(\s*)(in|out)\s+(\w+)\s+(\w+)\s*;\s*$""")
+
+	private val mojImport = Regex("""^\s*#moj_import\s*<\s*([^>\s]+)\s*>\s*$""")
+
+	private fun includeDirectiveTo263(line: String): String {
+		val target = mojImport.matchEntire(line)?.groupValues?.get(1)
+			?: error("Unrecognised #moj_import directive for 26.3: `${line.trim()}`")
+		return "#include <${if (':' in target) target else "minecraft:$target"}>"
+	}
+
+	fun migrateShadersTo263(resourcesRoot: File, modId: String): Int {
+		val shaders = resourcesRoot.resolve("assets/$modId/shaders")
+		if (!shaders.isDirectory) return 0
+		var changed = 0
+
+		shaders.walkTopDown()
+			.filter { it.isFile && (it.extension == "vsh" || it.extension == "fsh") }
+			.sortedBy { it.path }
+			.forEach { file ->
+				val original = file.readText()
+				val lines = original.lines().toMutableList()
+				var attributes = 0
+				var outputs = 0
+				// Keyed per namespace: a vsh's attribute 0 and its varying 0 are different slots.
+				val taken = HashMap<String, String>()
+				var version = -1
+
+				for (i in lines.indices) {
+					val line = lines[i]
+					if (line.trimStart().startsWith("#version")) {
+						lines[i] = "#version 330"
+						version = i
+						continue
+					}
+					if (line.trimStart().startsWith("#moj_import")) {
+						lines[i] = includeDirectiveTo263(line)
+						continue
+					}
+					val match = glslDeclaration.matchEntire(line) ?: continue
+					val (indent, direction, type, name) = match.destructured
+					// A vsh's `out` and an fsh's `in` are the varyings between the two stages; a
+					// vsh's `in` is a vertex attribute and an fsh's `out` a draw-buffer output.
+					val varying = (file.extension == "vsh") == (direction == "out")
+					val slot = if (varying) "varying" else direction
+					val location = when {
+						varying -> varyingLocations[name]
+							?: error("No 26.3 shader location is known for the varying `$name` in ${file.name}")
+						direction == "in" -> attributes++
+						else -> outputs++
+					}
+					taken.put("$slot:$location", name)?.let { other ->
+						error("26.3 shader location $slot:$location is claimed by both `$other` and `$name` in ${file.name}")
+					}
+					lines[i] = "${indent}layout(location = $location) $direction $type $name;"
+				}
+
+				if (version < 0) error("No #version directive in ${file.name}; cannot place the 26.3 #extension line")
+				if (lines.getOrNull(version + 1)?.trim() != separateShaderObjects) {
+					lines.add(version + 1, separateShaderObjects)
+				}
+
+				val migrated = lines.joinToString("\n")
+				if (migrated != original) {
+					file.writeText(migrated)
+					changed++
+				}
+			}
+
+		return changed
+	}
+
+	private const val separateShaderObjects = "#extension GL_ARB_separate_shader_objects : require"
+
 	private val ingredientFields = listOf("ingredient", "ingredients", "base", "addition", "template")
 
 	private fun migrateRecipeIngredients(recipe: JsonObject): JsonObject {
@@ -3520,6 +3651,32 @@ object DataPackMigration {
 		return dropped
 	}
 
+	/**
+	 * Removes the eleven `minecraft:brewing` recipes below 26.3, where that recipe type does not exist.
+	 *
+	 * 26.3 deleted `PotionBrewing` and made brewing datapack-driven, so from there the mod's recipes
+	 * are recipe JSON like any other. Below it they come from a loader event (Forge/NeoForge >=1.20.5)
+	 * or the vendored static registry, and these files would name an unknown recipe type — a parse
+	 * error on every world load, for eleven recipes that are already registered from code.
+	 *
+	 * Both directory spellings are checked, so this is indifferent to whether the singularFolders
+	 * rename from `recipes` to `recipe` has already run.
+	 *
+	 * Returns the number of files deleted.
+	 */
+	fun dropBrewingRecipes(resourcesRoot: File, modId: String): Int {
+		var dropped = 0
+		listOf(
+			resourcesRoot.resolve("data/$modId/recipes/brewing"),
+			resourcesRoot.resolve("data/$modId/recipe/brewing"),
+		).forEach { root ->
+			if (!root.exists()) return@forEach
+			root.walkTopDown().filter { it.isFile }.toList().forEach { if (it.delete()) dropped++ }
+			root.walkBottomUp().filter { it.isDirectory }.forEach { it.delete() }
+		}
+		return dropped
+	}
+
 	/** Moves [from] onto [to], merging into an existing directory. Returns the number of files moved. */
 	private fun relocate(from: File, to: File): Int {
 		if (!from.exists()) return 0
@@ -3673,6 +3830,709 @@ object DataPackMigration {
 				else rel.substring(0, at) + ":" + rel.substring(at + marker.length).removeSuffix(".json") to file
 			}
 			.toList()
+	}
+
+	// ------------------------------------------------------- 26.3 worldgen
+
+	/**
+	 * 26.3 respells every inline block state, and deletes the simple state provider outright.
+	 *
+	 * `StateHolder`'s codec keys changed and the old spelling is *gone*, not merely deprecated:
+	 * the only string constants in 26.3's `StateHolder` are `id` and `properties`, where 26.2's
+	 * are `Name` and `Properties`. Vanilla's own 242 feature files carry zero `Name` keys.
+	 *
+	 * `BlockStateProviderType` no longer exists either — providers became the data-pack registry
+	 * `worldgen/block_state_provider`. A *simple* provider is now written as the inline block
+	 * state with no wrapper at all (26.3's `waterlily.json` is `"to_place": {"id":
+	 * "minecraft:lily_pad"}`), and `minecraft:weighted_state_provider` is now `minecraft:weighted`.
+	 *
+	 * The object form is always emitted, never vanilla's bare-string shorthand. In a *provider*
+	 * slot a bare string is a reference into that new registry — 26.3's `oak.json` has
+	 * `"below_trunk_provider": "minecraft:soil_beneath_tree"` — so the shorthand would silently
+	 * turn an inline state into a dangling registry lookup. `{"id": …}` is unambiguous in both
+	 * slots, and is what vanilla itself writes wherever properties are present.
+	 *
+	 * Keyed on *shape* rather than on feature type, because this mod's own `alexscaves:`-typed
+	 * codecs compose `BlockState.CODEC` and `BlockStateProvider.CODEC` too: 30 files carry an
+	 * affected state across 14 distinct key paths, and only 18 of them are vanilla-typed. Expect 30.
+	 */
+	fun migrateBlockStatesTo263(resourcesRoot: File): Int =
+		rewriteWorldgen(resourcesRoot) { respellTo263(it) }
+
+	private fun respellTo263(node: JsonElement): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map { respellTo263(it) })
+		is JsonObject -> {
+			// Depth-first: the state inside a provider is already respelled by the time the
+			// provider itself is collapsed, so the collapse can hand its child straight up.
+			val mapped = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				node.forEach { (key, value) -> out[key] = respellTo263(value) }
+			})
+			val type = mapped.idOf("type")
+			when {
+				"Name" in mapped && mapped.keys.all { it == "Name" || it == "Properties" } ->
+					buildJsonObject {
+						put("id", mapped.getValue("Name"))
+						mapped["Properties"]?.let { put("properties", it) }
+					}
+				type == "minecraft:simple_state_provider" -> mapped["state"] ?: mapped
+				type == "minecraft:weighted_state_provider" ->
+					mapped.replacing("type", JsonPrimitive("minecraft:weighted"))
+				// Loud on purpose. This mod only uses the two providers above, but an unmigrated
+				// one is not skipped at boot — it takes the whole RegistryDataLoader pass down, the
+				// way Feature.RANDOM_PATCH did on every 26.1 node. Failing the build beats shipping
+				// a data pack that cannot load.
+				type != null && type.endsWith("_state_provider") -> error(
+					"Unhandled 26.3 block state provider '$type'. 26.3 replaced BlockStateProviderType " +
+						"with the worldgen/block_state_provider registry; this pass only knows " +
+						"simple_state_provider and weighted_state_provider. Add the rewrite here."
+				)
+				else -> mapped
+			}
+		}
+		else -> node
+	}
+
+	/**
+	 * 26.3 hoists a configured feature's `config` to the top level.
+	 *
+	 * `ConfiguredFeature` stopped being a `{type, config}` pair and became the feature itself,
+	 * dispatched on `type` with its options as siblings — so 26.3's `oak.json` opens
+	 * `{"type": "minecraft:tree", "decorators": [], …}` where 26.2's wraps all of that in `config`.
+	 * Key names are otherwise unchanged; ore keeps `discard_chance_on_air_exposure`/`size`/
+	 * `targets`, and `block_column` and `spring_feature` are pure hoists.
+	 *
+	 * Top level only, deliberately. The four inline nested configured features in this mod all sit
+	 * at `/config/feature/feature` inside a `minecraft:random_patch`, and
+	 * [unrollRandomPatchesTo1262] has already replaced each of those files' entire contents with
+	 * the inner feature by the time this runs — so on 26.3 there is no nesting left to recurse
+	 * into, and recursing anyway would risk hoisting some unrelated `{type, config}` pair.
+	 *
+	 * A `config` key spelled `type` would collide with the dispatch key; none of this mod's 76
+	 * features has one, and the check is here so that stays true. Expect 76 (37 have an empty
+	 * config and simply lose the key).
+	 */
+	fun hoistFeatureConfigsTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		worldgenEntries(data, "configured_feature").forEach { (id, file) ->
+			val root = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }
+				.getOrNull() ?: return@forEach
+			val config = root["config"] as? JsonObject ?: return@forEach
+			if ("type" in config) error(
+				"Configured feature $id has a config key named 'type', which would collide with the " +
+					"26.3 dispatch key once hoisted."
+			)
+			val hoisted = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				root.forEach { (key, value) -> if (key != "config") out[key] = value }
+				config.forEach { (key, value) -> out[key] = value }
+			})
+			file.writeText(json.encodeToString(JsonElement.serializer(), hoisted))
+			changed++
+		}
+		return changed
+	}
+
+	/**
+	 * 26.3 renamed two worldgen registry directories: `configured_feature` -> `feature` and
+	 * `configured_carver` -> `carver`. `placed_feature` is untouched, and a placed feature still
+	 * names its configured feature by plain id, so nothing that *references* these moves.
+	 *
+	 * Both renames are applied even though this mod currently ships only the first — it has no
+	 * `configured_carver` directory, so that arm is a no-op rather than dead code, and it costs
+	 * nothing to be correct the day one is added.
+	 *
+	 * ⚠️ This must run LAST. [unrollRandomPatchesTo1262] and [fillLakePredicatesTo1262] both find
+	 * their files through the literal path `/worldgen/configured_feature/`; moving the directory
+	 * before them makes both match zero files, in silence. Expect 76.
+	 */
+	fun renameWorldgenRegistriesTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		val renames = mapOf("configured_feature" to "feature", "configured_carver" to "carver")
+		var moved = 0
+		data.listFiles().orEmpty().filter(File::isDirectory).forEach { namespace ->
+			renames.forEach { (from, to) ->
+				val old = namespace.resolve("worldgen/$from")
+				if (!old.isDirectory) return@forEach
+				val new = namespace.resolve("worldgen/$to")
+				old.walkTopDown().filter { it.isFile }.toList().forEach { file ->
+					val destination = new.resolve(file.relativeTo(old).path)
+					destination.parentFile.mkdirs()
+					file.copyTo(destination, overwrite = true)
+					file.delete()
+					moved++
+				}
+				old.walkBottomUp().filter { it.isDirectory }.forEach { it.delete() }
+			}
+		}
+		return moved
+	}
+
+	// --------------------------------------------------- 26.3 mob spawn data
+
+	/**
+	 * 26.3 replaced a spawner entry's `minCount`/`maxCount` pair with a single `count` IntProvider.
+	 *
+	 * Vanilla writes the constant shorthand — a bare integer — wherever the two were equal, and the
+	 * explicit `minecraft:uniform` object where they differed. Both are valid `IntProvider`
+	 * spellings; reproducing vanilla's choice keeps a diff against its own files readable.
+	 *
+	 * Shared by [migrateBiomeSpawnersTo263] and [migrateStructureSpawnsTo263] because the entry is
+	 * the same `SpawnerData` in a biome's spawn list and in a structure's `spawn_overrides`, and
+	 * 26.3 changed it in both places at once.
+	 *
+	 * An entry missing either half is returned untouched rather than guessed at. That shape is not
+	 * one this pass knows, and an unmigrated entry fails loudly at load, where a wrong count would
+	 * not fail at all.
+	 */
+	private fun spawnerEntryTo263(entry: JsonObject): JsonObject {
+		val min = intAt(entry, "minCount")
+		val max = intAt(entry, "maxCount")
+		if (min == null || max == null) return entry
+		val count: JsonElement = if (min == max) JsonPrimitive(min) else buildJsonObject {
+			put("type", JsonPrimitive("minecraft:uniform"))
+			put("max_inclusive", JsonPrimitive(max))
+			put("min_inclusive", JsonPrimitive(min))
+		}
+		// `count` takes the slot of whichever half came first, so what survives is vanilla's own
+		// `type, count, weight` ordering rather than a trailing key.
+		return JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			entry.forEach { (key, value) ->
+				when (key) {
+					"minCount", "maxCount" -> if (!out.containsKey("count")) out["count"] = count
+					else -> out[key] = value
+				}
+			}
+		})
+	}
+
+	/**
+	 * 26.3 moved a biome's mob spawning out of two top-level fields and into an environment attribute.
+	 *
+	 * `spawners` and `spawn_costs` are gone from the top level — vanilla's own 67 biomes carry
+	 * neither — and both now live inside `attributes."minecraft:gameplay/natural_mob_spawns"` as
+	 * `{"argument": {"spawn_costs": …, "spawns_by_category": …}, "modifier": "overlay"}`. Every one
+	 * of those 67 biomes carries the attribute and every one uses the `overlay` modifier, including
+	 * `the_void`, whose eight categories are all empty — so it is written unconditionally rather
+	 * than only when a biome actually spawns something.
+	 *
+	 * `creature_spawn_probability` made the same move, to
+	 * `minecraft:gameplay/creature_world_gen_spawn_probability`, as a bare float. Three of this
+	 * mod's six biomes carry it.
+	 *
+	 * Empty categories are carried across as authored rather than pruned. Vanilla is inconsistent
+	 * about them — `desert.json` omits its four empty ones, `the_void.json` keeps all eight — which
+	 * is only possible because the codec accepts either, so the smaller transform is the safer one.
+	 *
+	 * ⚠️ Must run AFTER [migrateBiomeAttributesTo12111], which is what creates `attributes` in the
+	 * first place; this pass merges into whatever is there rather than replacing it. The `>=1.21.11`
+	 * band registers that pass earlier in the same `doLast` chain. Expect 6, one per cave biome.
+	 */
+	fun migrateBiomeSpawnersTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		val hoisted = setOf("spawners", "spawn_costs", "creature_spawn_probability")
+		var changed = 0
+		worldgenEntries(data, "biome").forEach { (_, file) ->
+			val original = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }
+				.getOrNull() ?: return@forEach
+			if ("spawners" !in original && "creature_spawn_probability" !in original) return@forEach
+
+			val attributes = (original["attributes"] as? JsonObject)?.toMutableMap() ?: mutableMapOf()
+
+			(original["spawners"] as? JsonObject)?.let { spawners ->
+				val byCategory = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+					spawners.forEach { (category, entries) ->
+						out[category] = JsonArray(
+							(entries as? JsonArray).orEmpty()
+								.map { if (it is JsonObject) spawnerEntryTo263(it) else it }
+						)
+					}
+				})
+				attributes["minecraft:gameplay/natural_mob_spawns"] = buildJsonObject {
+					put("argument", buildJsonObject {
+						put("spawn_costs", original["spawn_costs"] ?: JsonObject(emptyMap()))
+						put("spawns_by_category", byCategory)
+					})
+					put("modifier", JsonPrimitive("overlay"))
+				}
+			}
+			original["creature_spawn_probability"]?.let {
+				attributes["minecraft:gameplay/creature_world_gen_spawn_probability"] = it
+			}
+
+			val migrated = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				original.forEach { (key, value) -> if (key !in hoisted) out[key] = value }
+				out["attributes"] = JsonObject(attributes)
+			})
+			file.writeText(json.encodeToString(JsonObject.serializer(), migrated))
+			changed++
+		}
+		return changed
+	}
+
+	/**
+	 * The same spawner respell inside a structure's `spawn_overrides`.
+	 *
+	 * A per-category override is `{"bounding_box": …, "spawns": [ … ]}` and only the entries in
+	 * `spawns` changed — `bounding_box` and every other structure field are untouched on 26.3,
+	 * checked against vanilla's own 52 structure files.
+	 *
+	 * All fourteen of this mod's structures declare `spawn_overrides`, but eleven declare it empty,
+	 * so only the three that actually list a mob are rewritten and counted. Expect 3.
+	 */
+	fun migrateStructureSpawnsTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		worldgenEntries(data, "structure").forEach { (_, file) ->
+			val original = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }
+				.getOrNull() ?: return@forEach
+			val overrides = original["spawn_overrides"] as? JsonObject ?: return@forEach
+			var touched = false
+			val rewritten = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				overrides.forEach { (category, override) ->
+					val body = override as? JsonObject
+					val spawns = body?.get("spawns") as? JsonArray
+					if (body == null || spawns == null) {
+						out[category] = override
+						return@forEach
+					}
+					out[category] = body.replacing("spawns", JsonArray(spawns.map { entry ->
+						if (entry !is JsonObject) entry
+						else spawnerEntryTo263(entry).also { if (it !== entry) touched = true }
+					}))
+				}
+			})
+			if (!touched) return@forEach
+			file.writeText(
+				json.encodeToString(
+					JsonObject.serializer(),
+					original.replacing("spawn_overrides", rewritten)
+				)
+			)
+			changed++
+		}
+		return changed
+	}
+
+	// ------------------------------------------------------- 26.3 placement modifiers
+
+	/**
+	 * 26.3 replaced the `random_offset` placement modifier with `offset`, and split its axes.
+	 *
+	 * `RandomOffsetPlacement(xz_spread, y_spread)` became the record `OffsetPlacement(x, y, z)`, and
+	 * the old id is *gone* from the registry rather than aliased — 26 of this mod's placed features
+	 * name it, and every one of them fails registry loading with `Unknown registry key in
+	 * ResourceKey[minecraft:root / minecraft:worldgen/placement_modifier_type]`, i.e. the whole data
+	 * pack refuses to load and the server never starts.
+	 *
+	 * The mapping is exact rather than a judgement call: vanilla's own surviving helper
+	 * `OffsetPlacement.of(IntProvider xz, IntProvider y)` builds `new OffsetPlacement(xz, y, xz)`
+	 * (read in the 26.3 bytecode), so one spread feeding both horizontal axes is what the two-argument
+	 * shape has always meant. Each axis is sampled independently per position on both versions, so the
+	 * placement is byte-for-byte the same.
+	 *
+	 * Both keys are optional on the old codec, so an absent one stays absent rather than becoming a
+	 * literal zero; anything else in the object is an unhandled shape and throws.
+	 */
+	fun migratePlacementModifiersTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		worldgenEntries(data, "placed_feature").forEach { (id, file) ->
+			val original = runCatching { json.parseToJsonElement(file.readText()) as? JsonObject }
+				.getOrNull() ?: return@forEach
+			val placement = original["placement"] as? JsonArray ?: return@forEach
+			var touched = false
+			val rewritten = JsonArray(placement.map { entry ->
+				val modifier = entry as? JsonObject ?: return@map entry
+				val type = (modifier["type"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+				if (type != "minecraft:random_offset") return@map entry
+				val unknown = modifier.keys - setOf("type", "xz_spread", "y_spread")
+				if (unknown.isNotEmpty()) {
+					throw IllegalStateException(
+						"$id: minecraft:random_offset carries unhandled key(s) $unknown"
+					)
+				}
+				touched = true
+				JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+					out["type"] = JsonPrimitive("minecraft:offset")
+					modifier["xz_spread"]?.let { out["x"] = it }
+					modifier["y_spread"]?.let { out["y"] = it }
+					modifier["xz_spread"]?.let { out["z"] = it }
+				})
+			})
+			if (!touched) return@forEach
+			file.writeText(
+				json.encodeToString(
+					JsonObject.serializer(),
+					original.replacing("placement", rewritten)
+				)
+			)
+			changed++
+		}
+		return changed
+	}
+
+	// ------------------------------------------------------- 26.3 loot tables and advancements
+
+	/**
+	 * Keys whose value is a **ContextAwarePredicate** — a list of loot conditions that 26.3 collapses
+	 * into a single condition under the same name. Taken from vanilla's own 26.2 advancements (every
+	 * array-of-conditions there sits under one of these twelve), not guessed; this mod uses `player`
+	 * and `location`. An array of conditions under any other key is an unhandled shape and throws.
+	 */
+	private val contextAwarePredicateHosts = setOf(
+		"player", "entity", "location", "child", "parent", "partner",
+		"source", "cause", "bystander", "lightning", "projectile",
+	)
+
+	/**
+	 * **26.3 made loot conditions and functions singular, and renamed them.** Established by diffing
+	 * vanilla's own data pack between the two versions (1355 -> 1447 loot tables, 1688 -> 1866
+	 * advancements): at 26.3 the strings `"conditions"`, `"functions"` and `"function"` appear in
+	 * **zero** vanilla loot tables, and `LootItemBlockStatePropertyCondition` is gone from the jar
+	 * outright, so this is a full migration rather than a preferred spelling.
+	 *
+	 *  - `"conditions": [a, b]` -> `"condition": {"type":"minecraft:all_of","terms":[a, b]}`, and a
+	 *    single-element list collapses to the bare condition (vanilla `blocks/oak_leaves`).
+	 *  - `"functions": [f, g]` -> `"modifier": [f, g]`, and a single-element list likewise collapses
+	 *    to the bare function (vanilla `blocks/wheat`). Functions compose as a **sequence**, so a
+	 *    multi-element list stays a list — there is no `all_of` for them.
+	 *  - `{"condition": "ns:id"}` / `{"function": "ns:id"}` -> `{"type": "ns:id"}`.
+	 *  - `minecraft:block_state_property` (`block`, `properties`) -> `minecraft:match_block`
+	 *    (`blocks`, `state`). This mod has 44 of them, and it is the one change here that fails
+	 *    LOUDLY if it is missed — the rest parse to silence.
+	 *
+	 * ⚠️ **`"conditions"` only collapses when it is an ARRAY.** An advancement criterion's own
+	 * `"conditions"` object keeps that name at 26.3 (vanilla `adventure/kill_a_mob`); it is the
+	 * ContextAwarePredicate arrays *inside* it that collapse, under their own names.
+	 *
+	 * ⚠️ **`terms` is not a ContextAwarePredicate.** It is `any_of`/`all_of`'s own operand list and
+	 * stays an array on both sides of the boundary — collapsing it would silently rewrite every
+	 * composite condition this mod ships into its own first operand.
+	 *
+	 * ⚠️ **The array test is made on the ORIGINAL node, before its children are rewritten**, because
+	 * the rewrite is exactly what removes the `condition` key the test looks for. It also requires
+	 * that `condition` be a **string**: `context_int_provider`'s `cases` entries carry an already-26.3
+	 * `"condition": {…}` object, and are left untouched by that alone.
+	 *
+	 * ⚠️ `items` is an ItemPredicate list, not a condition list, and is byte-identical across the
+	 * boundary in all 1737 vanilla occurrences. Nothing here may touch it.
+	 *
+	 * The `loot_modifiers/` files take the **narrow** rule — the inner `condition` -> `type` rename
+	 * only. Their array is read by this mod's own codec, where it means OR
+	 * (`ACPlatform.orConditions` -> `Util.anyOf`), unlike a vanilla pool's array which means AND;
+	 * folding it into an `all_of` would be a silent gameplay change. See CaveTabletLootModifier.
+	 */
+	fun migrateLootTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		data.walkTopDown().filter { it.isFile && it.extension == "json" }.forEach { file ->
+			val path = file.invariantSeparatorsPath
+			val lootModifier = path.contains("/loot_modifier")
+			if (!lootModifier &&
+				!path.contains("/loot_table/") &&
+				!path.contains("/item_modifier/") &&
+				!path.contains("/advancement/")
+			) return@forEach
+			val original = runCatching { json.parseToJsonElement(file.readText()) }.getOrNull()
+				?: return@forEach
+			val migrated = if (lootModifier) retypeConditionsTo263(original) else respellLootTo263(original)
+			if (migrated != original) {
+				file.writeText(json.encodeToString(JsonElement.serializer(), migrated))
+				changed++
+			}
+		}
+		return changed
+	}
+
+	/** `{"condition": "ns:id", …}` -> `{"type": "ns:id", …}`, everywhere, and nothing else. */
+	private fun retypeConditionsTo263(node: JsonElement): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map(::retypeConditionsTo263))
+		is JsonObject -> renameToType(JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			node.forEach { (key, value) -> out[key] = retypeConditionsTo263(value) }
+		}), "condition")
+		else -> node
+	}
+
+	private fun respellLootTo263(node: JsonElement): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map(::respellLootTo263))
+		is JsonObject -> {
+			val out = LinkedHashMap<String, JsonElement>()
+			node.forEach { (key, value) ->
+				when {
+					// An empty list is dropped rather than renamed: it constrains nothing, and 26.3
+					// has no spelling for "no condition" other than the absent key.
+					key == "conditions" && value is JsonArray ->
+						allOfTo263(value)?.let { out["condition"] = it }
+					key == "functions" && value is JsonArray ->
+						sequenceTo263(value)?.let { out["modifier"] = it }
+					key == "terms" -> out[key] = respellLootTo263(value)
+					isConditionList(value) -> {
+						require(key in contextAwarePredicateHosts) {
+							"Unhandled 26.3 condition list under '$key'. Vanilla's 26.2 advancements " +
+								"only carry one under ${contextAwarePredicateHosts.sorted()}; add it " +
+								"there once its 26.3 spelling is confirmed."
+						}
+						allOfTo263(value as JsonArray)?.let { out[key] = it }
+					}
+					else -> out[key] = respellLootTo263(value)
+				}
+			}
+			matchBlockTo263(renameToType(renameToType(JsonObject(out), "condition"), "function"))
+		}
+		else -> node
+	}
+
+	/** True for a list every element of which is a loot condition in the pre-26.3 spelling. */
+	private fun isConditionList(node: JsonElement): Boolean =
+		node is JsonArray && node.isNotEmpty() && node.all {
+			it is JsonObject && (it["condition"] as? JsonPrimitive)?.isString == true
+		}
+
+	/** null (drop the key), the bare condition, or an `all_of` over all of them. */
+	private fun allOfTo263(list: JsonArray): JsonElement? = when (list.size) {
+		0 -> null
+		1 -> respellLootTo263(list[0])
+		else -> buildJsonObject {
+			put("type", JsonPrimitive("minecraft:all_of"))
+			put("terms", JsonArray(list.map(::respellLootTo263)))
+		}
+	}
+
+	/** Functions apply in order, so more than one stays a list. */
+	private fun sequenceTo263(list: JsonArray): JsonElement? = when (list.size) {
+		0 -> null
+		1 -> respellLootTo263(list[0])
+		else -> JsonArray(list.map(::respellLootTo263))
+	}
+
+	private fun renameToType(node: JsonObject, from: String): JsonObject {
+		val id = (node[from] as? JsonPrimitive)?.takeIf { it.isString } ?: return node
+		return JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			node.forEach { (key, value) -> if (key == from) out["type"] = id else out[key] = value }
+		})
+	}
+
+	private fun matchBlockTo263(node: JsonObject): JsonObject {
+		if (node.idOf("type") != "minecraft:block_state_property") return node
+		return JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+			node.forEach { (key, value) ->
+				when (key) {
+					"type" -> out["type"] = JsonPrimitive("minecraft:match_block")
+					"block" -> out["blocks"] = value
+					"properties" -> out["state"] = value
+					else -> out[key] = value
+				}
+			}
+		})
+	}
+
+	/**
+	 * **26.3 deleted `EntityPredicate`'s advancement wrapper**, so a criterion field that named one
+	 * inline now has to name a loot condition outright.
+	 *
+	 * Through 26.2 a criterion's `entity` / `player` / `parent` / … accepted EITHER a raw
+	 * `EntityPredicate` object or a list of loot conditions, and the raw form was wrapped for you in
+	 * `LootItemEntityPropertyCondition.hasProperties(THIS, predicate)`. At 26.3 the list form
+	 * collapses to a single condition — [migrateLootTo263] does that half — and the raw form is
+	 * simply gone. Vanilla's own 26.3 advancements spell every one of them
+	 * `{"type": "minecraft:entity_properties", "entity": "this", "predicate": {…}}`
+	 * (`adventure/kill_a_mob`, `husbandry/bred_all_animals`), which is what this writes.
+	 *
+	 * The raw object is read as a loot condition, finds no `type`, and the file fails to parse:
+	 *
+	 *     Failed to parse alexscaves:alexscaves/breed_grottoceratops from pack alexscaves
+	 *     No key type in MapLike[{"entity_type":"alexscaves:grottoceratops"}]
+	 *
+	 * ⚠️ That is **fatal** on 26.3, not the WARN it would have been earlier: advancements are a
+	 * datapack *registry* there, so 29 unparseable ones take the whole server down with
+	 * `Failed to load datapacks`.
+	 *
+	 * Runs after [migrateLootTo263], which is what makes "already a condition" testable — a
+	 * collapsed list carries a `type` and is skipped on that alone. The key allowlist is
+	 * [entityPredicateFields] for the reason recorded there: a criterion's sibling fields carry
+	 * other predicate types under overlapping names (`effects` is a `MobEffectsPredicate` here,
+	 * `item` an `ItemPredicate`), and a structural test would wrap those too.
+	 */
+	fun wrapEntityPredicatesTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		data.walkTopDown().filter { it.isFile && it.extension == "json" }.forEach { file ->
+			if (!file.invariantSeparatorsPath.contains("/advancement/")) return@forEach
+			val original = runCatching { json.parseToJsonElement(file.readText()) }.getOrNull()
+				?: return@forEach
+			val migrated = wrapCriterionPredicates(original)
+			if (migrated != original) {
+				file.writeText(json.encodeToString(JsonElement.serializer(), migrated))
+				changed++
+			}
+		}
+		return changed
+	}
+
+	private fun wrapCriterionPredicates(node: JsonElement): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map(::wrapCriterionPredicates))
+		is JsonObject -> {
+			val mapped = JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				node.forEach { (key, value) -> out[key] = wrapCriterionPredicates(value) }
+			})
+			val conditions = mapped["conditions"]
+			if (mapped["trigger"] is JsonPrimitive && conditions is JsonObject) {
+				mapped.replacing("conditions", JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+					conditions.forEach { (key, value) ->
+						out[key] = if (key in entityPredicateFields && value is JsonObject &&
+							value.idOf("type") == null
+						) entityProperties(value) else value
+					}
+				}))
+			} else {
+				mapped
+			}
+		}
+		else -> node
+	}
+
+	private fun entityProperties(predicate: JsonObject): JsonObject = buildJsonObject {
+		put("type", JsonPrimitive("minecraft:entity_properties"))
+		put("entity", JsonPrimitive("this"))
+		put("predicate", predicate)
+	}
+
+	/**
+	 * Slots whose `{"min": a, "max": b}` is a **NumberProvider**, keyed on the id of the owning
+	 * object (null for a pool, which has no `type` of its own) so the shape alone never decides.
+	 * `set_count` and `enchanted_count_increase` are what this mod uses; the rest are the other
+	 * vanilla number-provider fields, listed so a new loot table does not quietly go unmigrated.
+	 */
+	private val uniformProviderSlots = setOf(
+		null to "rolls",
+		null to "bonus_rolls",
+		"set_count" to "count",
+		"enchanted_count_increase" to "count",
+		"looting_enchant" to "count",
+		"set_damage" to "damage",
+		"enchant_with_levels" to "levels",
+		"set_stew_effect" to "duration",
+		"exploration_map" to "search_radius",
+	)
+
+	/**
+	 * Slots whose `{"min": a, "max": b}` is **not** a NumberProvider and must keep the bare form:
+	 * `minecraft:limit_count`'s `limit` is an `IntRange` and an enchantment predicate's entry
+	 * carries `levels` as a `MinMaxBounds.Ints`. Both are written exactly this way in vanilla's own
+	 * 26.3 loot tables (`blocks/sea_lantern`), so they are proof rather than assumption.
+	 */
+	private val bareRangeSlots = setOf(
+		"limit_count" to "limit",
+		null to "levels",
+	)
+
+	/**
+	 * **26.3 dropped the untyped shorthand for a `NumberProvider`**, so `{"min": a, "max": b}` has
+	 * to name `minecraft:uniform`.
+	 *
+	 * Through 26.2 the codec was
+	 * `Codec.either(ConstantValue.INLINE_CODEC, Codec.withAlternative(TYPED_CODEC,
+	 * UniformGenerator.MAP_CODEC.codec()))` — read in the 26.2 bytecode, not inferred from the docs
+	 * — so a bare number meant a constant and a typeless object meant a uniform. 26.3 rebuilt the
+	 * package around `RangeProvider` / `UnaryProvider` / `BinaryProvider` and the alternative is
+	 * gone; every provider in vanilla's own 26.3 loot tables is written
+	 * `{"type": "minecraft:uniform", "min": a, "max": b}`. Without the key the dispatch fails and
+	 * the table does not load:
+	 *
+	 *     Failed to parse alexscaves:chests/abyssal_ruins from pack alexscaves
+	 *     Not a number: {"min":8,"max":10}; No key type in MapLike[{"min":8,"max":10}]
+	 *
+	 * ⚠️ **Not every `{min, max}` in a loot table is a NumberProvider**, which is why the rewrite is
+	 * an allowlist keyed on the OWNING object rather than on the shape — see [uniformProviderSlots]
+	 * and [bareRangeSlots]. A pair on neither list throws rather than being guessed at.
+	 *
+	 * ⚠️ Advancements are deliberately out of scope: an `ItemPredicate`'s `count` is a
+	 * `MinMaxBounds.Ints` written in exactly this shape, and this mod has one.
+	 *
+	 * Runs after [migrateLootTo263], which is what puts a function's id under `type` where the
+	 * owner lookup can see it (before that it is spelled `function`).
+	 */
+	fun typeNumberProvidersTo263(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		var changed = 0
+		data.walkTopDown().filter { it.isFile && it.extension == "json" }.forEach { file ->
+			val path = file.invariantSeparatorsPath
+			if (!path.contains("/loot_table/") &&
+				!path.contains("/item_modifier/") &&
+				!path.contains("/loot_modifier")
+			) return@forEach
+			val original = runCatching { json.parseToJsonElement(file.readText()) }.getOrNull()
+				?: return@forEach
+			val migrated = typeProviderNode(original, null, file.name)
+			if (migrated != original) {
+				file.writeText(json.encodeToString(JsonElement.serializer(), migrated))
+				changed++
+			}
+		}
+		return changed
+	}
+
+	private fun typeProviderNode(node: JsonElement, owner: String?, file: String): JsonElement = when (node) {
+		is JsonArray -> JsonArray(node.map { typeProviderNode(it, owner, file) })
+		is JsonObject -> {
+			val self = node.idOf("type")?.substringAfter(':')
+			JsonObject(LinkedHashMap<String, JsonElement>().also { out ->
+				node.forEach { (key, value) ->
+					out[key] = when {
+						!isBareRange(value) -> typeProviderNode(value, self, file)
+						self to key in uniformProviderSlots -> uniform(value as JsonObject)
+						self to key in bareRangeSlots -> value
+						else -> throw IllegalStateException(
+							"$file: a {min, max} object under '$key' of '${self ?: "an untyped owner"}' " +
+								"is on neither the NumberProvider nor the plain-range list. 26.3 needs " +
+								"an explicit minecraft:uniform on the former and rejects it on the latter; " +
+								"decide which it is and add it to uniformProviderSlots or bareRangeSlots."
+						)
+					}
+				}
+			})
+		}
+		else -> node
+	}
+
+	/** A `{min, max}` object with nothing else in it — the pre-26.3 shorthand, and nothing else. */
+	private fun isBareRange(node: JsonElement): Boolean =
+		node is JsonObject && node.isNotEmpty() && node.keys.all { it == "min" || it == "max" }
+
+	private fun uniform(range: JsonObject): JsonObject = buildJsonObject {
+		put("type", JsonPrimitive("minecraft:uniform"))
+		range.forEach { (key, value) -> put(key, value) }
+	}
+
+	/**
+	 * **The NeoForge `strippables` data map only belongs on NeoForge 26.3 and above.** 26.3 replaced
+	 * the tool-ability approach to stripping with a data-driven item component, so that is where the
+	 * seven mappings have to come from; every other node still answers the question in code, through
+	 * `ACCompat.isAxeStrip` and the three `getToolModifiedState` overrides, and shipping both would
+	 * hand two systems the same job on eighteen nodes this change was never aimed at.
+	 *
+	 * ⚠️ Targets `data/neoforge/data_maps` specifically, **not** `data/neoforge`: `migrateNeoForge`
+	 * relocates `data/forge/loot_modifiers` into that same directory on every NeoForge node, so a
+	 * wider sweep would delete this mod's two global loot modifiers along with it.
+	 */
+	fun dropNeoForgeStrippables(resourcesRoot: File): Int {
+		val data = resourcesRoot.resolve("data")
+		if (!data.isDirectory) return 0
+		val root = data.resolve("neoforge/data_maps")
+		if (!root.isDirectory) return 0
+		var dropped = 0
+		root.walkTopDown().filter { it.isFile }.toList().forEach { if (it.delete()) dropped++ }
+		root.walkBottomUp().filter { it.isDirectory }.forEach { it.delete() }
+		data.resolve("neoforge").takeIf { it.isDirectory && it.listFiles().isNullOrEmpty() }?.delete()
+		return dropped
 	}
 }
 

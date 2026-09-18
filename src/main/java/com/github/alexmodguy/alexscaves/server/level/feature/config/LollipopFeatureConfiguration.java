@@ -1,15 +1,15 @@
 package com.github.alexmodguy.alexscaves.server.level.feature.config;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 
 import java.util.List;
 
-public class LollipopFeatureConfiguration implements FeatureConfiguration {
+public class LollipopFeatureConfiguration implements ACFeatureConfiguration {
 
-    public static final Codec<LollipopFeatureConfiguration> CODEC = RecordCodecBuilder.create((configurationInstance) -> {
+    public static final MapCodec<LollipopFeatureConfiguration> MAP_CODEC = RecordCodecBuilder.mapCodec((configurationInstance) -> {
         return configurationInstance.group(ResourceLocation.CODEC.listOf().fieldOf("big_lollipop_top_structures").forGetter((p_159830_) -> {
                     return p_159830_.bigLollipopTopStructures;
                 }), ResourceLocation.CODEC.listOf().fieldOf("small_lollipop_top_structures").forGetter((p_159830_) -> {
@@ -19,6 +19,7 @@ public class LollipopFeatureConfiguration implements FeatureConfiguration {
         })
         ).apply(configurationInstance, LollipopFeatureConfiguration::new);
     });
+    public static final Codec<LollipopFeatureConfiguration> CODEC = MAP_CODEC.codec();
     public final List<ResourceLocation> bigLollipopTopStructures;
     public final List<ResourceLocation> smallLollipopTopStructures;
     public final float bigChance;

@@ -25,7 +25,7 @@ public class CandyCanePoleBlock extends CrossCollisionBlock {
 
     // 1.20.3 made Block#codec() abstract for datapack-defined blocks; Alex's Caves' blocks
     // are never described by value, so they all share one placeholder. See ACPlatform.
-    //? if >=1.20.3 {
+    //? if >=1.20.3 && <26.3 {
     /*@Override
     public com.mojang.serialization.MapCodec<? extends CandyCanePoleBlock> codec() {
         return com.github.alexmodguy.alexscaves.server.misc.ACPlatform.unsupportedBlockCodec();
@@ -133,7 +133,10 @@ public class CandyCanePoleBlock extends CrossCollisionBlock {
         ItemStack itemStack = context.getItemInHand();
         if (!com.github.alexmodguy.alexscaves.server.misc.ACCompat.canPerform(itemStack, toolAction))
             return null;
-        if (ToolActions.AXE_STRIP == toolAction && this == ACBlockRegistry.CANDY_CANE_POLE.get()) {
+        // See ACCompat.isAxeStrip. The data map builds the stripped state with Block#withPropertiesOf,
+        // and the stripped pole is the same class as this one, so all five properties copied below
+        // survive the hand-off on NeoForge 26.3.
+        if (com.github.alexmodguy.alexscaves.server.misc.ACCompat.isAxeStrip(toolAction) && this == ACBlockRegistry.CANDY_CANE_POLE.get()) {
             return ACBlockRegistry.STRIPPED_CANDY_CANE_POLE.get().defaultBlockState().setValue(WATERLOGGED, state.getValue(WATERLOGGED)).setValue(NORTH, state.getValue(NORTH)).setValue(EAST, state.getValue(EAST)).setValue(WEST, state.getValue(WEST)).setValue(SOUTH, state.getValue(SOUTH));
         }
         // Fabric patches no such hook onto Block, so there is no supertype answer to defer to.

@@ -74,8 +74,10 @@ public final class ACItemRenderCompat {
         draw(resolve(stack, level, ctx), poseStack, type -> tinted, light, overlay);
     }
 
-    // Draws the item with the two standard item sheets swapped for sepia, leaving every other render
-    // type alone.
+    // Draws the item with its standard item sheets swapped for sepia, leaving every other render type
+    // alone. Which sheets those are, and which sepia type replaces each, is the caller's mapping: the
+    // answer changed at 1.21.11 and again at 26.1, and a sepia type must sample the same atlas as the
+    // sheet it stands in for.
     //
     // Below 1.21.4 the equivalent was "walk the quads unless the model is a custom renderer", and the
     // reason for that guard was exactly this: a custom renderer draws entity models out of its own
@@ -89,13 +91,9 @@ public final class ACItemRenderCompat {
                                    net.minecraft.world.item.ItemDisplayContext ctx,
                                    com.mojang.blaze3d.vertex.PoseStack poseStack,
                                    net.minecraft.client.renderer.MultiBufferSource buffers,
-                                   net.minecraft.client.renderer.RenderType sepia,
+                                   java.util.function.UnaryOperator<net.minecraft.client.renderer.RenderType> sepia,
                                    int light, int overlay) {
-        net.minecraft.client.renderer.RenderType translucent = net.minecraft.client.renderer.Sheets.translucentItemSheet();
-        net.minecraft.client.renderer.RenderType cutout = net.minecraft.client.renderer.Sheets.cutoutBlockSheet();
-        draw(resolve(stack, level, ctx), poseStack,
-                type -> buffers.getBuffer(type == translucent || type == cutout ? sepia : type),
-                light, overlay);
+        draw(resolve(stack, level, ctx), poseStack, type -> buffers.getBuffer(sepia.apply(type)), light, overlay);
     }
 
     // A pass-through vertex consumer that scales every colour written through it. The old quad walk
@@ -163,6 +161,13 @@ public final class ACItemRenderCompat {
         // method — see ACClientCompat#setLineWidth.
         public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(float width) {
             com.github.alexmodguy.alexscaves.client.ACClientCompat.setLineWidth(this.delegate, width);
+            return this;
+        }
+
+        // New abstract method in 26.3, declared without @Override for the same reason as
+        // setLineWidth above -- see ACClientCompat#setUv3.
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv3(float u, float v) {
+            com.github.alexmodguy.alexscaves.client.ACClientCompat.setUv3(this.delegate, u, v);
             return this;
         }
 

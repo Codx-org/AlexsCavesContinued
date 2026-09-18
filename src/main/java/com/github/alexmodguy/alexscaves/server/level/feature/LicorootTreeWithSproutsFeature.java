@@ -5,21 +5,19 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 public class LicorootTreeWithSproutsFeature extends LicorootTreeFeature {
 
-    public LicorootTreeWithSproutsFeature(Codec<NoneFeatureConfiguration> codec) {
+    public LicorootTreeWithSproutsFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        if (super.place(context)) {
-            RandomSource randomSource = context.random();
-            WorldGenLevel level = context.level();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        if (super.acPlace(acLevel, acRandom, acOrigin)) {
+            RandomSource randomSource = acRandom;
+            WorldGenLevel level = acLevel;
             BlockPos.MutableBlockPos branchPos = new BlockPos.MutableBlockPos();
 
             for (int i = 0; i < 3 + randomSource.nextInt(4); i++) {

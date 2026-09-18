@@ -243,7 +243,16 @@ public class MagneticWeaponEntity extends Entity {
                             }
                             else {
                                 flag = level().destroyBlock(miningBlock, false);
+                                // 26.3 narrowed playerDestroy to (ServerLevel, ServerPlayer, ...). Neither local is
+                                // narrowed here, so the 26.3 arm tests rather than casts; this whole branch is already
+                                // inside a !level().isClientSide() guard, so the test always passes in practice.
+                                //? if >=26.3 {
+                                /*if (level() instanceof net.minecraft.server.level.ServerLevel acLevel && player instanceof net.minecraft.server.level.ServerPlayer acPlayer) {
+                                    miningState.getBlock().playerDestroy(acLevel, acPlayer, miningBlock, miningState, level().getBlockEntity(miningBlock), itemStack);
+                                }
+                                *///?} else {
                                 miningState.getBlock().playerDestroy(level(), player, miningBlock, miningState, level().getBlockEntity(miningBlock), itemStack);
+                                //?}
                             }
                             if (flag && exp > 0 && level() instanceof ServerLevel serverLevel) {
                                 miningState.getBlock().popExperience(serverLevel, miningBlock, exp);

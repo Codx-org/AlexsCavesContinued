@@ -22,7 +22,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+//? if >=26.3 {
+/*import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+*///?} else {
 import net.minecraft.world.level.levelgen.structure.StructurePieceAccessor;
+//?}
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
@@ -117,8 +121,15 @@ public class GingerbreadRoadPiece extends StructurePiece {
     }
 
 
+    // 26.3 deleted the StructurePieceAccessor interface and gave StructurePiece#addChildren the
+    // concrete StructurePiecesBuilder it always received in practice. The only use of the
+    // parameter below is addPiece(StructurePiece), which both types declare.
     @Override
+    //? if >=26.3 {
+    /*public void addChildren(StructurePiece startPiece, StructurePiecesBuilder piecesBuilder, RandomSource randomSource) {
+    *///?} else {
     public void addChildren(StructurePiece startPiece, StructurePieceAccessor piecesBuilder, RandomSource randomSource) {
+    //?}
         if(startPiece instanceof GingerbreadRoadPiece startRoadPiece && branchesLeft > 0){
             for(int childrenIndex = 0; childrenIndex < this.branchesLeft; childrenIndex++){
                 Direction childDir = selectAnyOther(randomSource, true);

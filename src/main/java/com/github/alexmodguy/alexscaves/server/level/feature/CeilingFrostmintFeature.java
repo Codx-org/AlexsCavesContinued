@@ -15,29 +15,26 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class CeilingFrostmintFeature extends Feature<NoneFeatureConfiguration> {
+public class CeilingFrostmintFeature extends ACSimpleFeature {
 
-    public CeilingFrostmintFeature(Codec<NoneFeatureConfiguration> config) {
+    public CeilingFrostmintFeature(Object config) {
         super(config);
     }
 
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        WorldGenLevel worldgenlevel = context.level();
-        RandomSource randomsource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        WorldGenLevel worldgenlevel = acLevel;
+        RandomSource randomsource = acRandom;
         boolean aboveSoda = false;
         BlockPos.MutableBlockPos scanPos = new BlockPos.MutableBlockPos();
-        for (scanPos.set(context.origin()); scanPos.getY() > worldgenlevel.getMinBuildHeight(); scanPos.move(0, -1, 0)) {
+        for (scanPos.set(acOrigin); scanPos.getY() > worldgenlevel.getMinBuildHeight(); scanPos.move(0, -1, 0)) {
             if (worldgenlevel.getBlockState(scanPos).is(ACBlockRegistry.PURPLE_SODA.get())) {
                 aboveSoda = true;
                 break;
             }
         }
         if (aboveSoda) {
-            for (scanPos.set(context.origin()); scanPos.getY() >= worldgenlevel.getMaxBuildHeight() - 3; scanPos.move(0, 1, 0)) {
+            for (scanPos.set(acOrigin); scanPos.getY() >= worldgenlevel.getMaxBuildHeight() - 3; scanPos.move(0, 1, 0)) {
                 if (!worldgenlevel.isEmptyBlock(scanPos)) {
                     break;
                 }

@@ -1,5 +1,23 @@
 package com.github.alexmodguy.alexscaves.server.level.carver;
 
+/**
+ * An unused cave carver that fills its rooms with water.
+ *
+ * <p>Upstream marked it "unused for now" and it has never been referenced by a datapack in this mod;
+ * it survives only because deleting inherited upstream code is a separate decision from porting it.
+ *
+ * <p>26.3 leaves it no shape to keep. {@code CaveWorldCarver} became a <em>final record</em>
+ * implementing a non-generic {@code WorldCarver}, so it cannot be extended at all; the carve entry
+ * point changed to {@code carve(WorldGenerationContext, RandomSource, ChunkPos, ChunkPos,
+ * CarverOutput)}; and {@code CaveCarverConfiguration} and {@code CarverConfiguration} were both
+ * deleted. Reimplementing the carver against the new interface would mean writing and testing
+ * worldgen that nothing calls, so the 26.3 arm is an empty shell and {@code ACCarverRegistry}
+ * registers nothing there.
+ */
+//? if >=26.3 {
+/*public class WaterBubbleCarver {
+}
+*///?} else {
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -84,3 +102,4 @@ public class WaterBubbleCarver extends CaveWorldCarver {
         }
     }
 }
+//?}

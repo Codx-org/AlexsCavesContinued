@@ -12,21 +12,18 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class AncientTreeFeature extends Feature<NoneFeatureConfiguration> {
+public class AncientTreeFeature extends ACSimpleFeature {
 
-    public AncientTreeFeature(Codec<NoneFeatureConfiguration> codec) {
+    public AncientTreeFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos treeBottom = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos treeBottom = acOrigin;
         int height = 3 + randomsource.nextInt(4);
 
         if (!checkCanTreePlace(level, treeBottom, height)) {

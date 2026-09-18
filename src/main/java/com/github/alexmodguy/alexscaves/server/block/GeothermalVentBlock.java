@@ -38,7 +38,7 @@ public class GeothermalVentBlock extends BaseEntityBlock {
 
     // 1.20.3 made Block#codec() abstract for datapack-defined blocks; Alex's Caves' blocks
     // are never described by value, so they all share one placeholder. See ACPlatform.
-    //? if >=1.20.3 {
+    //? if >=1.20.3 && <26.3 {
     /*@Override
     public com.mojang.serialization.MapCodec<? extends GeothermalVentBlock> codec() {
         return com.github.alexmodguy.alexscaves.server.misc.ACPlatform.unsupportedBlockCodec();
@@ -84,7 +84,7 @@ public class GeothermalVentBlock extends BaseEntityBlock {
 
     public boolean isSpawningParticles(BlockPos pos, net.minecraft.world.level.LevelReader level) {
         BlockState above = level.getBlockState(pos.above());
-        return (above.isAir() || !above.blocksMotion());
+        return (above.isAir() || !ACCompat.blocksMotion(above));
     }
 
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource randomSource) {
@@ -114,7 +114,7 @@ public class GeothermalVentBlock extends BaseEntityBlock {
         if (heldItem.is(Items.GLASS_BOTTLE) && blockState.getValue(SMOKE_TYPE) == 3 && blockState.getValue(SPAWNING_PARTICLES)) {
             ItemStack bottle = new ItemStack(ACItemRegistry.RADON_BOTTLE.get());
             if (!player.addItem(bottle)) {
-                player.drop(bottle, false);
+                ACCompat.drop(player, bottle, false);
             }
             if (!player.isCreative()) {
                 heldItem.shrink(1);

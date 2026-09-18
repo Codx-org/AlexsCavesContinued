@@ -233,6 +233,15 @@ public final class ACParticleBuffers {
             return this;
         }
 
+        // New abstract method in 26.3. Not annotated @Override: this class body is inside a
+        // Stonecutter arm, which cannot nest a gate, and below 26.3 the interface has no such
+        // method. Deliberately NOT recorded, unlike setLineWidth: UV3 is a declared vertex element
+        // in 26.3 but nothing in the game ever writes one -- the only classes naming setUv3 are the
+        // interface, BufferBuilder, and two vanilla forwarding wrappers. There is nothing to replay.
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv3(float u, float v) {
+            return this;
+        }
+
         // setColor(int) stopped being a default method in 1.21.11. Routed back through the recorder's
         // own four-channel setColor, exactly as the deleted default did, so a packed write is recorded
         // and replayed as the four-channel one the format holds. See ACClientCompat#setColorPacked.

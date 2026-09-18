@@ -104,8 +104,25 @@ public class CorrodentRenderer extends MobRenderer<CorrodentEntity, CorrodentMod
      * block's position seed, collect the parts through it and copy the list, since the collector keeps
      * the reference and vanilla reuses its scratch buffer. It also applies the block's own render
      * offset (the sway on grass and flowers), which 26's overload did internally.
+     *
+     * <p>26.3 appends a boolean saying whether the model carries material flag 1, which routes the
+     * draw into the breaking-overlay phase rather than the solid one. Vanilla reads it off the model
+     * it just collected parts from, so the model is hoisted into a local here instead of being
+     * chained, and passing a bare {@code false} would silently move the draw to the wrong phase
+     * rather than reproduce 26.2. The flag has no named constant — {@code MaterialFlags} is an
+     * annotation, not a holder.
      */
-    //? if >=26.2 {
+    //? if >=26.3 {
+    /*private static void submitBreakingModel(net.minecraft.client.renderer.SubmitNodeCollector collector, PoseStack poseStack, net.minecraft.world.level.block.state.BlockState state, BlockPos pos, int progress) {
+        poseStack.translate(state.getOffset(pos));
+        java.util.List<net.minecraft.client.renderer.block.dispatch.BlockStateModelPart> parts = new java.util.ArrayList<>();
+        net.minecraft.util.RandomSource random = net.minecraft.util.RandomSource.createThreadLocalInstance();
+        random.setSeed(state.getSeed(pos));
+        net.minecraft.client.renderer.block.dispatch.BlockStateModel model = Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(state);
+        model.collectParts(random, parts);
+        collector.submitBreakingBlockModel(poseStack, java.util.List.copyOf(parts), progress, model.hasMaterialFlag(1));
+    }
+    *///?} elif >=26.2 {
     /*private static void submitBreakingModel(net.minecraft.client.renderer.SubmitNodeCollector collector, PoseStack poseStack, net.minecraft.world.level.block.state.BlockState state, BlockPos pos, int progress) {
         poseStack.translate(state.getOffset(pos));
         java.util.List<net.minecraft.client.renderer.block.dispatch.BlockStateModelPart> parts = new java.util.ArrayList<>();

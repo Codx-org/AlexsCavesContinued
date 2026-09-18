@@ -14,7 +14,7 @@ import java.util.Set;
 
 public class ForlornRuinsFeature extends UndergroundRuinsFeature {
 
-    public ForlornRuinsFeature(Codec<UndergroundRuinsFeatureConfiguration> codec) {
+    public ForlornRuinsFeature(Object codec) {
         super(codec);
     }
 

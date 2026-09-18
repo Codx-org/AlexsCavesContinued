@@ -11,24 +11,21 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class EncrustedPeppermintFeature extends Feature<NoneFeatureConfiguration> {
+public class EncrustedPeppermintFeature extends ACSimpleFeature {
 
-    public EncrustedPeppermintFeature(Codec<NoneFeatureConfiguration> codec) {
+    public EncrustedPeppermintFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         return tryPlacePeppermint(level, pos, randomSource);
     }
 

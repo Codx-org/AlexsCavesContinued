@@ -9,26 +9,23 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class PingPongSpongeFeature extends Feature<NoneFeatureConfiguration> {
+public class PingPongSpongeFeature extends ACSimpleFeature {
 
-    public PingPongSpongeFeature(Codec<NoneFeatureConfiguration> codec) {
+    public PingPongSpongeFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
         BlockPos.MutableBlockPos trenchBottom = new BlockPos.MutableBlockPos();
-        trenchBottom.set(context.origin());
+        trenchBottom.set(acOrigin);
         while (!level.getBlockState(trenchBottom).getFluidState().isEmpty() && trenchBottom.getY() > level.getMinBuildHeight()) {
             trenchBottom.move(0, -1, 0);
         }
-        if (!level.getBlockState(trenchBottom.below()).is(ACBlockRegistry.MUCK.get()) || context.origin().getY() - trenchBottom.getY() < 15) {
+        if (!level.getBlockState(trenchBottom.below()).is(ACBlockRegistry.MUCK.get()) || acOrigin.getY() - trenchBottom.getY() < 15) {
             return false;
         }
         int height = (int) Math.ceil(randomsource.nextFloat() * 3.5F);

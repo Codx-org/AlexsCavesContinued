@@ -64,6 +64,7 @@ public class ACRenderTypes
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_SEPIA_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders.SEPIA);
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_RED_GHOST_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders.RED_GHOST);
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_PURPLE_WITCH_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders.PURPLE_WITCH);
+    protected static final RenderStateShard.ShaderStateShard RENDERTYPE_UNLIT_TRANSLUCENT_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders.UNLIT_TRANSLUCENT);
     *///?} else {
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_FEROUSSLIME_GEL_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders::getRenderTypeFerrouslimeGelShader);
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_HOLOGRAM_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders::getRenderTypeHologramShader);
@@ -73,6 +74,7 @@ public class ACRenderTypes
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_SEPIA_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders::getRenderTypeSepiaShader);
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_RED_GHOST_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders::getRenderTypeRedGhostShader);
     protected static final RenderStateShard.ShaderStateShard RENDERTYPE_PURPLE_WITCH_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders::getRenderTypePurpleWitchShader);
+    protected static final RenderStateShard.ShaderStateShard RENDERTYPE_UNLIT_TRANSLUCENT_SHADER = new RenderStateShard.ShaderStateShard(ACInternalShaders::getRenderTypeUnlitTranslucentShader);
     //?}
 
     // 1.21.5 turned an output shard from a bind/unbind pair of Runnables into a Supplier of the
@@ -81,7 +83,19 @@ public class ACRenderTypes
     // because that is the same moment the old setup Runnable ran, and the null fallback is not
     // optional: draw() dereferences the answer immediately, so returning null NPEs where the old
     // shard simply left the main target bound.
-    //? if >=1.21.5 {
+    // 26.3 deleted OutputTarget outright and put NOTHING in its place — RenderSetupBuilder kept
+    // setLayeringTransform and setTextureTransform and simply lost the output half, so a render
+    // type no longer names a framebuffer to draw into. The three post-effect targets therefore
+    // have no successor on that version and the irradiated, hologram and purple-witch passes do
+    // not run there; this is a recorded feature gap, not an oversight. The constants survive as
+    // null placeholders because roughly a dozen call sites below hand them to setOutputState,
+    // whose 26.3 arm accepts an Object and discards it. acTarget goes with them — it is private
+    // and these three were its only callers.
+    //? if >=26.3 {
+    /*protected static final Object IRRADIATED_OUTPUT = null;
+    protected static final Object HOLOGRAM_OUTPUT = null;
+    protected static final Object PURPLE_WITCH_OUTPUT = null;
+    *///?} elif >=1.21.5 {
     /*protected static final RenderStateShard.OutputStateShard IRRADIATED_OUTPUT = acTarget("irradiated_target", ClientProxy.IRRADIATED_SHADER);
     protected static final RenderStateShard.OutputStateShard HOLOGRAM_OUTPUT = acTarget("hologram_target", ClientProxy.HOLOGRAM_SHADER);
     protected static final RenderStateShard.OutputStateShard PURPLE_WITCH_OUTPUT = acTarget("purple_witch_target", ClientProxy.PURPLE_WITCH_SHADER);
@@ -369,15 +383,27 @@ public class ACRenderTypes
      * shader, which is genuinely unlit but declares no {@code Sampler2}, so the lightmap shard
      * is a no-op and the model is drawn fullbright. That is the same divergence the Fabric
      * stand-in has always carried; from 1.21.5 the pipeline arm keeps the lightmap properly.
+     *
+     * <p>That arm must still DISCARD transparent texels, as the loaders' own unlit type does
+     * ({@code color.a < 0.1} on the texture alpha). Vanilla's eyes shader has no discard, so a
+     * fully transparent face writes depth: on the Cave Compendium the right page's transparent
+     * inner face is coplanar with the parchment and z-fought it into dark horizontal stripes, and
+     * the transparent outer page face hid all of the page text behind it. Hence
+     * {@code RENDERTYPE_UNLIT_TRANSLUCENT_SHADER}, the eyes shader plus that cutout.
      */
     public static RenderType getUnlitTranslucent(ResourceLocation locationIn) {
         return cached(java.util.Arrays.asList("getUnlitTranslucent", locationIn), () -> buildGetUnlitTranslucent(locationIn));
     }
 
+    // NeoForge renamed its own accessor inside the 26.3 beta line -- getUnlitTranslucent is present
+    // in 26.3.0.1-beta and gone in .4-beta, replaced by getEntityUnlitTranslucent. It is a pure
+    // rename: both resolve the same memoized Internal.unlitTranslucent, sorted, over the same
+    // ENTITY_UNLIT_TRANSLUCENT pipeline. The class name itself is left in the Forge spelling, as
+    // everywhere else in this tree, and the !nf-cls-rendertypes rule supplies the NeoForge one.
     private static RenderType buildGetUnlitTranslucent(ResourceLocation locationIn) {
         //? if fabric && <1.21.5 {
         /*RenderType.CompositeState unlit$compositestate = RenderType.CompositeState.builder()
-                .setShaderState(RENDERTYPE_EYES_SHADER)
+                .setShaderState(RENDERTYPE_UNLIT_TRANSLUCENT_SHADER)
                 .setTextureState(new RenderStateShard.TextureStateShard(locationIn, false, false))
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setCullState(NO_CULL)
@@ -391,6 +417,8 @@ public class ACRenderTypes
                 .setLightmapState(RenderStateShard.LIGHTMAP)
                 .setOverlayState(RenderStateShard.OVERLAY)
                 .createCompositeState(true));
+        *///?} elif neoforge && >=26.3 {
+        /*return ForgeRenderTypes.getEntityUnlitTranslucent(locationIn);
         *///?} else {
         return ForgeRenderTypes.getUnlitTranslucent(locationIn);
         //?}

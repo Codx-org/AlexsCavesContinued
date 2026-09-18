@@ -227,8 +227,8 @@ public class PathingStuckHandler implements IStuckHandler {
             final Direction facing = getFacing(entity.blockPosition(), navigator.getDesiredPos());
 
             for (int i = 1; i <= completeStuckBlockBreakRange; i++) {
-                if (!world.isEmptyBlock(new BlockPos(entity.blockPosition()).relative(facing, i)) || !world.isEmptyBlock(new BlockPos(entity.blockPosition()).relative(facing, i).above())) {
-                    breakBlocksAhead(world, new BlockPos(entity.blockPosition()).relative(facing, i - 1), facing);
+                if (!world.isEmptyBlock(entity.blockPosition().immutable().relative(facing, i)) || !world.isEmptyBlock(entity.blockPosition().immutable().relative(facing, i).above())) {
+                    breakBlocksAhead(world, entity.blockPosition().immutable().relative(facing, i - 1), facing);
                     break;
                 }
             }
@@ -260,7 +260,7 @@ public class PathingStuckHandler implements IStuckHandler {
             stuckLevel++;
             delayToNextUnstuckAction = 200;
             navigator.stop();
-            navigator.moveAwayFromXYZ(new BlockPos(navigator.getOurEntity().blockPosition()), 10, 1.0f, false);
+            navigator.moveAwayFromXYZ(navigator.getOurEntity().blockPosition().immutable(), 10, 1.0f, false);
             navigator.getPathingOptions().setCanClimb(false);
             moveAwayStartPos = navigator.getOurEntity().blockPosition();
             return;

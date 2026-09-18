@@ -463,6 +463,10 @@ public final class ACConfigOptions {
                 c.enchantmentsInLoot,
                 "§7Lets the mod's enchantments turn up",
                 "§7in vanilla loot tables."));
+        add(new DoubleOption(6, "enchantment_loot_chance", "Mod Enchantment Loot Chance", Items.BOOK,
+                c.enchantmentLootChance, 100, 5, 25, 0, 100, true, PERCENT,
+                "§7How often the mod's enchantments can",
+                "§7be rolled on random loot. Lower = rarer."));
     }
 
     /** Every option, in menu order. */

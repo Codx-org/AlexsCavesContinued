@@ -44,6 +44,7 @@ public class ACServerConfig {
     public final ForgeConfigSpec.BooleanValue wanderingTradersSellCabinMaps;
     public final ForgeConfigSpec.BooleanValue lootChestInWitchHuts;
     public final ForgeConfigSpec.BooleanValue enchantmentsInLoot;
+    public final ForgeConfigSpec.DoubleValue enchantmentLootChance;
 
     public ACServerConfig(final ForgeConfigSpec.Builder builder) {
         builder.push("generation");
@@ -100,6 +101,7 @@ public class ACServerConfig {
         wanderingTradersSellCabinMaps = builder.comment("Whether the Wandering Traders can sell maps to Underground Cabins.").translation("wandering_traders_sell_cabin_maps").define("wandering_traders_sell_cabin_maps", true);
         lootChestInWitchHuts = builder.comment("Whether a loot chest is added to vanilla's witch huts. This is included to provide another place to find candy cavity biome cave tablets.").translation("loot_chest_in_witch_huts").define("loot_chest_in_witch_huts", true);
         enchantmentsInLoot = builder.comment("Whether the Enchantments added by AC appear in vanilla loot tables.").translation("enchantments_in_loot").define("enchantments_in_loot", false);
+        enchantmentLootChance = builder.comment("Chance (0 to 1) that the Enchantments added by AC can be picked each time a loot table rolls a random enchantment. Lower it to make them rarer in loot; 0 keeps them out of random loot entirely. Works alongside enchantments_in_loot.").translation("enchantment_loot_chance").defineInRange("enchantment_loot_chance", 0.5D, 0.0, 1.0D);
         builder.pop();
     }
 }

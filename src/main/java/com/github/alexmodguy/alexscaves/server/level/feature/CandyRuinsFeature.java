@@ -16,7 +16,7 @@ import java.util.Set;
 
 public class CandyRuinsFeature extends UndergroundRuinsFeature {
 
-    public CandyRuinsFeature(Codec<UndergroundRuinsFeatureConfiguration> codec) {
+    public CandyRuinsFeature(Object codec) {
         super(codec);
     }
 

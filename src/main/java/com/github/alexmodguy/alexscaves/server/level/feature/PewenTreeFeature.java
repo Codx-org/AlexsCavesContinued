@@ -9,21 +9,18 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class PewenTreeFeature extends Feature<NoneFeatureConfiguration> {
+public class PewenTreeFeature extends ACSimpleFeature {
 
-    public PewenTreeFeature(Codec<NoneFeatureConfiguration> codec) {
+    public PewenTreeFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos treeBottom = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos treeBottom = acOrigin;
         int height = 11 + randomsource.nextInt(10);
         int penumbraLvls = 3 + randomsource.nextInt(2);
         if (!checkCanTreePlace(level, treeBottom, height, penumbraLvls)) {

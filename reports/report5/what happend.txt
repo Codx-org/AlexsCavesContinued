@@ -1,3 +1,0 @@
-Found a crash:
-
-Whenever I scale down tremorzilla with the attribute command, interactiing with it causes the game to crash. Version is 26.2 neoforge... In general I'm noticing a LOT of rendering errors with tremorzilla on this version, for some reason (many are gamebreaking)

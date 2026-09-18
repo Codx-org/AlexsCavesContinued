@@ -25,7 +25,21 @@ import java.util.function.Supplier;
  */
 public class ACPotPatternRegistry {
 
-    //? if >=1.21 {
+    // 26.3 made this a datapack registry — RegistryDataLoader, not BuiltInRegistries — so there is
+    // nothing to register from code and no DeferredRegister to attach. The four patterns are
+    // authored as data/alexscaves/decorated_pot_pattern/*.json and addressed by ResourceKey, and a
+    // sherd is bound to one through Item.Properties#potPattern. Exactly the shape ACFrogRegistry
+    // took when FROG_VARIANT went the same way at 1.21.5.
+    //? if >=26.3 {
+    /*public static final ResourceKey<net.minecraft.world.level.block.entity.DecoratedPotPattern> DINOSAUR = patternKey("dinosaur_pottery_pattern");
+    public static final ResourceKey<net.minecraft.world.level.block.entity.DecoratedPotPattern> FOOTPRINT = patternKey("footprint_pottery_pattern");
+    public static final ResourceKey<net.minecraft.world.level.block.entity.DecoratedPotPattern> GUARDIAN = patternKey("guardian_pottery_pattern");
+    public static final ResourceKey<net.minecraft.world.level.block.entity.DecoratedPotPattern> HERO = patternKey("hero_pottery_pattern");
+
+    private static ResourceKey<net.minecraft.world.level.block.entity.DecoratedPotPattern> patternKey(String name) {
+        return ResourceKey.create(Registries.DECORATED_POT_PATTERN, ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, name));
+    }
+    *///?} elif >=1.21 {
     /*public static final DeferredRegister<net.minecraft.world.level.block.entity.DecoratedPotPattern> DEF_REG =
             DeferredRegister.create(Registries.DECORATED_POT_PATTERN, AlexsCaves.MODID);
 

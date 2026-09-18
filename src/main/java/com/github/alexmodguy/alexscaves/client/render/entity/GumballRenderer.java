@@ -41,6 +41,11 @@ public class GumballRenderer extends EntityRenderer<GumballEntity> {
         float scale = entity.isExplosive() ? 0.5F + explodeAmount * 0.2F : 0.25F;
         poseStack.scale(scale, scale, scale);
         poseStack.mulPose(com.github.alexmodguy.alexscaves.client.ACClientCompat.cameraOrientation());
+        // 1.21 folded a half-turn into the camera itself (Camera#setRotation now builds its yaw from
+        // PI - yRot) and vanilla's billboards dropped this flip in the same release. Keeping it
+        // there turns the quad's front face away from the viewer, and entityCutout culls back
+        // faces, so the gumball drew nothing at all.
+        //? if <1.21
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
         PoseStack.Pose posestack$pose = poseStack.last();
         Matrix4f matrix4f = posestack$pose.pose();

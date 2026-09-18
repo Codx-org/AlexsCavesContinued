@@ -300,7 +300,17 @@ public class ClientEvents {
                 ClientProxy.shaderLoadAttemptCooldown = 12000;
                 AlexsCaves.LOGGER.warn("Alex's Caves could not load the shader {}, will attempt to load shader in 30 seconds", resourceLocation);
             }
+            restoreMainTarget();
         }
+    }
+
+    // Building or closing a post chain below 1.21.2 leaves the default framebuffer bound, and this
+    // runs in the middle of the level render, so the rest of that frame was drawn straight to the
+    // screen instead of the main target. That is the one-frame camera jump when the submarine's
+    // floodlights are switched on or off. From 1.21.2 each pass names its own target.
+    private static void restoreMainTarget() {
+        //? if <1.21.2
+        ACClientCompat.bindMainRenderTargetForWrite(true);
     }
 
     /**
@@ -332,24 +342,27 @@ public class ClientEvents {
                 RaygunRenderHelper.renderRaysFor(living, cameraPos, poseStack, multibuffersource$buffersource, partialTick, true, 2);
             }
             GameRenderer renderer = Minecraft.getInstance().gameRenderer;
-            if (firstPerson && player.isPassenger() && player.getVehicle() instanceof SubmarineEntity submarine && SubmarineRenderer.isFirstPersonFloodlightsMode(submarine)) {
+            if (firstPerson && player != null && player.isPassenger() && player.getVehicle() instanceof SubmarineEntity submarine && SubmarineRenderer.isFirstPersonFloodlightsMode(submarine)) {
                 if (!ACClientCompat.isPostEffect(renderer, SUBMARINE_SHADER)) {
                     attemptLoadShader(SUBMARINE_SHADER);
                 }
             } else if (ACClientCompat.isPostEffect(renderer, SUBMARINE_SHADER)) {
                 renderer.checkEntityPostEffect(null);
+                restoreMainTarget();
             }else if (firstPerson && player instanceof PossessesCamera || player instanceof LivingEntity afflicted && afflicted.hasEffect(ACCompat.effect(ACEffectRegistry.DARKNESS_INCARNATE.get()))) {
                 if (!ACClientCompat.isPostEffect(renderer, WATCHER_SHADER)) {
                     attemptLoadShader(WATCHER_SHADER);
                 }
             } else if (ACClientCompat.isPostEffect(renderer, WATCHER_SHADER)) {
                 renderer.checkEntityPostEffect(null);
+                restoreMainTarget();
             }else if (player instanceof LivingEntity afflicted && afflicted.hasEffect(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get())) && AlexsCaves.CLIENT_CONFIG.sugarRushSaturationEffect.get()) {
                 if (!ACClientCompat.isPostEffect(renderer, SUGAR_RUSH_SHADER)) {
                     attemptLoadShader(SUGAR_RUSH_SHADER);
                 }
             } else if (ACClientCompat.isPostEffect(renderer, SUGAR_RUSH_SHADER)) {
                 renderer.checkEntityPostEffect(null);
+                restoreMainTarget();
             }
         }
         if (stage == ACLevelRenderStage.AFTER_ENTITIES) {
@@ -424,6 +437,36 @@ public class ClientEvents {
         Direction dir = MagnetUtil.getEntityMagneticDirection(player);
 
     }
+
+    // NeoForge 21.0 (MC 1.21) moved ComputeCameraAngles out of GameRenderer and into Camera#setup,
+    // ahead of the setPosition that puts the camera on the entity, so the vehicle pull-back that
+    // computeCameraAngles applies with cameraMove is overwritten before it is ever drawn. Forge
+    // still posts it after setup and Fabric's producer runs at setup's TAIL. On NeoForge the same
+    // extra distance goes through the detached-distance hook, which vanilla's move(-getMaxZoom)
+    // then consumes.
+    //? if neoforge && >=1.21 {
+    /*@SubscribeEvent
+    public void onCalculateDetachedCameraDistance(net.neoforged.neoforge.client.event.CalculateDetachedCameraDistanceEvent event) {
+        Entity player = Minecraft.getInstance().getCameraEntity();
+        if (player == null || !player.isPassenger()) {
+            return;
+        }
+        Entity vehicle = player.getVehicle();
+        float extra = 0F;
+        if (vehicle instanceof GumWormSegmentEntity) {
+            extra = 12F;
+        } else if (vehicle instanceof TremorzillaEntity) {
+            extra = 10F;
+        } else if (vehicle instanceof SubmarineEntity || vehicle instanceof AtlatitanEntity) {
+            extra = 4F;
+        } else if (vehicle instanceof TremorsaurusEntity) {
+            extra = 2F;
+        }
+        if (extra > 0F) {
+            event.setDistance(event.getDistance() + extra);
+        }
+    }
+    *///?}
 
     // 1.20.5 folded LivingEvent.LivingTickEvent into NeoForge's per-target tick events: every
     // entity now ticks through EntityTickEvent, so the listener takes the wider type and narrows
@@ -1319,7 +1362,10 @@ public class ClientEvents {
     // the system already interpolates spatially across neighbouring biomes, which is exactly what the
     // biomeBlendRadius branch below hand-rolled through BiomeSampler. One call replaces both branches.
     private static Vec3 calculateBiomeFogColor(Entity player) {
-        //? if >=1.21.11 {
+        //? if >=26.3 {
+        /*return new Vec3(player.level().environmentAttributes()
+                .getValue(net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR, player.blockPosition()));
+        *///?} elif >=1.21.11 {
         /*return new Vec3(net.minecraft.util.ARGB.vector3fFromRGB24(player.level().environmentAttributes()
                 .getValue(net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR, player.blockPosition())));
         *///?} else {
@@ -1336,7 +1382,10 @@ public class ClientEvents {
 
     // See calculateBiomeFogColor.
     private Vec3 calculateBiomeWaterFogColor(Entity player) {
-        //? if >=1.21.11 {
+        //? if >=26.3 {
+        /*return new Vec3(player.level().environmentAttributes()
+                .getValue(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_COLOR, player.blockPosition()));
+        *///?} elif >=1.21.11 {
         /*return new Vec3(net.minecraft.util.ARGB.vector3fFromRGB24(player.level().environmentAttributes()
                 .getValue(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_COLOR, player.blockPosition())));
         *///?} else {
@@ -1384,7 +1433,10 @@ public class ClientEvents {
         if (cameraEntity != null) {
             ClientProxy.acSkyOverrideAmount = ACBiomeRegistry.calculateBiomeSkyOverride(cameraEntity);
             if (ClientProxy.acSkyOverrideAmount > 0) {
-                //? if >=1.21.11 {
+                //? if >=26.3 {
+                /*ClientProxy.acSkyOverrideColor = new Vec3(Minecraft.getInstance().level.environmentAttributes()
+                        .getValue(net.minecraft.world.attribute.EnvironmentAttributes.SKY_COLOR, cameraEntity.blockPosition()));
+                *///?} elif >=1.21.11 {
                 /*ClientProxy.acSkyOverrideColor = new Vec3(net.minecraft.util.ARGB.vector3fFromRGB24(Minecraft.getInstance().level.environmentAttributes()
                         .getValue(net.minecraft.world.attribute.EnvironmentAttributes.SKY_COLOR, cameraEntity.blockPosition())));
                 *///?} else {
@@ -1479,12 +1531,31 @@ public class ClientEvents {
     }
 
     /** A submarine keeps the water out, so the drowning overlay does not belong on its screen. */
+    // NeoForge renamed this event ExtractBlockScreenEffectEvent at 26.3, when vanilla moved the
+    // overlay decision into PlayerRenderState extraction. Same overlay enum, same cancel, and
+    // getPlayer() narrows to LocalPlayer — which is still a Player. A local arm rather than a
+    // rename rule: the 26.3 replacements group is version-scoped, not loader-scoped, so a rule
+    // there would also rewrite the span the Fabric stand-in rules claim.
+    //? if neoforge && >=26.3 {
+    /*private boolean acRenderBlockScreenEffect(net.minecraftforge.client.event.ExtractBlockScreenEffectEvent event) {
+        Player player = event.getPlayer();
+        return player.isPassenger() && player.getVehicle() instanceof SubmarineEntity && event.getOverlayType() == net.minecraftforge.client.event.ExtractBlockScreenEffectEvent.OverlayType.WATER;
+    }
+    *///?} else {
     private boolean acRenderBlockScreenEffect(RenderBlockScreenEffectEvent event) {
         Player player = event.getPlayer();
         return player.isPassenger() && player.getVehicle() instanceof SubmarineEntity && event.getOverlayType() == RenderBlockScreenEffectEvent.OverlayType.WATER;
     }
+    //?}
 
-    //? if forge && >=1.21.6 {
+    //? if neoforge && >=26.3 {
+    /*@SubscribeEvent
+    public void onRenderBlockScreenEffect(net.minecraftforge.client.event.ExtractBlockScreenEffectEvent event) {
+        if (acRenderBlockScreenEffect(event)) {
+            event.setCanceled(true);
+        }
+    }
+    *///?} elif forge && >=1.21.6 {
     /*@SubscribeEvent
     public boolean onRenderBlockScreenEffect(RenderBlockScreenEffectEvent event) {
         return acRenderBlockScreenEffect(event);

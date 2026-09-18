@@ -1,6 +1,9 @@
 {
   "values": [
-    "#minecraft:overworld_carver_replaceables",
+    {
+      "id": "#minecraft:overworld_carver_replaceables",
+      "required": false
+    },
     "minecraft:sandstone",
     "alexscaves:limestone"
   ]

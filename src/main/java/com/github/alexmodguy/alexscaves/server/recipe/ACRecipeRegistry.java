@@ -26,7 +26,14 @@ public class ACRecipeRegistry {
     // direct pair of factories on AbstractCookingRecipe (same factory, same default cooking time); the
     // cave map's pair lives on the recipe, because it encodes only the book info and that field is
     // protected on NormalCraftingRecipe, i.e. reachable from the subclass alone.
-    //? if >=26 {
+    // 26.3 made the recipe's own `cookingtime` a required codec field rather than an optional one
+    // with a default, so cookingMapCodec no longer takes the default to fall back on.
+    //? if >=26.3 {
+    /*public static final Supplier<RecipeSerializer<?>> CAVE_MAP = DEF_REG.register("cave_map", RecipeCaveMap::serializer);
+    public static final Supplier<RecipeSerializer<?>> NUCLEAR_FURNACE = DEF_REG.register("nuclear_furnace", () -> new RecipeSerializer<>(
+            net.minecraft.world.item.crafting.AbstractCookingRecipe.cookingMapCodec(NuclearFurnaceRecipe::new),
+            net.minecraft.world.item.crafting.AbstractCookingRecipe.cookingStreamCodec(NuclearFurnaceRecipe::new)));
+    *///?} elif >=26 {
     /*public static final Supplier<RecipeSerializer<?>> CAVE_MAP = DEF_REG.register("cave_map", RecipeCaveMap::serializer);
     public static final Supplier<RecipeSerializer<?>> NUCLEAR_FURNACE = DEF_REG.register("nuclear_furnace", () -> new RecipeSerializer<>(
             net.minecraft.world.item.crafting.AbstractCookingRecipe.cookingMapCodec(NuclearFurnaceRecipe::new, 100),

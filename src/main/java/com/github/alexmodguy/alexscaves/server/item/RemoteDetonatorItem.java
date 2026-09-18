@@ -162,7 +162,7 @@ public class RemoteDetonatorItem extends Item implements ACTickingItem {
                 this.addBombTags(level.dimension(), blockpos, compoundtag);
                 ACCompat.setTag(itemstack1, compoundtag);
                 if (!player.getInventory().add(itemstack1)) {
-                    player.drop(itemstack1, false);
+                    ACCompat.drop(player, itemstack1, false);
                 }
             }
 

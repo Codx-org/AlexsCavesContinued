@@ -624,12 +624,20 @@ public class ACPlatform {
         //?}
     }
 
-    // The item-handler backing. Both loaders keep IItemHandler on every version this tree builds —
-    // NeoForge 21.9 only stopped exposing it as a *capability* — so it needs no version gate. It is
-    // gated off Fabric only because IItemHandler is a loader type with no stand-in here: the two arms
-    // that construct this record are both disabled on Fabric, so the record would be an unresolvable
-    // import serving nobody.
-    //? if !fabric {
+    // The item-handler backing, for the two arms above that construct it: Forge on every version,
+    // and NeoForge below 1.21.9. It must NOT be compiled anywhere else, and the gate is deliberately
+    // narrower than "not Fabric".
+    //
+    // NeoForge 26.3 is why. It was true until very recently that both loaders kept IItemHandler on
+    // every version this tree builds — NeoForge 21.9 only stopped exposing it as a *capability* — so
+    // the record needed no version gate and was merely kept off Fabric, where the type has no
+    // stand-in. But NeoForge DELETED the whole legacy net.neoforged.neoforge.items package during
+    // the 26.3 beta line: it is present in 26.3.0.1-beta and gone in 26.3.0.4-beta, which is how a
+    // routine pin bump turned into "package net.neoforged.neoforge.items does not exist" on a record
+    // that nothing on that node has constructed since 1.21.9. The transfer-API arm below is the live
+    // one from 1.21.9 up. Nothing about this changes behaviour on any node; it only stops compiling
+    // a dead record against a package that no longer exists.
+    //? if forge || (neoforge && <1.21.9) {
     private record ItemHandlerAccess(net.minecraftforge.items.IItemHandler handler) implements ACItemAccess {
 
         @Override
@@ -1082,6 +1090,13 @@ public class ACPlatform {
                                       net.minecraft.world.item.ItemStack stack) {
         //? if fabric {
         /*return 0;
+        *///?} elif neoforge && >=26.3 {
+        /*net.neoforged.neoforge.event.entity.player.BonemealEvent event =
+                net.neoforged.neoforge.event.EventHooks.fireBonemealEvent(player, level, pos, state, net.minecraft.world.level.block.BonemealSource.INTERACTION, stack);
+        if (event.isCanceled()) {
+            return -1;
+        }
+        return event.isSuccessful() ? 1 : 0;
         *///?} elif neoforge && >=1.20.5 {
         /*net.neoforged.neoforge.event.entity.player.BonemealEvent event =
                 net.neoforged.neoforge.event.EventHooks.fireBonemealEvent(player, level, pos, state, stack);

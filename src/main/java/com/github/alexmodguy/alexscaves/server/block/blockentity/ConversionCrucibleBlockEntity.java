@@ -267,31 +267,64 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
                 //for compat with other world types, like flat worlds, we cannot assume the chunk generator of the world is noise-based so we must create a new one
                 NoiseBasedChunkGenerator noiseBasedChunkGenerator = new NoiseBasedChunkGenerator(new ACDummyBiomeSource(), settings);
                 //get or create a dummy noise chunk
-                NoiseChunk noisechunk = chunkaccess.getOrCreateNoiseChunk((chunkAccess) -> {
-                    //? if >=1.21
-                    /*return noiseBasedChunkGenerator.createNoiseChunk(chunkAccess, serverLevel.structureManager(), Blender.empty(), serverLevel.getChunkSource().randomState());*/
-                    //? if <1.21
-                    return noiseBasedChunkGenerator.createNoiseChunk(chunkAccess, serverLevel.structureManager(), Blender.of(worldGenRegion), serverLevel.getChunkSource().randomState());
-                });
+                // 26.3 deleted the ChunkAccess helper that used to cache one of these for us, and the
+                // generator's own factory grew a fifth NoiseSettings parameter. The three arms are
+                // siblings rather than a gate inside the lambda, because a gate cannot nest inside a
+                // commented-out arm. The chunk built on the newest arm is ours alone, and is released
+                // at the end of the block below.
+                //? if >=26.3 {
+                /*NoiseChunk noisechunk = noiseBasedChunkGenerator.createNoiseChunk(chunkaccess, serverLevel.structureManager(), Blender.empty(), serverLevel.getChunkSource().randomState(), settings.value().noiseSettings());
+                *///?} elif >=1.21 {
+                /*NoiseChunk noisechunk = chunkaccess.getOrCreateNoiseChunk((chunkAccess) -> noiseBasedChunkGenerator.createNoiseChunk(chunkAccess, serverLevel.structureManager(), Blender.empty(), serverLevel.getChunkSource().randomState()));
+                *///?} else {
+                NoiseChunk noisechunk = chunkaccess.getOrCreateNoiseChunk((chunkAccess) -> noiseBasedChunkGenerator.createNoiseChunk(chunkAccess, serverLevel.structureManager(), Blender.of(worldGenRegion), serverLevel.getChunkSource().randomState()));
+                //?}
                 //should ideally be merged when we get it, for some reason isn't. Idk why
+                // 26.3 renamed the record component surfaceRule -> materialRule and wrapped it in a
+                // Holder, so that arm unwraps before merging. Note this file reaches SurfaceRules
+                // through a levelgen.* wildcard import, which does not reach the new
+                // levelgen.material.* subpackages — hence the fully-qualified names in every 26.3 arm
+                // below rather than a gated import.
+                //? if >=26.3 {
+                /*net.minecraft.world.level.levelgen.material.rule.MaterialRule ruleSource = SurfaceRulesManager.mergeOverworldRules(noiseBasedChunkGenerator.generatorSettings().value().materialRule().value());
+                *///?} else {
                 SurfaceRules.RuleSource ruleSource = SurfaceRulesManager.mergeOverworldRules(noiseBasedChunkGenerator.generatorSettings().value().surfaceRule());
+                //?}
                 WorldGenerationContext worldGenerationContext = new WorldGenerationContext(noiseBasedChunkGenerator, serverLevel);
                 Function<BlockPos, Holder<Biome>> biomeRef = (blockPos -> biomeHolder.get());
                 // 26.2 reshaped the Context constructor: the biome Registry became a trailing
                 // Set<Holder<Biome>> of the biomes that can occur in the area, which is what
                 // BiomeConditionSource's canNeverMatch/willAlwaysMatch short-circuits compare Holder
                 // identity against. Here that set is exactly the one biome being asked about.
-                //? if >=26.2 {
+                // 26.3 renamed the class to MaterialRuleContext and swapped the ChunkAccess +
+                // NoiseChunk pair for the DensityVolume + DensitySamplerSet that NoiseChunk exposes.
+                //? if >=26.3 {
+                /*net.minecraft.world.level.levelgen.material.MaterialRuleContext surfacerulesContext = com.github.alexmodguy.alexscaves.mixin.SurfaceRulesContextAccessor.ac_newContext(serverLevel.getChunkSource().randomState().surfaceSystem(), serverLevel.getChunkSource().randomState(), noisechunk.volume(), noisechunk.cachingSamplers(), biomeRef, worldGenerationContext, java.util.Set.of(biomeHolder.get()));
+                *///?} elif >=26.2 {
                 /*SurfaceRules.Context surfacerulesContext = com.github.alexmodguy.alexscaves.mixin.SurfaceRulesContextAccessor.ac_newContext(serverLevel.getChunkSource().randomState().surfaceSystem(), serverLevel.getChunkSource().randomState(), chunkaccess, noisechunk, biomeRef, worldGenerationContext, java.util.Set.of(biomeHolder.get()));
                 *///?} else {
                 SurfaceRules.Context surfacerulesContext = new SurfaceRules.Context(serverLevel.getChunkSource().randomState().surfaceSystem(), serverLevel.getChunkSource().randomState(), chunkaccess, noisechunk, biomeRef, registry, worldGenerationContext);
                 //?}
+                // apply -> compile, SurfaceRule -> RuleEvaluator on 26.3; tryApply is unchanged.
+                //? if >=26.3 {
+                /*net.minecraft.world.level.levelgen.material.rule.RuleEvaluator rule = ruleSource.compile(surfacerulesContext);
+                *///?} else {
                 SurfaceRules.SurfaceRule rule = ruleSource.apply(surfacerulesContext);
+                //?}
                 int x = this.getBlockPos().getX();
                 int z = this.getBlockPos().getZ();
                 //one over the top (grass condition)
                 int topHeight = serverLevel.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z) + 1;
+                // 26.3 made updateXZ package-private and gave it the column's two surface-gradient
+                // ints. Vanilla derives those from MaterialSystem#getSurfaceGradientX/Z, which are
+                // private static there and so out of reach even with an invoker on the context — so
+                // this passes zero. A gradient of zero is what a flat column would report, and the
+                // only rules that read it are the steepness ones, which the Crucible does not use.
+                //? if >=26.3 {
+                /*((com.github.alexmodguy.alexscaves.mixin.SurfaceRulesContextAccessor) (Object) surfacerulesContext).ac_callUpdateXZ(x, z, 0, 0);
+                *///?} else {
                 surfacerulesContext.updateXZ(x, z);
+                //?}
                 acUpdateY(surfacerulesContext, topHeight, x, topHeight, z);
                 BlockState grass = rule.tryApply(x, topHeight, z);
                 if (grass != null && !grass.is(Blocks.BEDROCK)) {
@@ -309,6 +342,11 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
                 if (stone != null && !stone.is(Blocks.BEDROCK)) {
                     bottomBlockForBiome = stone;
                 }
+                // From 26.3 this type is AutoCloseable and releasing it hands a density buffer back
+                // to RandomState's pool; below that the chunk belongs to the ChunkAccess and must not
+                // be touched. An exception skips the release, which the catch below already reports.
+                //? if >=26.3
+                /*noisechunk.close();*/
             } catch (Exception e) {
                 AlexsCaves.LOGGER.warn("Encountered error finding the surface blocks of a biome");
             }
@@ -318,11 +356,16 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
     // 26.2 dropped x and z from Context#updateY — updateXZ already carries the column — so the two
     // shapes are hoisted into one helper rather than gating all three call sites above. The leading
     // 1, 1 is stone depth above/below, which is the same on every version.
-    private static void acUpdateY(SurfaceRules.Context context, int waterHeight, int x, int y, int z) {
+    //
+    // The parameter is Object rather than the context type on purpose: 26.3 renamed that type to
+    // MaterialRuleContext without changing updateY's signature, so typing it would force a third arm
+    // that differs only in the parameter's spelling. The >=26.2 arm casts straight to the accessor
+    // interface, which declares ac_callUpdateY on both of its arms; the else arm casts back.
+    private static void acUpdateY(Object context, int waterHeight, int x, int y, int z) {
         //? if >=26.2 {
-        /*((com.github.alexmodguy.alexscaves.mixin.SurfaceRulesContextAccessor) (Object) context).ac_callUpdateY(1, 1, waterHeight, y);
+        /*((com.github.alexmodguy.alexscaves.mixin.SurfaceRulesContextAccessor) context).ac_callUpdateY(1, 1, waterHeight, y);
         *///?} else {
-        context.updateY(1, 1, waterHeight, x, y, z);
+        ((SurfaceRules.Context) context).updateY(1, 1, waterHeight, x, y, z);
         //?}
     }
 
@@ -361,9 +404,12 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
         for (Player player : level.getEntitiesOfClass(Player.class, aabb, EntitySelector.NO_SPECTATORS)) {
             ACAdvancementTriggerRegistry.CONVERT_BIOME.triggerForEntity(player);
             // "bedWorks" left DimensionType in 1.21.11 for the BED_RULE environment attribute, whose
-            // explodes() flag is the same bit under a new name — the advancement wants a nether biome
-            // conjured somewhere a bed would not detonate, i.e. not in the nether itself.
-            //? if >=1.21.11 {
+            // flag is the same bit under a new name, renamed again at 26.3 — the advancement wants a
+            // nether biome conjured somewhere a bed would not detonate, i.e. not in the nether itself.
+            //? if >=26.3 {
+            /*boolean bedWorks = !this.level.environmentAttributes()
+                    .getDimensionValue(net.minecraft.world.attribute.EnvironmentAttributes.BED_RULE).destroyOnUse();
+            *///?} elif >=1.21.11 {
             /*boolean bedWorks = !this.level.environmentAttributes()
                     .getDimensionValue(net.minecraft.world.attribute.EnvironmentAttributes.BED_RULE).explodes();
             *///?} else {
@@ -388,6 +434,10 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
             }
             MutableInt mutableint = new MutableInt(0);
             for(ChunkAccess chunkaccess1 : list) {
+                // The resolver carries its own sampler from 26.3, so the second argument is gone.
+                //? if >=26.3
+                /*chunkaccess1.fillBiomesFromNoise(makeResolver(mutableint, chunkaccess1, biomeConversionBox, width, biomeHolder.get()));*/
+                //? if <26.3
                 chunkaccess1.fillBiomesFromNoise(makeResolver(mutableint, chunkaccess1, biomeConversionBox, width, biomeHolder.get()), serverLevel.getChunkSource().randomState().sampler());
                 chunkaccess1.setUnsaved(true);
             }
@@ -396,6 +446,10 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
     }
 
     private static BiomeResolver makeResolver(MutableInt biomeCounter, ChunkAccess chunkAccess, BoundingBox boundingBox, int width, Holder<Biome> biomeHolder) {
+        // BiomeResolver's lookup drops the sampler at 26.3; nothing in this body ever read it.
+        //? if >=26.3
+        /*return (quartX, quartY, quartZ) -> {*/
+        //? if <26.3
         return (quartX, quartY, quartZ, sampler) -> {
             int i = QuartPos.toBlock(quartX);
             int j = QuartPos.toBlock(quartY);
@@ -670,7 +724,11 @@ public class ConversionCrucibleBlockEntity extends BlockEntity implements ACUpda
             // A biome's own fog colour, which from 1.21.11 lives in its EnvironmentAttributeMap rather
             // than on the biome. applyModifier over the attribute's own default reproduces getFogColor()
             // exactly: it returns what the biome sets, or the default when the biome sets nothing.
-            //? if >=1.21.11 {
+            //? if >=26.3 {
+            /*int fogColor = net.minecraft.util.ARGB.colorFromVector3f(holder.get().value().getAttributes().applyModifier(
+                    net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR,
+                    net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR.defaultValue()));
+            *///?} elif >=1.21.11 {
             /*int fogColor = holder.get().value().getAttributes().applyModifier(
                     net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR,
                     net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR.defaultValue());

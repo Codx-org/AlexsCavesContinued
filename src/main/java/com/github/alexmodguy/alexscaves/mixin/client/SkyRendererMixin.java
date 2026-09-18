@@ -63,7 +63,20 @@ public abstract class SkyRendererMixin {
     // built by ARGB#vector4fFromARGB32 rather than by a constructor, so the anchor is that call and
     // the body is unchanged. (Repeated per arm rather than hoisted: an arm chain that carries only
     // annotations cannot also carry the one arm below whose handler has a different shape.)
-    //? if >=1.21.11 {
+    //? if >=26.3 {
+    /*@com.llamalad7.mixinextras.injector.ModifyExpressionValue(
+            method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSkyDisc(Lcom/mojang/renderpearl/api/commands/RenderPass;Lorg/joml/Vector3fc;)V",
+            at = @At(value = "NEW", target = "(Lorg/joml/Vector3fc;F)Lorg/joml/Vector4f;"),
+            remap = true
+    )
+    private org.joml.Vector4f ac_skyDiscColor(org.joml.Vector4f color) {
+        if (AlexsCaves.CLIENT_CONFIG.biomeSkyOverrides.get()) {
+            Vec3 vec3 = ClientProxy.processSkyColor(new Vec3(color.x, color.y, color.z), ACClientCompat.frameTime());
+            color.set((float) vec3.x, (float) vec3.y, (float) vec3.z, color.w);
+        }
+        return color;
+    }
+    *///?} elif >=1.21.11 {
     /*@com.llamalad7.mixinextras.injector.ModifyExpressionValue(
             method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSkyDisc(I)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/util/ARGB;vector4fFromARGB32(I)Lorg/joml/Vector4f;"),
@@ -109,14 +122,24 @@ public abstract class SkyRendererMixin {
     // The sunrise colour is one packed ARGB int now rather than a float[4], so fading it out inside
     // a cave biome is a scale of its alpha channel — the `afloat[3] * (1F - override)` the old copy
     // did, to the nearest 8-bit step.
-    @ModifyVariable(
-            //? if >=1.21.9 {
-            /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/blaze3d/vertex/PoseStack;FI)V",
-            *///?} elif >=1.21.4 {
-            /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;FI)V",
-            *///?} else {
-            method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/Tesselator;FI)V",
-            //?}
+    //? if >=26.3 {
+    /*@ModifyVariable(
+            method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/renderpearl/api/commands/RenderPass;Lcom/mojang/blaze3d/vertex/PoseStack;FLorg/joml/Vector4fc;)V",
+            at = @At("HEAD"), argsOnly = true, ordinal = 0, remap = true
+    )
+    private org.joml.Vector4fc ac_sunriseColor(org.joml.Vector4fc color) {
+        float override = ClientProxy.acSkyOverrideAmount;
+        if (override <= 0.0F || !AlexsCaves.CLIENT_CONFIG.biomeSkyOverrides.get()) {
+            return color;
+        }
+        // 26.3 passes the colour as a Vector4fc rather than a packed ARGB int, so scaling the alpha
+        // is a copy with a scaled w rather than a shift and a mask. The argument is read at the very
+        // first instruction, so a HEAD replacement lands before every use of it.
+        return new org.joml.Vector4f(color.x(), color.y(), color.z(), color.w() * (1.0F - override));
+    }
+    *///?} elif >=1.21.9 {
+    /*@ModifyVariable(
+            method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/blaze3d/vertex/PoseStack;FI)V",
             at = @At("HEAD"), argsOnly = true, ordinal = 0, remap = true
     )
     private int ac_sunriseColor(int color) {
@@ -129,6 +152,37 @@ public abstract class SkyRendererMixin {
         // wherever it appears — replacements do not know what a receiver is.
         return (int) (ARGB.alpha(color) * (1.0F - override)) << 24 | color & 0x00FFFFFF;
     }
+    *///?} elif >=1.21.4 {
+    /*@ModifyVariable(
+            method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;FI)V",
+            at = @At("HEAD"), argsOnly = true, ordinal = 0, remap = true
+    )
+    private int ac_sunriseColor(int color) {
+        float override = ClientProxy.acSkyOverrideAmount;
+        if (override <= 0.0F || !AlexsCaves.CLIENT_CONFIG.biomeSkyOverrides.get()) {
+            return color;
+        }
+        // Packed by hand rather than through ARGB's own packer: that call would read as the vertex
+        // builder's colour setter did before 1.21, and the !mc21-vc-color rule rewrites that token
+        // wherever it appears — replacements do not know what a receiver is.
+        return (int) (ARGB.alpha(color) * (1.0F - override)) << 24 | color & 0x00FFFFFF;
+    }
+    *///?} else {
+    @ModifyVariable(
+            method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunriseAndSunset(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/Tesselator;FI)V",
+            at = @At("HEAD"), argsOnly = true, ordinal = 0, remap = true
+    )
+    private int ac_sunriseColor(int color) {
+        float override = ClientProxy.acSkyOverrideAmount;
+        if (override <= 0.0F || !AlexsCaves.CLIENT_CONFIG.biomeSkyOverrides.get()) {
+            return color;
+        }
+        // Packed by hand rather than through ARGB's own packer: that call would read as the vertex
+        // builder's colour setter did before 1.21, and the !mc21-vc-color rule rewrites that token
+        // wherever it appears — replacements do not know what a receiver is.
+        return (int) (ARGB.alpha(color) * (1.0F - override)) << 24 | color & 0x00FFFFFF;
+    }
+    //?}
 
     // renderSunMoonAndStars' fifth argument is vanilla's `1 - rainLevel`, which is what dims the sun
     // and the moon. Alex's Caves treats the cave-biome override as a rain level of its own and takes
@@ -139,7 +193,9 @@ public abstract class SkyRendererMixin {
     // instead of one — so the ordinals go 1 -> 3 and 2 -> 4. The ordinal rides in the arm with the
     // descriptor for that reason.
     @ModifyVariable(
-            //? if >=1.21.11 {
+            //? if >=26.3 {
+            /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunMoonAndStars(Lcom/mojang/renderpearl/api/commands/RenderPass;Lcom/mojang/blaze3d/vertex/PoseStack;FFFLnet/minecraft/world/level/MoonPhase;FF)V", ordinal = 3,
+            *///?} elif >=1.21.11 {
             /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunMoonAndStars(Lcom/mojang/blaze3d/vertex/PoseStack;FFFLnet/minecraft/world/level/MoonPhase;FF)V", ordinal = 3,
             *///?} elif >=1.21.9 {
             /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunMoonAndStars(Lcom/mojang/blaze3d/vertex/PoseStack;FIFF)V", ordinal = 1,
@@ -160,7 +216,9 @@ public abstract class SkyRendererMixin {
     // from the level rather than from the fifth argument, which another @ModifyVariable may or may
     // not have reached first — this is the same getRainLevel call vanilla made a line earlier.
     @ModifyVariable(
-            //? if >=1.21.11 {
+            //? if >=26.3 {
+            /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunMoonAndStars(Lcom/mojang/renderpearl/api/commands/RenderPass;Lcom/mojang/blaze3d/vertex/PoseStack;FFFLnet/minecraft/world/level/MoonPhase;FF)V", ordinal = 4,
+            *///?} elif >=1.21.11 {
             /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunMoonAndStars(Lcom/mojang/blaze3d/vertex/PoseStack;FFFLnet/minecraft/world/level/MoonPhase;FF)V", ordinal = 4,
             *///?} elif >=1.21.9 {
             /*method = "Lnet/minecraft/client/renderer/SkyRenderer;renderSunMoonAndStars(Lcom/mojang/blaze3d/vertex/PoseStack;FIFF)V", ordinal = 2,

@@ -93,13 +93,13 @@ public class SackOfSatingItem extends Item implements ACTickingItem {
                 if(ACCompat.returnsBowl(foodStack)){
                     ItemStack bowlStack = new ItemStack(Items.BOWL, foodStack.getCount());
                     if(!player.addItem(bowlStack)){
-                        player.drop(bowlStack, false);
+                        ACCompat.drop(player, bowlStack, false);
                     }
                 }
                 if(foodStack.getItem() instanceof HoneyBottleItem || foodStack.getItem() instanceof DrinkableBottledItem){
                     ItemStack bowlStack = new ItemStack(Items.GLASS_BOTTLE, foodStack.getCount());
                     if(!player.addItem(bowlStack)){
-                        player.drop(bowlStack, false);
+                        ACCompat.drop(player, bowlStack, false);
                     }
                 }
                 foodStack.setCount(0);

@@ -38,7 +38,7 @@ public class CaveBookItem extends Item {
             CriteriaTriggers.CONSUME_ITEM.trigger(serverplayerentity, itemStackIn);
             serverplayerentity.awardStat(Stats.ITEM_USED.get(this));
         }
-        playerIn.swing(handIn);
+        ACCompat.swing(playerIn, handIn);
         if (worldIn.isClientSide()) {
             AlexsCaves.PROXY.openBookGUI(itemStackIn);
         }

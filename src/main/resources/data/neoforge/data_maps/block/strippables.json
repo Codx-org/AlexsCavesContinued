@@ -1,0 +1,11 @@
+{
+  "values": {
+    "alexscaves:pewen_log": { "stripped_block": "alexscaves:stripped_pewen_log" },
+    "alexscaves:pewen_wood": { "stripped_block": "alexscaves:stripped_pewen_wood" },
+    "alexscaves:thornwood_log": { "stripped_block": "alexscaves:stripped_thornwood_log" },
+    "alexscaves:thornwood_wood": { "stripped_block": "alexscaves:stripped_thornwood_wood" },
+    "alexscaves:candy_cane_block": { "stripped_block": "alexscaves:stripped_candy_cane_block" },
+    "alexscaves:chiseled_candy_cane_block": { "stripped_block": "alexscaves:stripped_candy_cane_block" },
+    "alexscaves:candy_cane_pole": { "stripped_block": "alexscaves:stripped_candy_cane_pole" }
+  }
+}

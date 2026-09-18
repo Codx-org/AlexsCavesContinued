@@ -7,7 +7,6 @@ import com.github.alexmodguy.alexscaves.server.entity.living.VallumraptorEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -90,7 +89,7 @@ public class VallumraptorRenderer extends MobRenderer<VallumraptorEntity, Vallum
                 matrixStackIn.translate(left ? -0.2F : 0.2F, 0.2F, -0.3F);
                 matrixStackIn.mulPose(Axis.XP.rotationDegrees(180));
                 matrixStackIn.mulPose(Axis.ZP.rotationDegrees(-10));
-                ItemInHandRenderer renderer = Minecraft.getInstance().getEntityRenderDispatcher().getItemInHandRenderer();
+                Object renderer = ACClientCompat.itemInHandRenderer();
                 ACClientCompat.renderItemInHand(renderer, entitylivingbaseIn, itemstack, ItemDisplayContext.GROUND, false, matrixStackIn, bufferIn, packedLightIn);
                 matrixStackIn.popPose();
                 matrixStackIn.popPose();

@@ -12,22 +12,20 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 
-public class IceCreamScoopFeature extends Feature<IceCreamScoopFeatureConfiguration> {
+public class IceCreamScoopFeature extends ACFeature<IceCreamScoopFeatureConfiguration> {
 
-    public IceCreamScoopFeature(Codec<IceCreamScoopFeatureConfiguration> codec) {
+    public IceCreamScoopFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<IceCreamScoopFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos genAt = context.origin();
+    public boolean acPlace(IceCreamScoopFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos genAt = acOrigin;
         BlockState belowState = level.getBlockState(genAt);
-        BlockState ourIceCream = ACCompat.providerState(level, context.config().iceCreamBlock, randomsource, genAt);
+        BlockState ourIceCream = ACCompat.providerState(level, acConfig.iceCreamBlock, randomsource, genAt);
         int pileHeight = 6 + randomsource.nextInt(3);
         int pileWidth = 2 + randomsource.nextInt(3);
         if(belowState.getBlock() instanceof IceCreamBlock){
@@ -53,7 +51,7 @@ public class IceCreamScoopFeature extends Feature<IceCreamScoopFeatureConfigurat
                     double dist = yAdd >= 0 ? pos.distToLowCornerSqr(genAt.getX(), genAt.getY(), genAt.getZ()) : pos.distToLowCornerSqr(genAt.getX(), pos.getY(), genAt.getZ());
                     BlockState replacingState = level.getBlockState(pos);
                     if((replacingState.canBeReplaced() || replacingState.is(ACBlockRegistry.GIANT_SWEETBERRY.get())) && dist < circleFat){
-                        level.setBlock(pos, lastState = ACCompat.providerState(level, context.config().iceCreamBlock, randomsource, pos), 3);
+                        level.setBlock(pos, lastState = ACCompat.providerState(level, acConfig.iceCreamBlock, randomsource, pos), 3);
                     }
                     yAdd--;
                 }

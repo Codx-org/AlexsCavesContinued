@@ -9,32 +9,30 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GalenaHexagonFeature extends Feature<GalenaHexagonFeatureConfiguration> {
+public class GalenaHexagonFeature extends ACFeature<GalenaHexagonFeatureConfiguration> {
 
-    public GalenaHexagonFeature(Codec<GalenaHexagonFeatureConfiguration> codec) {
+    public GalenaHexagonFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<GalenaHexagonFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(GalenaHexagonFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         List<BlockPos> genPos = new ArrayList<>();
-        BlockPos chunkCenter = new BlockPos(context.origin().getX(), level.getMinBuildHeight() + 3, context.origin().getZ());
+        BlockPos chunkCenter = new BlockPos(acOrigin.getX(), level.getMinBuildHeight() + 3, acOrigin.getZ());
         int surface = level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, chunkCenter.getX(), chunkCenter.getZ());
         while (chunkCenter.getY() < surface) {
             BlockPos next = chunkCenter.above();
             BlockState currentState = level.getBlockState(chunkCenter);
             BlockState nextState = level.getBlockState(next);
-            if (context.config().ceiling) {
+            if (acConfig.ceiling) {
                 if (nextState.is(ACBlockRegistry.GALENA.get()) && canReplace(currentState)) {
                     genPos.add(chunkCenter);
                 }
@@ -46,7 +44,7 @@ public class GalenaHexagonFeature extends Feature<GalenaHexagonFeatureConfigurat
             chunkCenter = next;
         }
         for (BlockPos floor : genPos) {
-            drawHexagon(level, floor, randomSource, context.config().hexBlock, 3 + randomSource.nextInt(6), 1 + randomSource.nextInt(3), !context.config().ceiling);
+            drawHexagon(level, floor, randomSource, acConfig.hexBlock, 3 + randomSource.nextInt(6), 1 + randomSource.nextInt(3), !acConfig.ceiling);
         }
         return true;
     }

@@ -71,6 +71,13 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
         return this;
     }
 
+    // New abstract method in 26.3, declared without @Override for the same reason as setLineWidth
+    // above -- see ACClientCompat#setUv3.
+    public VertexConsumer setUv3(float u, float v) {
+        com.github.alexmodguy.alexscaves.client.ACClientCompat.setUv3(this.delegate, u, v);
+        return this;
+    }
+
     // setColor(int) was a default method that decomposed and called setColor(int,int,int,int) until
     // 1.21.11 made it abstract. Routing it back through this class's own four-channel override is
     // what that default did, and is what keeps the fixed colour overriding a packed call too. Not

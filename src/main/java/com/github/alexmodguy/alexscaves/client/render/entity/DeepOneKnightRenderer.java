@@ -1,5 +1,7 @@
 package com.github.alexmodguy.alexscaves.client.render.entity;
 
+import com.github.alexmodguy.alexscaves.client.ACClientCompat;
+
 import com.github.alexmodguy.alexscaves.AlexsCaves;
 import com.github.alexmodguy.alexscaves.client.model.DeepOneKnightModel;
 import com.github.alexmodguy.alexscaves.server.entity.living.DeepOneKnightEntity;
@@ -22,7 +24,7 @@ public class DeepOneKnightRenderer extends MobRenderer<DeepOneKnightEntity, Deep
     public DeepOneKnightRenderer(EntityRendererProvider.Context renderManagerIn) {
         super(renderManagerIn, new DeepOneKnightModel(), 0.45F);
         this.addLayer(new LayerGlow());
-        this.addLayer(new ItemInHandLayer<>(this, renderManagerIn.getEntityRenderDispatcher().getItemInHandRenderer()));
+        this.addLayer(new ItemInHandLayer<>(this, ACClientCompat.itemInHandRenderer()));
     }
 
     @Override

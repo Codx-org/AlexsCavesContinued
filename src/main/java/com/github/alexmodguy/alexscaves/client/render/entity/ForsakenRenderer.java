@@ -21,7 +21,7 @@ import java.util.HashMap;
 
 public class ForsakenRenderer extends MobRenderer<ForsakenEntity, ForsakenModel> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/forsaken.png");
-    private static final ResourceLocation TEXTURE_EYES = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/forsaken_eyes.png");
+    public static final ResourceLocation TEXTURE_EYES = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/forsaken_eyes.png");
 
     private static final ResourceLocation TEXTURE_DARKNESS = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/entity/forsaken_darkness.png");
 

@@ -85,9 +85,19 @@ public class ACClientPlatform {
         return widget.advancement.getId();
     }
 
-    /** Which advancement a tab of the advancement screen is rooted at. */
+    /**
+     * Which advancement a tab of the advancement screen is rooted at.
+     *
+     * <p>26.3 flattened the tab's root: the node wrapper is gone and the tab hands out the
+     * {@code AdvancementHolder} directly. Note these are three sibling BARE one-line gates, not a
+     * braced if/else chain — they are an if/else only because their predicates partition the range —
+     * so a third band has to NARROW the middle one. Appending without narrowing would put two
+     * returns live on 26.3.
+     */
     public static ResourceLocation advancementId(AdvancementTab tab) {
-        //? if >=1.20.2
+        //? if >=26.3
+        /*return tab.getRootAdvancement().id();*/
+        //? if >=1.20.2 && <26.3
         /*return tab.getRootNode().holder().id();*/
         //? if <1.20.2
         return tab.getAdvancement().getId();

@@ -6,7 +6,6 @@ import com.github.alexmodguy.alexscaves.client.ACClientCompat;
 import com.github.alexmodguy.alexscaves.AlexsCaves;
 import com.github.alexmodguy.alexscaves.client.ACClientPlatform;
 import com.github.alexmodguy.alexscaves.server.misc.ACMath;
-import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidget;
@@ -36,7 +35,7 @@ public class ACAdvancementTabs {
         return advancementId.getNamespace().equals(AlexsCaves.MODID);
     }
 
-    public static void renderTabBackground(GuiGraphics guiGraphics, int topX, int topY, DisplayInfo displayInfo, double scrollX, double scrollY) {
+    public static void renderTabBackground(GuiGraphics guiGraphics, int topX, int topY, double scrollX, double scrollY) {
         float partialTick = ACClientCompat.partialTick();
         float hoverProgress = getHoverChangeAmount(partialTick);
         float priorHoverProgress = 1F - hoverProgress;

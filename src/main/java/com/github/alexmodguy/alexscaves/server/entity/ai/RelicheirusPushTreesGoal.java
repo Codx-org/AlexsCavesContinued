@@ -140,7 +140,7 @@ public class RelicheirusPushTreesGoal extends MoveToBlockGoal {
     @Override
     protected boolean isValidTarget(LevelReader worldIn, BlockPos pos) {
         if (worldIn.getBlockState(pos).is(ACTagRegistry.RELICHEIRUS_KNOCKABLE_LOGS)) {
-            BlockPos treeTop = new BlockPos(pos);
+            BlockPos treeTop = pos.immutable();
             while (worldIn.getBlockState(treeTop).is(ACTagRegistry.RELICHEIRUS_KNOCKABLE_LOGS) && treeTop.getY() < worldIn.getMaxBuildHeight()) {
                 treeTop = treeTop.above();
             }

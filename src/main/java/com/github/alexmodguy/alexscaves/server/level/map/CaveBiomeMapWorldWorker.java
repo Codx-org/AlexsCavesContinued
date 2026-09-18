@@ -1,6 +1,7 @@
 package com.github.alexmodguy.alexscaves.server.level.map;
 
 import com.github.alexmodguy.alexscaves.server.misc.ACCompat;
+import com.github.alexmodguy.alexscaves.server.misc.ACMath;
 
 import com.github.alexmodguy.alexscaves.AlexsCaves;
 import com.github.alexmodguy.alexscaves.server.item.CaveMapItem;
@@ -79,6 +80,7 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
             ServerChunkCache cache = serverLevel.getChunkSource();
             BiomeSource source = cache.getGenerator().getBiomeSource();
             Climate.Sampler sampler = cache.randomState().sampler();
+            ACMath.ACBiomeLookup lookup = ACMath.biomeLookup(source, sampler);
             final int height = 64;
 
             if (sampleDirection != Direction.UP) {
@@ -94,7 +96,7 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
             if(ACBiomeRarity.isQuartInRareBiome(serverLevel.getSeed(), quartX, quartZ)){
                 for (int blockY : searchedHeights) {
                     int quartY = QuartPos.fromBlock(blockY);
-                    Biome biome = source.getNoiseBiome(quartX, quartY, quartZ, sampler).value();
+                    Biome biome = lookup.getNoiseBiome(quartX, quartY, quartZ).value();
                     if (verifyBiomeRespectRegistry(serverLevel, biome, biomeResourceKey)) {
                         lastBiomePos = new BlockPos(nextBlockX, blockY, nextBlockZ);
                     }
@@ -170,6 +172,7 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
         ServerChunkCache cache = serverLevel.getChunkSource();
         BiomeSource source = cache.getGenerator().getBiomeSource();
         Climate.Sampler sampler = cache.randomState().sampler();
+        ACMath.ACBiomeLookup lookup = ACMath.biomeLookup(source, sampler);
         int biomeNorth = 0;
         int biomeSouth = 0;
         int biomeEast = 0;
@@ -178,7 +181,7 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
         if (mapBiomeBeneathSurfaceOnly()) {
             int iterations = 0;
             yCentered = biomeCorner;
-            while (iterations < 256 && getNoiseBiomeAtPos(source, yCentered, sampler).is(biomeResourceKey)) {
+            while (iterations < 256 && getNoiseBiomeAtPos(lookup, yCentered).is(biomeResourceKey)) {
                 iterations++;
                 yCentered = yCentered.above();
             }
@@ -186,31 +189,31 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
         } else {
             int biomeUp = 0;
             int biomeDown = 0;
-            while (biomeUp < 32 && getNoiseBiomeAtPos(source, biomeCorner.above(biomeUp), sampler).is(biomeResourceKey)) {
+            while (biomeUp < 32 && getNoiseBiomeAtPos(lookup, biomeCorner.above(biomeUp)).is(biomeResourceKey)) {
                 biomeUp += 8;
             }
-            while (biomeDown < 64 && getNoiseBiomeAtPos(source, biomeCorner.below(biomeDown), sampler).is(biomeResourceKey)) {
+            while (biomeDown < 64 && getNoiseBiomeAtPos(lookup, biomeCorner.below(biomeDown)).is(biomeResourceKey)) {
                 biomeDown += 8;
             }
             yCentered = biomeCorner.atY((int) (Math.floor(biomeUp * 0.25F)) - biomeDown);
         }
-        while (biomeNorth < 800 && getNoiseBiomeAtPos(source, yCentered.north(biomeNorth), sampler).is(biomeResourceKey)) {
+        while (biomeNorth < 800 && getNoiseBiomeAtPos(lookup, yCentered.north(biomeNorth)).is(biomeResourceKey)) {
             biomeNorth += 8;
         }
-        while (biomeSouth < 800 && getNoiseBiomeAtPos(source, yCentered.south(biomeSouth), sampler).is(biomeResourceKey)) {
+        while (biomeSouth < 800 && getNoiseBiomeAtPos(lookup, yCentered.south(biomeSouth)).is(biomeResourceKey)) {
             biomeSouth += 8;
         }
-        while (biomeEast < 800 && getNoiseBiomeAtPos(source, yCentered.east(biomeEast), sampler).is(biomeResourceKey)) {
+        while (biomeEast < 800 && getNoiseBiomeAtPos(lookup, yCentered.east(biomeEast)).is(biomeResourceKey)) {
             biomeEast += 8;
         }
-        while (biomeWest < 800 && getNoiseBiomeAtPos(source, yCentered.west(biomeWest), sampler).is(biomeResourceKey)) {
+        while (biomeWest < 800 && getNoiseBiomeAtPos(lookup, yCentered.west(biomeWest)).is(biomeResourceKey)) {
             biomeWest += 8;
         }
         return yCentered.offset(biomeEast - biomeWest, 0, biomeSouth - biomeNorth);
     }
 
-    private Holder<Biome> getNoiseBiomeAtPos(BiomeSource source, BlockPos pos, Climate.Sampler sampler){
-       return source.getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2, sampler);
+    private Holder<Biome> getNoiseBiomeAtPos(ACMath.ACBiomeLookup lookup, BlockPos pos){
+       return lookup.getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2);
     }
 
     private void fillOutMapColors(BlockPos first, CompoundTag tag) {
@@ -220,6 +223,7 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
         ServerChunkCache cache = serverLevel.getChunkSource();
         BiomeSource source = cache.getGenerator().getBiomeSource();
         Climate.Sampler sampler = cache.randomState().sampler();
+        ACMath.ACBiomeLookup lookup = ACMath.biomeLookup(source, sampler);
 
         if (registry != null) {
             BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
@@ -234,11 +238,11 @@ public class CaveBiomeMapWorldWorker implements ACWorldWorkerManager.IWorker {
                     Holder<Biome> holder1 = null;
                     if (mapBiomeBeneathSurfaceOnly()) {
                         mutableBlockPos.setY(first.getY() - 5);
-                        holder1 = source.getNoiseBiome(mutableBlockPos.getX() >> 2, mutableBlockPos.getY() >> 2, mutableBlockPos.getZ() >> 2, sampler);
+                        holder1 = lookup.getNoiseBiome(mutableBlockPos.getX() >> 2, mutableBlockPos.getY() >> 2, mutableBlockPos.getZ() >> 2);
                     } else {
                         for (int yUpFromBottom = serverLevel.getMinBuildHeight() + 1; yUpFromBottom < serverLevel.getSeaLevel(); yUpFromBottom += 32) {
                             mutableBlockPos.setY(yUpFromBottom);
-                            holder1 = source.getNoiseBiome(mutableBlockPos.getX() >> 2, mutableBlockPos.getY() >> 2, mutableBlockPos.getZ() >> 2, sampler);
+                            holder1 = lookup.getNoiseBiome(mutableBlockPos.getX() >> 2, mutableBlockPos.getY() >> 2, mutableBlockPos.getZ() >> 2);
                             if (holder1.is(biomeResourceKey)) {
                                 break;
                             }

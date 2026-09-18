@@ -58,11 +58,14 @@ public abstract class ACCustomParticle extends net.minecraft.client.particle.Par
     // spawned its first arc.
     //
     // CollisionContext.empty() is what null always meant, and the ClipContext overload taking one
-    // exists from 1.21.1 (checked, not assumed) — comfortably below the 1.21.2 boundary, so the two
-    // arms meet with a version to spare. The live arm is the pre-1.21.2 spelling because the active
-    // node is 1.20.1-forge.
+    // exists from 1.20.3. The 1.21.2 boundary above turned out to be too high: 1.20.3 also rewrote
+    // the Entity constructor to delegate straight to CollisionContext.of(entity) without the
+    // `entity == null ? empty() : of(entity)` check 1.20.1/1.20.2 still carry (javap), so on
+    // 1.20.3…1.21.1 a null owner NPEs inside EntityCollisionContext. Reported on 1.21.1 Fabric
+    // flying over a magnet. So: empty() wherever the overload exists, null only where the
+    // constructor still checks for it. The live arm is the old spelling (active node 1.20.1-forge).
     protected static ClipContext ownerlessClip(Vec3 from, Vec3 to, ClipContext.Block block, ClipContext.Fluid fluid) {
-        //? if >=1.21.2 {
+        //? if >=1.20.3 {
         /*return new ClipContext(from, to, block, fluid, net.minecraft.world.phys.shapes.CollisionContext.empty());
         *///?} else {
         return new ClipContext(from, to, block, fluid, (net.minecraft.world.entity.Entity) null);

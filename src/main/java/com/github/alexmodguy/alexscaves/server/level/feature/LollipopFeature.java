@@ -19,28 +19,25 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
-public class LollipopFeature extends Feature<LollipopFeatureConfiguration> {
+public class LollipopFeature extends ACFeature<LollipopFeatureConfiguration> {
 
-    public LollipopFeature(Codec<LollipopFeatureConfiguration> codec) {
+    public LollipopFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<LollipopFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-         BlockPos genAt = context.origin();
+    public boolean acPlace(LollipopFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+         BlockPos genAt = acOrigin;
         if (!level.getBlockState(genAt).is(ACBlockRegistry.BLOCK_OF_FROSTED_CHOCOLATE.get())) {
             return false;
         }
-        boolean big = randomsource.nextFloat() < context.config().bigChance;
+        boolean big = randomsource.nextFloat() < acConfig.bigChance;
         genAt = genAt.above();
         int poleHeight = 3 + randomsource.nextInt(3);
         if(big){
@@ -52,7 +49,7 @@ public class LollipopFeature extends Feature<LollipopFeatureConfiguration> {
             }
             BlockPos structurePos = genAt.above(poleHeight);
             Rotation rotation = Rotation.getRandom(randomsource);
-            ResourceLocation structureLocation = big ? context.config().bigLollipopTopStructures.get(randomsource.nextInt(context.config().bigLollipopTopStructures.size())) : context.config().smallLollipopTopStructures.get(randomsource.nextInt(context.config().smallLollipopTopStructures.size()));
+            ResourceLocation structureLocation = big ? acConfig.bigLollipopTopStructures.get(randomsource.nextInt(acConfig.bigLollipopTopStructures.size())) : acConfig.smallLollipopTopStructures.get(randomsource.nextInt(acConfig.smallLollipopTopStructures.size()));
             StructureTemplateManager structuretemplatemanager = level.getLevel().getServer().getStructureManager();
 
             StructureTemplate structuretemplate = structuretemplatemanager.getOrCreate(structureLocation);

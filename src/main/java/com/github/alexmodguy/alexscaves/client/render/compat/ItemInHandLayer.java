@@ -4,7 +4,6 @@ import com.github.alexmodguy.alexscaves.client.ACClientCompat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.model.ArmedModel;
-import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.world.entity.HumanoidArm;
@@ -21,14 +20,14 @@ import net.minecraft.world.item.ItemStack;
  * classes (gingerbread man, licowitch) keep their overrides verbatim.
  *
  * <p>The vanilla layer is also constructed directly in a few renderers with an
- * {@link ItemInHandRenderer} from the dispatcher — the same object on every version — which is why
+ * {@code ItemInHandRenderer} from the dispatcher — the same object on every version — which is why
  * this constructor keeps that parameter rather than 1.21.2's {@code ItemRenderer}.
  */
 public class ItemInHandLayer<T extends LivingEntity, M extends EntityModel<?> & ArmedModel> extends RenderLayer<T, M> {
 
-	private final ItemInHandRenderer itemInHandRenderer;
+	private final Object itemInHandRenderer;
 
-	public ItemInHandLayer(RenderLayerParent<ACRenderState, M> parent, ItemInHandRenderer itemInHandRenderer) {
+	public ItemInHandLayer(RenderLayerParent<ACRenderState, M> parent, Object itemInHandRenderer) {
 		super(parent);
 		this.itemInHandRenderer = itemInHandRenderer;
 	}

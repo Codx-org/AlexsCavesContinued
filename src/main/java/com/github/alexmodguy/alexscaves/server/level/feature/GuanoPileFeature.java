@@ -10,22 +10,19 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class GuanoPileFeature extends Feature<NoneFeatureConfiguration> {
+public class GuanoPileFeature extends ACSimpleFeature {
 
-    public GuanoPileFeature(Codec<NoneFeatureConfiguration> codec) {
+    public GuanoPileFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
         BlockPos.MutableBlockPos pileBottom = new BlockPos.MutableBlockPos();
-        pileBottom.set(context.origin());
+        pileBottom.set(acOrigin);
         if (!level.getBlockState(pileBottom).isAir() || level.canSeeSky(pileBottom)) {
             return false;
         }

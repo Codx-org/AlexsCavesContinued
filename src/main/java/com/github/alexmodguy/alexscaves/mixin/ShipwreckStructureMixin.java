@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Optional;
+import com.github.alexmodguy.alexscaves.server.misc.ACMath;
 
 @Mixin(ShipwreckStructure.class)
 public class ShipwreckStructureMixin {
@@ -25,7 +26,7 @@ public class ShipwreckStructureMixin {
         int i = context.chunkPos().getBlockX(9);
         int j = context.chunkPos().getBlockZ(9);
 
-        for (Holder<Biome> holder : context.biomeSource().getBiomesWithin(i, context.chunkGenerator().getSeaLevel() - 80, j, 29, context.randomState().sampler())) {
+        for (Holder<Biome> holder : ACMath.getBiomesWithinAtY(context.biomeSource(), i, context.chunkGenerator().getSeaLevel() - 80, j, 29, context.randomState().sampler())) {
             if (holder.is(ACBiomeRegistry.ABYSSAL_CHASM)) {
                 cir.setReturnValue(Optional.empty());
             }

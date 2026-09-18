@@ -24,15 +24,57 @@ import net.minecraft.world.entity.Entity;
  *       <i>still</i> the hand-written {@code createInstance} — only its player argument gained an
  *       {@code Optional}. {@code AbstractCriterionTriggerInstance} survives here as a convenience
  *       base that implements {@code SimpleInstance}.</li>
- *   <li><b>&gt;=1.20.3</b> — {@code createInstance} is replaced by a {@code Codec} the trigger hands
- *       back from {@code codec()}, and {@code SimpleInstance} renames its accessor
+ *   <li><b>1.20.3 &ndash; 26.2</b> — {@code createInstance} is replaced by a {@code Codec} the trigger
+ *       hands back from {@code codec()}, and {@code SimpleInstance} renames its accessor
  *       {@code playerPredicate()} to {@code player()}.</li>
+ *   <li><b>&gt;=26.3</b> — {@code ContextAwarePredicate} is deleted outright. A criterion's player
+ *       predicate is now an {@code Optional<Holder<LootItemCondition>>} encoded by
+ *       {@code LootItemCondition.CODEC}, and {@code EntityPredicate.ADVANCEMENT_CODEC} is gone with
+ *       it. The shape was read out of vanilla's own {@code BrewedPotionTrigger.TriggerInstance};
+ *       nothing else about the trigger changed, so this arm is the previous one with a new record
+ *       component and codec.</li>
  * </ul>
  *
- * <p>All three are whole-class arms because the supertype, the abstract members and the instance's
+ * <p>All four are whole-class arms because the supertype, the abstract members and the instance's
  * shape all change together — there is no line-level gate that spans them.
  */
-//? if >=1.20.3 {
+//? if >=26.3 {
+/*public class ACAdvancementTrigger extends SimpleCriterionTrigger<ACAdvancementTrigger.Instance> {
+
+    public final ResourceLocation resourceLocation;
+
+    public ACAdvancementTrigger(ResourceLocation resourceLocation) {
+        this.resourceLocation = resourceLocation;
+    }
+
+    @Override
+    public com.mojang.serialization.Codec<Instance> codec() {
+        return Instance.CODEC;
+    }
+
+    public void trigger(ServerPlayer serverPlayer) {
+        this.trigger(serverPlayer, instance -> true);
+    }
+
+    public void triggerForEntity(Entity entity) {
+        if (entity instanceof ServerPlayer serverPlayer) {
+            trigger(serverPlayer);
+        }
+    }
+
+    // The optional player predicate is the whole payload: an advancement JSON may narrow the
+    // criterion to a player state, and nothing else about these triggers is configurable.
+    public record Instance(java.util.Optional<net.minecraft.core.Holder<net.minecraft.world.level.storage.loot.predicates.LootItemCondition>> player)
+            implements SimpleCriterionTrigger.SimpleInstance {
+
+        public static final com.mojang.serialization.Codec<Instance> CODEC =
+                com.mojang.serialization.codecs.RecordCodecBuilder.create(instance -> instance.group(
+                        net.minecraft.world.level.storage.loot.predicates.LootItemCondition.CODEC
+                                .optionalFieldOf("player").forGetter(Instance::player)
+                ).apply(instance, Instance::new));
+    }
+}
+*///?} elif >=1.20.3 {
 /*public class ACAdvancementTrigger extends SimpleCriterionTrigger<ACAdvancementTrigger.Instance> {
 
     public final ResourceLocation resourceLocation;

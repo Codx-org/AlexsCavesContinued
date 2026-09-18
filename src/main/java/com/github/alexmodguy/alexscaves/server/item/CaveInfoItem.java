@@ -89,7 +89,7 @@ public class CaveInfoItem extends Item {
             String biomeStr = biomeResourceKey.location().toString();
             CaveBookProgress progress = CaveBookProgress.getCaveBookProgress(player);
             if(progress.unlockNextFor(biomeStr)){
-                player.swing(hand);
+                ACCompat.swing(player, hand);
                 if(!level.isClientSide()){
                     CaveBookProgress.saveCaveBookProgress(progress, player);
                     CaveBookProgress.Subcategory subcategory = progress.getLastUnlockedCategory(biomeStr);

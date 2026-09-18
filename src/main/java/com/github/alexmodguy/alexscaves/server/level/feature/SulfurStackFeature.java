@@ -9,22 +9,19 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.material.Fluids;
 
-public class SulfurStackFeature extends Feature<NoneFeatureConfiguration> {
+public class SulfurStackFeature extends ACSimpleFeature {
 
-    public SulfurStackFeature(Codec<NoneFeatureConfiguration> codec) {
+    public SulfurStackFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos below = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos below = acOrigin;
         if (!level.getBlockState(below.below()).is(ACBlockRegistry.RADROCK.get())) {
             return false;
         }

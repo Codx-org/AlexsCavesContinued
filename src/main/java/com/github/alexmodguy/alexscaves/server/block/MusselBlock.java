@@ -172,7 +172,13 @@ public class MusselBlock extends Block implements SimpleWaterloggedBlock {
     }
 
 
+    // 26.3 narrowed playerDestroy's first two parameters to ServerLevel/ServerPlayer.
+    // Only the signature moves; the body is identical on both sides.
+    //? if >=26.3 {
+    /*public void playerDestroy(net.minecraft.server.level.ServerLevel worldIn, net.minecraft.server.level.ServerPlayer player, BlockPos pos, BlockState state, @Nullable BlockEntity te, ItemStack stack) {
+    *///?} else {
     public void playerDestroy(Level worldIn, Player player, BlockPos pos, BlockState state, @Nullable BlockEntity te, ItemStack stack) {
+    //?}
         super.playerDestroy(worldIn, player, pos, state, te, stack);
         this.removeOneMussel(worldIn, pos, state);
     }

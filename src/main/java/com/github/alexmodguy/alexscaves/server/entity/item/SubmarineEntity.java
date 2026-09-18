@@ -172,11 +172,17 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
             }
             Player player = AlexsCaves.PROXY.getClientSidePlayer();
             if (player != null && player.isPassengerOfSameVehicle(this)) {
-                if (AlexsCaves.PROXY.isKeyDown(0) && controlUpTicks < 2) {
+                // Rising and diving are checked in that order but applied the other way round in
+                // the movement branch above, so with both keys down the dive always won. That is
+                // every tick for anyone with sprint held or toggled on, and the submarine could not
+                // surface at all. Jump now takes precedence and cancels a queued dive.
+                boolean rising = AlexsCaves.PROXY.isKeyDown(0);
+                if (rising && controlUpTicks < 2) {
                     AlexsCaves.sendMSGToServer(new MountedEntityKeyMessage(this.getId(), player.getId(), 0));
                     controlUpTicks = 10;
+                    controlDownTicks = 0;
                 }
-                if (AlexsCaves.PROXY.isKeyDown(1) && controlDownTicks < 2) {
+                if (!rising && AlexsCaves.PROXY.isKeyDown(1) && controlDownTicks < 2) {
                     AlexsCaves.sendMSGToServer(new MountedEntityKeyMessage(this.getId(), player.getId(), 1));
                     controlDownTicks = 10;
                 }
@@ -283,7 +289,23 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
     // no longer distinguishes); none of these overrides read it. 1.21.5 deleted lerpTo outright —
     // the client hands the target to the InterpolationHandler returned by getInterpolation(), so the
     // same capture happens in a handler subclass and this entity's own tick lerps exactly as before.
-    //? if >=1.21.5 {
+    // 26.3 made InterpolationHandler an interface with no constructor, so the capture moved
+    // into ACLerpInterpolationHandler and is installed via createInterpolationHandler()
+    // (getInterpolation() is final there). Same suppression, same fields, same result.
+    //? if >=26.3 {
+    /*@Override
+    protected net.minecraft.world.entity.InterpolationHandler createInterpolationHandler() {
+        return new com.github.alexmodguy.alexscaves.server.entity.util.ACLerpInterpolationHandler(this, (pos, yr, xr) -> {
+            lx = pos.x();
+            ly = pos.y();
+            lz = pos.z();
+            lyr = yr;
+            lxr = xr;
+            lSteps = net.minecraft.world.entity.LinearInterpolationHandler.DEFAULT_INTERPOLATION_STEPS;
+            setDeltaMovement(lxd, lyd, lzd);
+        });
+    }
+    *///?} elif >=1.21.5 {
     /*private net.minecraft.world.entity.InterpolationHandler acInterpolation;
 
     @Override
@@ -496,23 +518,32 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
             return InteractionResult.PASS;
         } else {
             ItemStack itemStack = player.getItemInHand(hand);
-            if (ACCompat.canPerform(itemStack, ToolActions.AXE_SCRAPE) && (this.getOxidizationLevel() > 0 || this.isWaxed())) {
-                player.swing(hand);
+            if (ACCompat.canAxeScrape(itemStack) && (this.getOxidizationLevel() > 0 || this.isWaxed())) {
+                ACCompat.swing(player, hand);
                 if (!player.isCreative()) {
                     ACCompat.hurtAndBreak(itemStack, 1, player, hand);
                 }
                 if (this.isWaxed()) {
+                    // 26.3 put some SoundEvents constants behind a Holder and left others alone.
+                    // These two moved; HONEYCOMB_WAX_ON below did not, and Entity#playSound takes a
+                    // bare SoundEvent on every version in the range, so the Holder has to be opened.
+                    //? if >=26.3
+                    /*this.playSound(SoundEvents.AXE_WAX_OFF.value(), 1.0F, 1.0F);*/
+                    //? if <26.3
                     this.playSound(SoundEvents.AXE_WAX_OFF, 1.0F, 1.0F);
                     this.setWaxed(false);
                 } else {
                     this.setOxidizationLevel(this.getOxidizationLevel() - 1);
+                    //? if >=26.3
+                    /*this.playSound(SoundEvents.AXE_SCRAPE.value(), 1.0F, 1.0F);*/
+                    //? if <26.3
                     this.playSound(SoundEvents.AXE_SCRAPE, 1.0F, 1.0F);
                 }
                 this.level().broadcastEntityEvent(this, (byte) 46);
                 this.resetOxidizeTime();
                 return InteractionResult.CONSUME;
             } else if (itemStack.is(Items.HONEYCOMB) && !this.isWaxed()) {
-                player.swing(hand);
+                ACCompat.swing(player, hand);
                 if (!player.isCreative()) {
                     itemStack.shrink(1);
                 }
@@ -521,7 +552,7 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
                 this.level().broadcastEntityEvent(this, (byte) 45);
                 return InteractionResult.CONSUME;
             } else if (itemStack.is(Items.COPPER_INGOT) && this.getDamageLevel() > 0) {
-                player.swing(hand);
+                ACCompat.swing(player, hand);
                 if (!player.isCreative()) {
                     itemStack.shrink(1);
                 }
@@ -637,6 +668,7 @@ public class SubmarineEntity extends Entity implements KeybindUsingMount {
         if (keyPresser.isPassengerOfSameVehicle(this)) {
             if (type == 0) {
                 controlUpTicks = 10;
+                controlDownTicks = 0;
             }
             if (type == 1) {
                 controlDownTicks = 10;

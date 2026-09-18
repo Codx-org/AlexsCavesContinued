@@ -474,6 +474,16 @@ public class ACInternalShaders {
     public static final net.minecraft.client.renderer.ShaderProgram RED_GHOST = program("rendertype_red_ghost", com.mojang.blaze3d.vertex.DefaultVertexFormat.NEW_ENTITY);
     public static final net.minecraft.client.renderer.ShaderProgram PURPLE_WITCH = program("rendertype_purple_witch", com.mojang.blaze3d.vertex.DefaultVertexFormat.NEW_ENTITY);
 
+    // Fabric's getUnlitTranslucent: vanilla's own eyes config plus the alpha cutout that
+    // Forge/NeoForge's unlit type and the 1.21.5 pipeline both carry. Without it a fully transparent
+    // texel still writes depth, which z-fought the Cave Compendium's pages and hid their text.
+    // No asset and no registration: ShaderManager merges these defines over the config's own
+    // EMISSIVE / NO_OVERLAY / NO_CARDINAL_LIGHTING flags and compiles the variant on first use.
+    public static final net.minecraft.client.renderer.ShaderProgram UNLIT_TRANSLUCENT = new net.minecraft.client.renderer.ShaderProgram(
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "core/rendertype_eyes"),
+            com.mojang.blaze3d.vertex.DefaultVertexFormat.NEW_ENTITY,
+            net.minecraft.client.renderer.ShaderDefines.builder().define("ALPHA_CUTOUT", 0.1F).build());
+
     // A ninth shader that exists only from 1.21.2, where the lightmap moved onto the GPU: a copy of
     // vanilla's core/lightmap carrying this mod's two insertions. See mixin.client.LightTextureMixin.
     // Its JSON is already written in the 1.21.2 layout — fully qualified namespace:core/name vertex
@@ -501,6 +511,7 @@ public class ACInternalShaders {
     private static ShaderInstance renderTypeSepiaOutlineShader;
     private static ShaderInstance renderTypeRedGhostShader;
     private static ShaderInstance renderTypePurpleWitchShader;
+    private static ShaderInstance renderTypeUnlitTranslucentShader;
 
     @Nullable
     public static ShaderInstance getRenderTypeFerrouslimeGelShader() {
@@ -572,6 +583,17 @@ public class ACInternalShaders {
 
     public static void setRenderTypePurpleWitchShader(ShaderInstance instance) {
         renderTypePurpleWitchShader = instance;
+    }
+
+    // Fabric's getUnlitTranslucent: vanilla's eyes shader with an alpha discard, so a fully
+    // transparent texel no longer writes depth. Falls back to plain eyes (what Fabric drew with
+    // before) rather than to null, which would fail the draw outright.
+    public static ShaderInstance getRenderTypeUnlitTranslucentShader() {
+        return renderTypeUnlitTranslucentShader != null ? renderTypeUnlitTranslucentShader : net.minecraft.client.renderer.GameRenderer.getRendertypeEyesShader();
+    }
+
+    public static void setRenderTypeUnlitTranslucentShader(ShaderInstance instance) {
+        renderTypeUnlitTranslucentShader = instance;
     }
     //?}
 

@@ -1,15 +1,15 @@
 package com.github.alexmodguy.alexscaves.server.level.feature.config;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 
 import java.util.List;
 
-public class WhalefallFeatureConfiguration implements FeatureConfiguration {
+public class WhalefallFeatureConfiguration implements ACFeatureConfiguration {
 
-    public static final Codec<WhalefallFeatureConfiguration> CODEC = RecordCodecBuilder.create((configurationInstance) -> {
+    public static final MapCodec<WhalefallFeatureConfiguration> MAP_CODEC = RecordCodecBuilder.mapCodec((configurationInstance) -> {
         return configurationInstance.group(ResourceLocation.CODEC.listOf().fieldOf("head_structures").forGetter((p_159830_) -> {
                     return p_159830_.headStructures;
                 }), ResourceLocation.CODEC.listOf().fieldOf("body_structures").forGetter((p_159830_) -> {
@@ -19,6 +19,7 @@ public class WhalefallFeatureConfiguration implements FeatureConfiguration {
                 })
         ).apply(configurationInstance, WhalefallFeatureConfiguration::new);
     });
+    public static final Codec<WhalefallFeatureConfiguration> CODEC = MAP_CODEC.codec();
     public final List<ResourceLocation> headStructures;
     public final List<ResourceLocation> bodyStructures;
     public final List<ResourceLocation> tailStructures;

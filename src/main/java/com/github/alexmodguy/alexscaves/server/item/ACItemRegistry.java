@@ -129,7 +129,13 @@ public class ACItemRegistry {
     public static final Supplier<Item> PEWEN_DOOR = DEF_REG.register("pewen_door", () -> new DoubleHighBlockItem(ACBlockRegistry.PEWEN_DOOR.get(), blockItemProperties()));
     // SignItem and StandingAndWallBlockItem both moved their Properties to last, matching every
     // other item constructor. Same three arguments, same order otherwise.
-    //? if >=1.21.2 {
+    //
+    // 26.3 then deleted SignItem, and the item is a plain StandingAndWallBlockItem with the facing
+    // spelled out — which is all SignItem's constructor ever added. Its other half, opening the
+    // text editor on placement, moved into SignBlock#setPlacedBy, so signs still open their editor.
+    //? if >=26.3 {
+    /*public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new StandingAndWallBlockItem(ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get(), Direction.DOWN, blockItemProperties().stacksTo(16)));
+    *///?} elif >=1.21.2 {
     /*public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new SignItem(ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get(), blockItemProperties().stacksTo(16)));
     *///?} else {
     public static final Supplier<Item> PEWEN_SIGN = DEF_REG.register("pewen_sign", () -> new SignItem(blockItemProperties().stacksTo(16), ACBlockRegistry.PEWEN_SIGN.get(), ACBlockRegistry.PEWEN_WALL_SIGN.get()));
@@ -160,8 +166,20 @@ public class ACItemRegistry {
     public static final Supplier<Item> TECTONIC_SHARD = DEF_REG.register("tectonic_shard", () -> new Item(new Item.Properties().rarity(RARITY_DEMONIC).fireResistant()));
     public static final Supplier<Item> EXTINCTION_SPEAR = DEF_REG.register("extinction_spear", () -> new ExtinctionSpearItem(new Item.Properties().durability(1300).rarity(RARITY_DEMONIC).fireResistant()));
     public static final Supplier<Item> EXTINCTION_SPEAR_SPRITE = DEF_REG.register("extinction_spear_inventory", () -> new Item(new Item.Properties()));
+    // 26.3 binds a sherd to its pattern through the item's own components rather than through
+    // DecoratedPotPatterns' mapping — see ACPotPatternRegistry.
+    //? if >=26.3 {
+    /*public static final Supplier<Item> DINOSAUR_POTTERY_SHERD = DEF_REG.register("dinosaur_pottery_sherd", () -> new Item(new Item.Properties().potPattern(com.github.alexmodguy.alexscaves.server.misc.ACPotPatternRegistry.DINOSAUR)));
+    *///?} else {
     public static final Supplier<Item> DINOSAUR_POTTERY_SHERD = DEF_REG.register("dinosaur_pottery_sherd", () -> new Item(new Item.Properties()));
+    //?}
+    // 26.3 binds a sherd to its pattern through the item's own components rather than through
+    // DecoratedPotPatterns' mapping — see ACPotPatternRegistry.
+    //? if >=26.3 {
+    /*public static final Supplier<Item> FOOTPRINT_POTTERY_SHERD = DEF_REG.register("footprint_pottery_sherd", () -> new Item(new Item.Properties().potPattern(com.github.alexmodguy.alexscaves.server.misc.ACPotPatternRegistry.FOOTPRINT)));
+    *///?} else {
     public static final Supplier<Item> FOOTPRINT_POTTERY_SHERD = DEF_REG.register("footprint_pottery_sherd", () -> new Item(new Item.Properties()));
+    //?}
     public static final Supplier<Item> DINOSAUR_TRAIN = DEF_REG.register("dinosaur_train", () -> new Item(new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
     public static final Supplier<Item> ACID_BUCKET = DEF_REG.register("acid_bucket", () -> ACPlatform.bucketItem(ACFluidRegistry.ACID_FLUID_SOURCE, new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
     public static final Supplier<Item> RADGILL_BUCKET = DEF_REG.register("radgill_bucket", () -> new ModFishBucketItem(ACEntityRegistry.RADGILL, ACFluidRegistry.ACID_FLUID_SOURCE, new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
@@ -224,8 +242,20 @@ public class ACItemRegistry {
     public static final Supplier<Item> ORTHOLANCE = DEF_REG.register("ortholance", () -> new OrtholanceItem(new Item.Properties().durability(340).rarity(Rarity.UNCOMMON)));
     public static final Supplier<Item> ORTHOLANCE_SPRITE = DEF_REG.register("ortholance_inventory", () -> new Item(new Item.Properties()));
     public static final Supplier<Item> DEPTH_CHARGE = DEF_REG.register("depth_charge", () -> new ThrownProjectileItem(new Item.Properties(), player -> new DepthChargeEntity(player.level(), player), -10.0F, 0.65F, 1.5F));
+    // 26.3 binds a sherd to its pattern through the item's own components rather than through
+    // DecoratedPotPatterns' mapping — see ACPotPatternRegistry.
+    //? if >=26.3 {
+    /*public static final Supplier<Item> GUARDIAN_POTTERY_SHERD = DEF_REG.register("guardian_pottery_sherd", () -> new Item(new Item.Properties().potPattern(com.github.alexmodguy.alexscaves.server.misc.ACPotPatternRegistry.GUARDIAN)));
+    *///?} else {
     public static final Supplier<Item> GUARDIAN_POTTERY_SHERD = DEF_REG.register("guardian_pottery_sherd", () -> new Item(new Item.Properties()));
+    //?}
+    // 26.3 binds a sherd to its pattern through the item's own components rather than through
+    // DecoratedPotPatterns' mapping — see ACPotPatternRegistry.
+    //? if >=26.3 {
+    /*public static final Supplier<Item> HERO_POTTERY_SHERD = DEF_REG.register("hero_pottery_sherd", () -> new Item(new Item.Properties().potPattern(com.github.alexmodguy.alexscaves.server.misc.ACPotPatternRegistry.HERO)));
+    *///?} else {
     public static final Supplier<Item> HERO_POTTERY_SHERD = DEF_REG.register("hero_pottery_sherd", () -> new Item(new Item.Properties()));
+    //?}
     // See PEWEN_SIGN.
     //? if >=1.21.2 {
     /*public static final Supplier<Item> BIOLUMINESCENT_TORCH = DEF_REG.register("bioluminescent_torch", () -> new StandingAndWallBlockItem(ACBlockRegistry.BIOLUMINESCENT_TORCH.get(), ACBlockRegistry.BIOLUMINESCENT_WALL_TORCH.get(), Direction.DOWN, blockItemProperties()));
@@ -258,7 +288,9 @@ public class ACItemRegistry {
     public static final Supplier<Item> DREADBOW_PULLING_2_SPRITE = DEF_REG.register("dreadbow_pulling_2_inventory", () -> new Item(new Item.Properties()));
     public static final Supplier<Item> THORNWOOD_DOOR = DEF_REG.register("thornwood_door", () -> new DoubleHighBlockItem(ACBlockRegistry.THORNWOOD_DOOR.get(), blockItemProperties()));
     // See PEWEN_SIGN.
-    //? if >=1.21.2 {
+    //? if >=26.3 {
+    /*public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new StandingAndWallBlockItem(ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get(), Direction.DOWN, blockItemProperties().stacksTo(16)));
+    *///?} elif >=1.21.2 {
     /*public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new SignItem(ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get(), blockItemProperties().stacksTo(16)));
     *///?} else {
     public static final Supplier<Item> THORNWOOD_SIGN = DEF_REG.register("thornwood_sign", () -> new SignItem(blockItemProperties().stacksTo(16), ACBlockRegistry.THORNWOOD_SIGN.get(), ACBlockRegistry.THORNWOOD_WALL_SIGN.get()));
@@ -518,24 +550,45 @@ public class ACItemRegistry {
         DispenserBlock.registerBehavior(SWEETISH_FISH_YELLOW_BUCKET.get(), new FluidContainerDispenseItemBehavior());
         DispenserBlock.registerBehavior(SWEETISH_FISH_PINK_BUCKET.get(), new FluidContainerDispenseItemBehavior());
         LecternBooks.BOOKS.put(BuiltInRegistries.ITEM.getKey(CAVE_BOOK.get()), new LecternBooks.BookData(0X81301C, 0XFDF8EC));
-        ComposterBlock.COMPOSTABLES.put(PINE_NUTS.get(), 0.5F);
-        ComposterBlock.COMPOSTABLES.put(PEWEN_SAP.get(), 0.2F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.PEWEN_SAPLING.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.PEWEN_PINES.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.PEWEN_BRANCH.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.ANCIENT_SAPLING.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.ANCIENT_LEAVES.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.FIDDLEHEAD.get().asItem(), 0.4F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.CURLY_FERN.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.FLYTRAP.get().asItem(), 0.65F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.CYCAD.get().asItem(), 0.65F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.TREE_STAR.get().asItem(), 0.65F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.ARCHAIC_VINE.get().asItem(), 0.5F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.FERN_THATCH.get().asItem(), 0.85F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.UNDERWEED.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.THORNWOOD_BRANCH.get().asItem(), 0.3F);
-        ComposterBlock.COMPOSTABLES.put(ACBlockRegistry.THORNWOOD_SAPLING.get().asItem(), 0.3F);
+        // The composting odds. Up to 26.2 these filled ComposterBlock.COMPOSTABLES, a static
+        // map populated during setup; 26.3 deleted that map outright and made the odds an item
+        // COMPONENT instead, stamped onto default components from AlexsCaves' two modify arms.
+        // Both eras read the one table in acForEachCompostable, so it has a single home.
+        //? if <26.3 {
+        acForEachCompostable((item, chance) -> ComposterBlock.COMPOSTABLES.put(item, chance.floatValue()));
+        //?}
 
+    }
+
+    /**
+     * The seventeen items this mod makes compostable, and each one's odds of raising a layer.
+     *
+     * <p>One table, two eras. Up to 26.2 these filled the static map in {@code ComposterBlock};
+     * 26.3 deleted it and moved the odds onto the item as {@code DataComponents.COMPOSTABLE}, so
+     * from there the same pairs are stamped onto default components in {@code AlexsCaves}. The
+     * 26.3 port therefore added a second reader rather than a second copy of the list.
+     *
+     * <p>Ungated deliberately: nothing here names a type that moved, so every node compiles it
+     * and only the callers differ.
+     */
+    public static void acForEachCompostable(java.util.function.BiConsumer<Item, Float> out) {
+        out.accept(PINE_NUTS.get(), 0.5F);
+        out.accept(PEWEN_SAP.get(), 0.2F);
+        out.accept(ACBlockRegistry.PEWEN_SAPLING.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.PEWEN_PINES.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.PEWEN_BRANCH.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.ANCIENT_SAPLING.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.ANCIENT_LEAVES.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.FIDDLEHEAD.get().asItem(), 0.4F);
+        out.accept(ACBlockRegistry.CURLY_FERN.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.FLYTRAP.get().asItem(), 0.65F);
+        out.accept(ACBlockRegistry.CYCAD.get().asItem(), 0.65F);
+        out.accept(ACBlockRegistry.TREE_STAR.get().asItem(), 0.65F);
+        out.accept(ACBlockRegistry.ARCHAIC_VINE.get().asItem(), 0.5F);
+        out.accept(ACBlockRegistry.FERN_THATCH.get().asItem(), 0.85F);
+        out.accept(ACBlockRegistry.UNDERWEED.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.THORNWOOD_BRANCH.get().asItem(), 0.3F);
+        out.accept(ACBlockRegistry.THORNWOOD_SAPLING.get().asItem(), 0.3F);
     }
 
     public static List<Supplier<Item>> getSpawnEggsForTab(ResourceKey<Biome> tabName) {

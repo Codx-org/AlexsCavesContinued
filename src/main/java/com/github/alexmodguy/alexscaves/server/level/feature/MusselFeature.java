@@ -9,24 +9,21 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MusselFeature extends Feature<NoneFeatureConfiguration> {
+public class MusselFeature extends ACSimpleFeature {
 
-    public MusselFeature(Codec<NoneFeatureConfiguration> codec) {
+    public MusselFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         if (tryPlaceMussel(level, pos, randomSource)) {
             for (int i = 0; i < randomSource.nextInt(3); i++) {
                 tryPlaceMussel(level, pos.offset(randomSource.nextInt(4) - 2, randomSource.nextInt(4) - 2, randomSource.nextInt(4) - 2), randomSource);

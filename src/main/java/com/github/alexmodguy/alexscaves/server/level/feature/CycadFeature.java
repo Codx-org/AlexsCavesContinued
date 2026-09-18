@@ -9,21 +9,18 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class CycadFeature extends Feature<NoneFeatureConfiguration> {
+public class CycadFeature extends ACSimpleFeature {
 
-    public CycadFeature(Codec<NoneFeatureConfiguration> codec) {
+    public CycadFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos treeBottom = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos treeBottom = acOrigin;
         if (!level.getBlockState(treeBottom.below()).is(ACTagRegistry.DIRT_LIKE)) {
             return false;
         }

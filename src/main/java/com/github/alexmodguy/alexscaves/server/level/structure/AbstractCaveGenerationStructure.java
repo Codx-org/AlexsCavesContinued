@@ -16,6 +16,7 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
 
 import java.util.Optional;
 import java.util.function.Consumer;
+import com.github.alexmodguy.alexscaves.server.misc.ACMath;
 
 public abstract class AbstractCaveGenerationStructure extends Structure {
 
@@ -87,7 +88,7 @@ public abstract class AbstractCaveGenerationStructure extends Structure {
     protected abstract StructurePiece createPiece(BlockPos offset, BlockPos center, int heightBlocks, int widthBlocks, RandomState randomState);
 
     private static Holder<Biome> getBiomeHolder(BiomeSource biomeSource, RandomState randomState, BlockPos pos) {
-        return biomeSource.getNoiseBiome(QuartPos.fromBlock(pos.getX()), QuartPos.fromBlock(pos.getY()), QuartPos.fromBlock(pos.getZ()), randomState.sampler());
+        return ACMath.noiseBiomeAt(biomeSource, QuartPos.fromBlock(pos.getX()), QuartPos.fromBlock(pos.getY()), QuartPos.fromBlock(pos.getZ()), randomState.sampler());
     }
 
     protected int biomeContinuesInDirectionFor(BiomeSource biomeSource, RandomState randomState, Direction direction, BlockPos start, int cutoff) {

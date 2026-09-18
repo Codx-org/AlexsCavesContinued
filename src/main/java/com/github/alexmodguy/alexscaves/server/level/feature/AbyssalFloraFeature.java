@@ -8,30 +8,28 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 
-public class AbyssalFloraFeature extends Feature<AbyssalFloraFeatureConfiguration> {
+public class AbyssalFloraFeature extends ACFeature<AbyssalFloraFeatureConfiguration> {
 
-    public AbyssalFloraFeature(Codec<AbyssalFloraFeatureConfiguration> codec) {
+    public AbyssalFloraFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<AbyssalFloraFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
+    public boolean acPlace(AbyssalFloraFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
         BlockPos.MutableBlockPos trenchBottom = new BlockPos.MutableBlockPos();
-        trenchBottom.set(context.origin());
+        trenchBottom.set(acOrigin);
         while (!level.getBlockState(trenchBottom).getFluidState().isEmpty() && trenchBottom.getY() > level.getMinBuildHeight()) {
             trenchBottom.move(0, -1, 0);
         }
-        if (context.origin().getY() - trenchBottom.getY() < 15) {
+        if (acOrigin.getY() - trenchBottom.getY() < 15) {
             return false;
         }
         BlockPos above = trenchBottom.above();
         if (canReplace(level.getBlockState(above))) {
-            level.setBlock(above, ACCompat.providerState(level, context.config().floraBlock, randomsource, above), 2);
+            level.setBlock(above, ACCompat.providerState(level, acConfig.floraBlock, randomsource, above), 2);
         }
         return true;
     }

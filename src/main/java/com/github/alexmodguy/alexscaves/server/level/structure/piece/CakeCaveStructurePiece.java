@@ -23,7 +23,6 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
-import net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 
 public class CakeCaveStructurePiece extends AbstractCaveGenerationStructurePiece {

@@ -72,6 +72,13 @@ accessible	field	net/minecraft/world/entity/vehicle/Boat	lastYd	D
 # SurfaceRules$Context and $SurfaceRule are already public on every version; the AT names them
 # for symmetry and so do these. $LazyYCondition / $LazyXZCondition are deliberately NOT here —
 # the AT widens them but this tree only ever mentions them in a comment.
+#
+# 26.3 deleted SurfaceRules outright and scattered its nested types across the new
+# levelgen.material packages, so every entry below names a class that does not exist there.
+# Nothing is needed in its place: MaterialRuleContext is a public final class whose blockX() /
+# blockY() / blockZ() are public accessor METHODS, which is why the 26.3 arm of
+# ACSurfaceRuleConditionRegistry calls them with parentheses while the older arms read fields.
+#?{ <26.3
 accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$Condition
 accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$Context
 accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$SurfaceRule
@@ -79,6 +86,7 @@ accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$SurfaceRule
 accessible	field	net/minecraft/world/level/levelgen/SurfaceRules$Context	blockX	I
 accessible	field	net/minecraft/world/level/levelgen/SurfaceRules$Context	blockY	I
 accessible	field	net/minecraft/world/level/levelgen/SurfaceRules$Context	blockZ	I
+#?}
 
 accessible	field	net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate	palettes	Ljava/util/List;
 accessible	field	net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate	entityInfoList	Ljava/util/List;
@@ -122,14 +130,22 @@ accessible	field	net/minecraft/world/entity/Entity	nextStep	F
 #? <26.2
 accessible	field	net/minecraft/client/renderer/LevelRenderer	ticks	I
 
-accessible	field	net/minecraft/client/renderer/GameRenderer	effectActive	Z
+# GameRenderer#effectActive is NOT here: it is only ever read below 1.21.2 (ACClientCompat's
+# newer arms route through the shader manager instead) and 26.3 deletes the field, so its one
+# entry lives gated beside loadEffect in the patched-jar section at the bottom of this file.
 accessible	field	net/minecraft/client/sounds/SoundManager	soundEngine	Lnet/minecraft/client/sounds/SoundEngine;
 accessible	field	net/minecraft/client/sounds/SoundEngine	tickingSounds	Ljava/util/List;
 accessible	field	net/minecraft/client/sounds/SoundEngine	queuedTickableSounds	Ljava/util/List;
 
 # Private, but only ever CALLED (ConversionCrucibleBlockEntity) — nothing overrides it, so the
 # final-if-private half of `accessible` costs nothing here.
+# 26.3 appended a NoiseSettings parameter, and ChunkAccess#getOrCreateNoiseChunk — which used to
+# supply the other four — is gone, so from there the crucible calls this directly. Two entries
+# rather than one because an entry naming a descriptor that matches nothing fails the build.
+#? <26.3
 accessible	method	net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator	createNoiseChunk	(Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/world/level/StructureManager;Lnet/minecraft/world/level/levelgen/blending/Blender;Lnet/minecraft/world/level/levelgen/RandomState;)Lnet/minecraft/world/level/levelgen/NoiseChunk;
+#? >=26.3
+accessible	method	net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator	createNoiseChunk	(Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/world/level/StructureManager;Lnet/minecraft/world/level/levelgen/blending/Blender;Lnet/minecraft/world/level/levelgen/RandomState;Lnet/minecraft/world/level/levelgen/NoiseSettings;)Lnet/minecraft/world/level/levelgen/NoiseChunk;
 
 # ACCompat#onCaughtFire's Fabric arm has to prime a plain TNT itself, and Forge's TntBlock
 # override of the hook is exactly `explode(level, pos, igniter)` — the PRIVATE overload. The
@@ -139,7 +155,9 @@ accessible	method	net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator	cr
 # on the loaders' hook (see ACIgnitableBlock). Both spellings sit here, as with AbstractArrow.
 #? <1.21.5
 accessible	method	net/minecraft/world/level/block/TntBlock	explode	(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/LivingEntity;)V
-#? >=1.21.5
+# 26.3 replaced the three-argument overload with one taking the igniting stack as well — and made
+# BOTH of its overloads public, so there is nothing left to widen there and no >=26.3 entry.
+#? (>=1.21.5 && <26.3)
 accessible	method	net/minecraft/world/level/block/TntBlock	prime	(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/LivingEntity;)Z
 
 # 26.2 moved three of SurfaceRules$Context's members at once (the ctor swapped a biome Registry
@@ -149,6 +167,9 @@ accessible	method	net/minecraft/world/level/block/TntBlock	prime	(Lnet/minecraft
 accessible	method	net/minecraft/world/level/levelgen/SurfaceRules$Context	<init>	(Lnet/minecraft/world/level/levelgen/SurfaceSystem;Lnet/minecraft/world/level/levelgen/RandomState;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/world/level/levelgen/NoiseChunk;Ljava/util/function/Function;Lnet/minecraft/core/Registry;Lnet/minecraft/world/level/levelgen/WorldGenerationContext;)V
 accessible	method	net/minecraft/world/level/levelgen/SurfaceRules$Context	updateY	(IIIIII)V
 #?}
+# 26.3 moved updateXZ onto MaterialRuleContext and gave it four arguments; that shape is reached
+# through SurfaceRulesContextAccessor's >=26.3 @Invoker arm, not from here.
+#? <26.3
 accessible	method	net/minecraft/world/level/levelgen/SurfaceRules$Context	updateXZ	(II)V
 
 accessible	field	net/minecraft/client/multiplayer/ClientLevel	tintCaches	Lit/unimi/dsi/fastutil/objects/Object2ObjectArrayMap;
@@ -200,14 +221,19 @@ accessible	field	net/minecraft/world/level/pathfinder/NodeEvaluator	entityDepth	
 
 accessible	method	net/minecraft/server/level/ChunkMap	getVisibleChunkIfPresent	(J)Lnet/minecraft/server/level/ChunkHolder;
 
+# All three are gone at 26.3, renamed into levelgen.material as SequenceRule, ConditionRule and
+# BiomeCondition — and all three of those are public, so nothing replaces these entries.
+#?{ <26.3
 accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$SequenceRuleSource
 accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$TestRuleSource
 accessible	class	net/minecraft/world/level/levelgen/SurfaceRules$BiomeConditionSource
+#?}
 
-# 26.2 retyped the record component from a List<ResourceKey<Biome>> to a HolderSet<Biome>.
+# 26.2 retyped the record component from a List<ResourceKey<Biome>> to a HolderSet<Biome>. At 26.3
+# the reader is BiomeCondition's public record accessor biomes(), so no entry is needed.
 #? <26.2
 accessible	field	net/minecraft/world/level/levelgen/SurfaceRules$BiomeConditionSource	biomes	Ljava/util/List;
-#? >=26.2
+#? (>=26.2 && <26.3)
 accessible	field	net/minecraft/world/level/levelgen/SurfaceRules$BiomeConditionSource	biomes	Lnet/minecraft/core/HolderSet;
 
 # --------------------------------------------------------------------------------------------

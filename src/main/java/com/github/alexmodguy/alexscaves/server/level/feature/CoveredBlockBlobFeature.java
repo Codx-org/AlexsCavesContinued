@@ -7,22 +7,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 
-public class CoveredBlockBlobFeature extends Feature<CoveredBlockBlobConfiguration> {
+public class CoveredBlockBlobFeature extends ACFeature<CoveredBlockBlobConfiguration> {
 
-    public CoveredBlockBlobFeature(Codec<CoveredBlockBlobConfiguration> config) {
+    public CoveredBlockBlobFeature(Object config) {
         super(config);
     }
 
-    public boolean place(FeaturePlaceContext<CoveredBlockBlobConfiguration> context) {
-        BlockPos blockpos = context.origin();
-        WorldGenLevel worldgenlevel = context.level();
-        RandomSource randomsource = context.random();
+    public boolean acPlace(CoveredBlockBlobConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos blockpos = acOrigin;
+        WorldGenLevel worldgenlevel = acLevel;
+        RandomSource randomsource = acRandom;
 
         CoveredBlockBlobConfiguration blockstateconfiguration;
-        for (blockstateconfiguration = context.config(); blockpos.getY() > worldgenlevel.getMinBuildHeight() + 3; blockpos = blockpos.below()) {
+        for (blockstateconfiguration = acConfig; blockpos.getY() > worldgenlevel.getMinBuildHeight() + 3; blockpos = blockpos.below()) {
             if (!worldgenlevel.isEmptyBlock(blockpos.below())) {
                 BlockState blockstate = worldgenlevel.getBlockState(blockpos.below());
                 // 26 deleted Feature#isDirt and Feature#isStone — vanilla's own BlockBlobFeature asks

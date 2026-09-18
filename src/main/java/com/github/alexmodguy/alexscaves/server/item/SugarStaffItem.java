@@ -43,7 +43,7 @@ public class SugarStaffItem extends Item implements ACClientExtensionItem, ACEnc
         ItemStack itemstack = player.getItemInHand(hand);
         if(!level.isClientSide()){
             boolean hex = player.isShiftKeyDown();
-            player.swing(hand);
+            ACCompat.swing(player, hand);
             Entity lookingAtEntity = SeaStaffItem.getClosestLookingAtEntityFor(level, player, 32);
             if(hex){
                 Vec3 ground = ACMath.getGroundBelowPosition(player.level(), player.getEyePosition());

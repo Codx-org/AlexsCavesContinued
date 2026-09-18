@@ -35,7 +35,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 //?}
 public class PostEffectInitMixin {
 
-    //? if >=26.2 {
+    //? if >=26.3 {
+    /*@Inject(method = "Lnet/minecraft/client/renderer/ShaderManager;apply(Lcom/mojang/renderpearl/api/device/GpuDevice;Lnet/minecraft/client/renderer/ShaderManager$PendingResults;)V",
+            remap = CitadelConstants.REMAPREFS,
+            at = @At("TAIL"))
+    private void acc_citadel_initOutline(CallbackInfo ci) {
+        PostEffectRegistry.onInitializeOutline();
+    }
+    *///?} elif >=26.2 {
     /*@Inject(method = "Lnet/minecraft/client/renderer/ShaderManager;apply(Lnet/minecraft/client/renderer/ShaderManager$Configs;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V",
             remap = CitadelConstants.REMAPREFS,
             at = @At("TAIL"))

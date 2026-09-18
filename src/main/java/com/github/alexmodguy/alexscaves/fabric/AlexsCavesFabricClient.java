@@ -83,6 +83,26 @@ public class AlexsCavesFabricClient implements ClientModInitializer {
         // method is simply empty from 1.21.4, where a model definition names the renderer instead.
         com.github.alexmodguy.alexscaves.fabric.client.ACFabricItemRenderers.register();
 
+        // What acid and purple soda look like. Below 26 a fluid's sprites come from a render handler:
+        // Forge and NeoForge build one from the fluid type's client extension, but Fabric API only
+        // knows the handlers registered with it, and a fluid without one is drawn with the water
+        // sprites and the biome's water colour. So both fluids looked like plain water on every
+        // Fabric node below 26. From 26 the sprites are a baked FluidModel, registered in ClientProxy.
+        //? if <26 {
+        net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry.INSTANCE.register(
+                com.github.alexmodguy.alexscaves.server.block.fluid.ACFluidRegistry.ACID_FLUID_SOURCE.get(),
+                com.github.alexmodguy.alexscaves.server.block.fluid.ACFluidRegistry.ACID_FLUID_FLOWING.get(),
+                new net.fabricmc.fabric.api.client.render.fluid.v1.SimpleFluidRenderHandler(
+                        com.github.alexmodguy.alexscaves.server.block.fluid.AcidFluidType.FLUID_STILL,
+                        com.github.alexmodguy.alexscaves.server.block.fluid.AcidFluidType.FLUID_FLOWING));
+        net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry.INSTANCE.register(
+                com.github.alexmodguy.alexscaves.server.block.fluid.ACFluidRegistry.PURPLE_SODA_FLUID_SOURCE.get(),
+                com.github.alexmodguy.alexscaves.server.block.fluid.ACFluidRegistry.PURPLE_SODA_FLUID_FLOWING.get(),
+                new net.fabricmc.fabric.api.client.render.fluid.v1.SimpleFluidRenderHandler(
+                        com.github.alexmodguy.alexscaves.server.block.fluid.PurpleSodaFluidType.FLUID_STILL,
+                        com.github.alexmodguy.alexscaves.server.block.fluid.PurpleSodaFluidType.FLUID_FLOWING));
+        //?}
+
         // The chunk render layer of every block whose model declares one. `render_type` in a model
         // JSON is a Forge extension that neither vanilla nor Fabric API has ever read, so without
         // this all 119 of them draw on the solid layer and their transparent texels come out black.

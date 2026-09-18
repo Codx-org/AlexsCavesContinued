@@ -14,6 +14,8 @@ import com.github.alexmodguy.alexscaves.citadel.server.message.SyncClientTickRat
 import com.mojang.serialization.Codec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
+// 26.3 deleted SurfaceRules; see CitadelSurfaceRuleWrapper for where the API went.
+//? if <26.3
 import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -64,14 +66,24 @@ public class Citadel {
         // before level data is written (see NoiseGeneratorSettingsMixin#acOnSaveData), so the id is
         // internal and never reaches disk.
         // 1.20.5 retyped the MATERIAL_RULE / MATERIAL_CONDITION registries from Codec to MapCodec.
-        //? if >=1.20.5 {
+        // 26.3 then split each in two: MATERIAL_RULE now holds the rules themselves and the registry
+        // of their codecs is MATERIAL_RULE_TYPE, so the key moves as well as the element type. The
+        // registration call is inside the arms because the codec's own shape differs — on 26.3
+        // CitadelSurfaceRuleWrapper.CODEC is a bare MapCodec, below it a KeyDispatchDataCodec whose
+        // codec() unwraps to one.
+        //? if >=26.3 {
+        /*DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.material.rule.MaterialRule>> surfaceRules =
+                DeferredRegister.create(Registries.MATERIAL_RULE_TYPE, AlexsCaves.MODID);
+        surfaceRules.register("citadel_wrapper", () -> CitadelSurfaceRuleWrapper.CODEC);
+        *///?} elif >=1.20.5 {
         /*DeferredRegister<com.mojang.serialization.MapCodec<? extends SurfaceRules.RuleSource>> surfaceRules =
                 DeferredRegister.create(Registries.MATERIAL_RULE, AlexsCaves.MODID);
+        surfaceRules.register("citadel_wrapper", CitadelSurfaceRuleWrapper.CODEC::codec);
         *///?} else {
         DeferredRegister<Codec<? extends SurfaceRules.RuleSource>> surfaceRules =
                 DeferredRegister.create(Registries.MATERIAL_RULE, AlexsCaves.MODID);
-        //?}
         surfaceRules.register("citadel_wrapper", CitadelSurfaceRuleWrapper.CODEC::codec);
+        //?}
         surfaceRules.register(modEventBus);
 
         // icon_item / effect_item — referenced by name from this mod's advancement JSONs.

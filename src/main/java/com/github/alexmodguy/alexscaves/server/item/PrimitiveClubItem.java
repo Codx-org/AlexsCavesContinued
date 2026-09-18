@@ -192,16 +192,16 @@ public class PrimitiveClubItem extends Item implements ACClientExtensionItem, AC
 
     @Override
     public boolean onLeftClickEntity(ItemStack stack, Player player, Entity entity) {
-        return player.getAttackStrengthScale(0) < 0.95 || player.attackAnim != 0;
+        return player.getAttackStrengthScale(0) < 0.95 || acSwinging(player);
     }
 
     @Override
     public boolean onEntitySwing(ItemStack stack, LivingEntity entity) {
         if (entity instanceof Player player) {
-            if (player.getAttackStrengthScale(0) < 1 && player.attackAnim > 0) {
+            if (player.getAttackStrengthScale(0) < 1 && acSwinging(player)) {
                 return true;
             } else {
-                player.swingTime = -1;
+                acForceSwingRestart(player);
             }
         }
         return false;
@@ -209,9 +209,43 @@ public class PrimitiveClubItem extends Item implements ACClientExtensionItem, AC
 
     public void acInventoryTick(ItemStack stack, Level level, Entity entity, boolean held) {
         if (entity instanceof Player player && held) {
-            if (player.getAttackStrengthScale(0) < 0.95 && player.attackAnim > 0) {
-                player.swingTime--;
+            if (player.getAttackStrengthScale(0) < 0.95 && acSwinging(player)) {
+                acStretchSwing(player);
             }
         }
     }
+
+    // The club drives its own swing, which means reaching for three things vanilla kept as public
+    // fields until 26.3 folded them into a private LivingEntity.SwingState that baseTick ticks
+    // itself. Only the read has a public successor there — isSwinging() — so on 26.3 the two writes
+    // become no-ops: the swing no longer stretches while the attack cooldown catches up, and an
+    // early swing is no longer forced to restart. The access transformer cannot reach the fields
+    // instead, because it has no gating mechanism and an entry naming a member that the other 18
+    // NeoForge nodes' LivingEntity does not have is a hard error on every one of them.
+    //
+    // (attackAnim is never negative, so the != 0 the first call site used and the > 0 the other two
+    // used are the same test, and both are isSwinging().)
+    //? if >=26.3 {
+    /*private static boolean acSwinging(Player player) {
+        return player.isSwinging();
+    }
+
+    private static void acStretchSwing(Player player) {
+    }
+
+    private static void acForceSwingRestart(Player player) {
+    }
+    *///?} else {
+    private static boolean acSwinging(Player player) {
+        return player.attackAnim > 0;
+    }
+
+    private static void acStretchSwing(Player player) {
+        player.swingTime--;
+    }
+
+    private static void acForceSwingRestart(Player player) {
+        player.swingTime = -1;
+    }
+    //?}
 }

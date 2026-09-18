@@ -206,6 +206,11 @@ public class NotorRenderer extends MobRenderer<NotorEntity, NotorModel> {
                         matrixStack.translate(0, -scaleBy * 0.25F, 0);
                     }
                     ACClientCompat.renderToBuffer(model, matrixStack, ivertexbuilder, 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+                    // The Forsaken's base texture is nearly black and all of its look comes from the
+                    // glow layer, which this branch never draws, so its hologram came out invisible.
+                    if (entityIn instanceof com.github.alexmodguy.alexscaves.server.entity.living.ForsakenEntity) {
+                        ACClientCompat.renderToBuffer(model, matrixStack, bufferIn.getBuffer(ACRenderTypes.getHologram(ForsakenRenderer.TEXTURE_EYES)), 240, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+                    }
                     matrixStack.popPose();
                     //? if <1.21.2 {
                     if (model instanceof HumanoidModel<?> humanoidModel) {

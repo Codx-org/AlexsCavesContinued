@@ -1,31 +1,26 @@
-# 1.0.9
+# 1.1.0
 
-Five reports came in after `1.0.8`. Four of them are fixed here.
+**Minecraft 26.3 is now supported**, on Fabric and NeoForge. Forge has no 26.3 build, so there is no
+Forge jar for it — the same as 1.21.2.
 
-## Fixed
+Everything else is unchanged from 1.0.11: if you are not on 26.3, this release behaves exactly like
+the last one and there is no reason to rush the update.
 
-- **Hitting a Luxtructosaurus crashed the game on 26.2.** Same crash for Tremorzilla, Hullbreaker,
-  Corrodent, Magnetron, Quarry Smasher and the Gossamer Worm, and it's also the Tremorzilla crash
-  people hit after resizing one with `/attribute`. These mobs are built out of several hitboxes, and
-  on your client those extra hitboxes never got an ID. Every version up to 26.1 quietly ignored
-  that; 26.2 throws instead.
-- **Going underwater on 1.21.2 and later filled the screen with flat biome fog** and made blocks and
-  particles flicker. Worst in the Toxic Caves, Forlorn Hollows and Abyssal Chasm. There was already
-  a workaround in the mod for this, but it only kicked in from 1.21.6 up. It starts two versions
-  earlier now.
-- **Placing a pewen or thornwood boat crashed the game.** Two separate mistakes on top of each
-  other: the boat renderer was still written against the old 1.20 boat class, and one of our own
-  methods was relying on Minecraft to fill it in, which doesn't work on Fabric.
-- **Alex's Caves gear showed no enchantments at an enchanting table on Fabric.** The enchantments
-  existed and turned up in generated books, but the table never offered them for the mod's own
-  tools and armour.
+## New
 
-## Couldn't reproduce
+- **Minecraft 26.3 support** — Fabric and NeoForge. That brings the mod to 60 builds across
+  21 Minecraft versions.
 
-- **The giant sweetberry x-ray in the candy cavity.** We built it four different ways on 26.2 and
-  never got it to happen. We did find one thing that was wrong and fixed it: sweetberries were
-  counting as a full solid block for lighting and face culling, which they very much are not. If
-  you still see it after this update, a screenshot and your mod list would really help.
-- **The diving helmet side textures, and the custom helmets not lining up with 3D Skin Layers.** We
-  went over the helmet model and its texture sheet and everything lines up here, so we're stuck
-  without a screenshot.
+## Fixed (26.3 only)
+
+- **Cave biomes could be found but never actually generated.** `/locate` and Cave Maps would point
+  you at a Forlorn Hollows or a Magnetic Caves that simply was not there when you dug down. 26.3
+  changed how the game asks for biomes and the mod was only answering half the question.
+- **Six crashes and rendering failures** introduced by 26.3's new render system — a crash on the
+  first frame inside a cave biome, one when a cave item icon first drew, a disconnect while riding
+  or being near moving entities, and several places where the wrong colours or nothing at all was
+  drawn.
+
+## Note
+
+On 26.3 this mod needs **CodxLib 1.6.1 or newer**. On every other version 1.3.6 is still fine.

@@ -195,9 +195,9 @@ public class CommonEvents {
             ItemStack stackReplacement = new ItemStack(ACItemRegistry.HOLOCODER.get());
             stack.shrink(1);
             ACCompat.setTag(stackReplacement, tag);
-            event.getEntity().swing(event.getHand());
+            ACCompat.swing(event.getEntity(), event.getHand());
             if (!event.getEntity().addItem(stackReplacement)) {
-                ItemEntity itementity = event.getEntity().drop(stackReplacement, false);
+                ItemEntity itementity = ACCompat.drop(event.getEntity(), stackReplacement, false);
                 if (itementity != null) {
                     itementity.setNoPickUpDelay();
                     ACPlatform.setThrower(itementity, event.getEntity());
@@ -608,11 +608,15 @@ public class CommonEvents {
             CompoundTag tag = ACCompat.getTag(itemInHand);
             if (tag != null) {
                 if (itemTagContainsAC(tag, "BiomeKey", false) || itemTagContainsAC(tag, "Structure", true) || itemTagContainsAC(tag, "structurecompass:structureName", true) || itemTagContainsAC(tag, "StructureKey", true)) {
-                    // broadcastBreakEvent became onEquippedItemBroken, which wants the item as well
-                    // as the slot. It has to be read before the shrink: an ItemStack that shrinks to
-                    // zero reports Items.AIR from getItem(), and the item is what picks the break
-                    // sound and the particle texture.
-                    //? if >=1.21
+                    // broadcastBreakEvent became onEquippedItemBroken, which wants the broken item
+                    // as well as the slot, and at 26.3 widened that parameter from the item to the
+                    // whole stack. Either way it has to be captured before the shrink: a stack that
+                    // shrinks to zero reports air, and the item is what picks the break sound and
+                    // the particle texture. The 26.3 arm copies for the same reason — the stack it
+                    // is handed must not be the one about to be emptied.
+                    //? if >=26.3
+                    /*net.minecraft.world.item.ItemStack acBrokenItem = itemInHand.copy();*/
+                    //? if >=1.21 && <26.3
                     /*net.minecraft.world.item.Item acBrokenItem = itemInHand.getItem();*/
                     itemInHand.shrink(1);
                     //? if >=1.21
@@ -643,7 +647,7 @@ public class CommonEvents {
                         if (!player.addItem(new ItemStack(ACItemRegistry.PURPLE_SODA_BOTTLE.get()))) {
                             ACCompat.spawnAtLocation(player, new ItemStack(ACItemRegistry.PURPLE_SODA_BOTTLE.get()));
                         }
-                        player.swing(event.getHand());
+                        ACCompat.swing(player, event.getHand());
                         if (!player.isCreative()) {
                             event.getItemStack().shrink(1);
                         }

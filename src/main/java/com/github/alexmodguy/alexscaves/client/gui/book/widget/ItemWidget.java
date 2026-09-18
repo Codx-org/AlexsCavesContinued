@@ -49,6 +49,37 @@ public class ItemWidget extends BookWidget {
 
     private static final RenderType SEPIA_ITEM_RENDER_TYPE = ACRenderTypes.getBookWidget(TextureAtlas.LOCATION_BLOCKS, true);
 
+    // Which sepia type stands in for a standard item sheet; anything else is drawn as asked. The
+    // sepia type has to sample the same atlas as the sheet it replaces: 1.21.11 moved item sprites
+    // onto an atlas of their own, and drawing them through the blocks-atlas type read unrelated
+    // block pixels, which is the scrambled recipe icons. 26.1 then split each atlas's item sheet
+    // into cutout and translucent halves, and missing a half left those items in full colour.
+    //? if >=26.1 {
+    /*private static RenderType sepiaSheet(RenderType type) {
+        if (type == net.minecraft.client.renderer.Sheets.translucentItemSheet() || type == net.minecraft.client.renderer.Sheets.cutoutItemSheet()) {
+            return ACRenderTypes.getBookWidget(TextureAtlas.LOCATION_ITEMS, true);
+        }
+        if (type == net.minecraft.client.renderer.Sheets.translucentBlockItemSheet() || type == net.minecraft.client.renderer.Sheets.cutoutBlockItemSheet() || type == net.minecraft.client.renderer.Sheets.cutoutBlockSheet()) {
+            return SEPIA_ITEM_RENDER_TYPE;
+        }
+        return type;
+    }
+    *///?} elif >=1.21.11 {
+    /*private static RenderType sepiaSheet(RenderType type) {
+        if (type == net.minecraft.client.renderer.Sheets.translucentItemSheet()) {
+            return ACRenderTypes.getBookWidget(TextureAtlas.LOCATION_ITEMS, true);
+        }
+        if (type == net.minecraft.client.renderer.Sheets.translucentBlockItemSheet() || type == net.minecraft.client.renderer.Sheets.cutoutBlockSheet()) {
+            return SEPIA_ITEM_RENDER_TYPE;
+        }
+        return type;
+    }
+    *///?} elif >=1.21.4 {
+    /*private static RenderType sepiaSheet(RenderType type) {
+        return type == net.minecraft.client.renderer.Sheets.translucentItemSheet() || type == net.minecraft.client.renderer.Sheets.cutoutBlockSheet() ? SEPIA_ITEM_RENDER_TYPE : type;
+    }
+    *///?}
+
     public ItemWidget(int displayPage, String item, String nbt, boolean sepia, int x, int y, float scale) {
         super(displayPage, Type.ITEM, x, y, scale);
         this.item = item;
@@ -116,7 +147,7 @@ public class ItemWidget extends BookWidget {
     // applied by the state on the newer path, which is why only the older one does them by hand.
     public static void renderSepiaItem(PoseStack poseStack, ItemStack itemStack, MultiBufferSource bufferSource){
         //? if >=1.21.4 {
-        /*com.github.alexmodguy.alexscaves.client.render.item.ACItemRenderCompat.renderSepia(itemStack, Minecraft.getInstance().level, ItemDisplayContext.GUI, poseStack, bufferSource, SEPIA_ITEM_RENDER_TYPE, 240, OverlayTexture.NO_OVERLAY);
+        /*com.github.alexmodguy.alexscaves.client.render.item.ACItemRenderCompat.renderSepia(itemStack, Minecraft.getInstance().level, ItemDisplayContext.GUI, poseStack, bufferSource, ItemWidget::sepiaSheet, 240, OverlayTexture.NO_OVERLAY);
         *///?} else {
         poseStack.pushPose();
         BakedModel bakedmodel = Minecraft.getInstance().getItemRenderer().getModel(itemStack, Minecraft.getInstance().level, null, 0);

@@ -37,7 +37,16 @@ public class BeholderSyncMessage {
             if (context.isClientSide()) {
                 playerSided = AlexsCaves.PROXY.getClientSidePlayer();
             }
-            Level serverLevel = ServerLifecycleHooks.getCurrentServer().getLevel(playerSided.level().dimension());
+            // A client connected to a remote server has no server to ask, and the camera switch there
+            // arrives through entity events anyway.
+            net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server == null || playerSided == null) {
+                return;
+            }
+            Level serverLevel = server.getLevel(playerSided.level().dimension());
+            if (serverLevel == null) {
+                return;
+            }
             Entity watcher = serverLevel.getEntity(message.beholderId);
             if (watcher instanceof BeholderEyeEntity beholderEye) {
                 Entity beholderEyePlayer = beholderEye.getUsingPlayer();

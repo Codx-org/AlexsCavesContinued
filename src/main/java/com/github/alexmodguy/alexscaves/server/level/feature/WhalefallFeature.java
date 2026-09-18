@@ -17,33 +17,31 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
-public class WhalefallFeature extends Feature<WhalefallFeatureConfiguration> {
+public class WhalefallFeature extends ACFeature<WhalefallFeatureConfiguration> {
 
-    public WhalefallFeature(Codec<WhalefallFeatureConfiguration> codec) {
+    public WhalefallFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<WhalefallFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
+    public boolean acPlace(WhalefallFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
         BlockPos.MutableBlockPos trenchBottom = new BlockPos.MutableBlockPos();
-        trenchBottom.set(context.origin());
+        trenchBottom.set(acOrigin);
         while (!level.getBlockState(trenchBottom).getFluidState().isEmpty() && trenchBottom.getY() > level.getMinBuildHeight()) {
             trenchBottom.move(0, -1, 0);
         }
         if (level.getBlockState(trenchBottom.below()).is(ACBlockRegistry.MUCK.get())) {
             Rotation rotation = Rotation.getRandom(randomsource);
-            ResourceLocation head = context.config().headStructures.get(randomsource.nextInt(context.config().headStructures.size()));
-            ResourceLocation body = context.config().bodyStructures.get(randomsource.nextInt(context.config().bodyStructures.size()));
-            ResourceLocation tail = context.config().tailStructures.get(randomsource.nextInt(context.config().tailStructures.size()));
+            ResourceLocation head = acConfig.headStructures.get(randomsource.nextInt(acConfig.headStructures.size()));
+            ResourceLocation body = acConfig.bodyStructures.get(randomsource.nextInt(acConfig.bodyStructures.size()));
+            ResourceLocation tail = acConfig.tailStructures.get(randomsource.nextInt(acConfig.tailStructures.size()));
             Direction direction = rotation.rotate(Direction.SOUTH);
             Direction bendTo = randomsource.nextBoolean() ? direction.getClockWise() : direction.getCounterClockWise();
             StructureTemplateManager structuretemplatemanager = level.getLevel().getServer().getStructureManager();

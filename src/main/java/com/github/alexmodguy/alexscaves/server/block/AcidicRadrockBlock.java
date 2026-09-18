@@ -24,7 +24,13 @@ public class AcidicRadrockBlock extends Block {
         super(BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GREEN).requiresCorrectToolForDrops().strength(2.5F, 7.0F).sound(ACSoundTypes.RADROCK));
     }
 
+    // 26.3 narrowed playerDestroy's first two parameters to ServerLevel/ServerPlayer.
+    // Only the signature moves; the body is identical on both sides.
+    //? if >=26.3 {
+    /*public void playerDestroy(net.minecraft.server.level.ServerLevel level, net.minecraft.server.level.ServerPlayer player, BlockPos blockPos, BlockState state, @Nullable BlockEntity entity, ItemStack itemStack) {
+    *///?} else {
     public void playerDestroy(Level level, Player player, BlockPos blockPos, BlockState state, @Nullable BlockEntity entity, ItemStack itemStack) {
+    //?}
         super.playerDestroy(level, player, blockPos, state, entity, itemStack);
         if (ACCompat.enchantLevel(itemStack, Enchantments.SILK_TOUCH) == 0 && level.getRandom().nextInt(3) == 0) {
             level.setBlockAndUpdate(blockPos, ACBlockRegistry.ACID.get().defaultBlockState());

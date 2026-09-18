@@ -1,15 +1,15 @@
 package com.github.alexmodguy.alexscaves.server.level.feature.config;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 
 import java.util.List;
 
-public class UndergroundRuinsFeatureConfiguration implements FeatureConfiguration {
+public class UndergroundRuinsFeatureConfiguration implements ACFeatureConfiguration {
 
-    public static final Codec<UndergroundRuinsFeatureConfiguration> CODEC = RecordCodecBuilder.create((configurationInstance) -> {
+    public static final MapCodec<UndergroundRuinsFeatureConfiguration> MAP_CODEC = RecordCodecBuilder.mapCodec((configurationInstance) -> {
         return configurationInstance.group(ResourceLocation.CODEC.listOf().fieldOf("structures").forGetter((p_159830_) -> {
                     return p_159830_.structures;
                 }),
@@ -19,6 +19,7 @@ public class UndergroundRuinsFeatureConfiguration implements FeatureConfiguratio
                     return otherConfig.sinkBy;
                 })).apply(configurationInstance, UndergroundRuinsFeatureConfiguration::new);
     });
+    public static final Codec<UndergroundRuinsFeatureConfiguration> CODEC = MAP_CODEC.codec();
     public final List<ResourceLocation> structures;
     public final ResourceLocation chestLoot;
     public final int sinkBy;

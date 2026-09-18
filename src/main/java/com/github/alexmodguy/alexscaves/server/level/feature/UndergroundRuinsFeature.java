@@ -18,8 +18,6 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.StructureMode;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
@@ -28,17 +26,17 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import java.util.ArrayList;
 import java.util.List;
 
-public class UndergroundRuinsFeature extends Feature<UndergroundRuinsFeatureConfiguration> {
+public class UndergroundRuinsFeature extends ACFeature<UndergroundRuinsFeatureConfiguration> {
 
-    public UndergroundRuinsFeature(Codec<UndergroundRuinsFeatureConfiguration> codec) {
+    public UndergroundRuinsFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<UndergroundRuinsFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos chunkCenter = context.origin().atY(level.getMinBuildHeight() + 3);
+    public boolean acPlace(UndergroundRuinsFeatureConfiguration acConfig, WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos chunkCenter = acOrigin.atY(level.getMinBuildHeight() + 3);
         List<BlockPos> genPos = new ArrayList<>();
         int surface = level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, chunkCenter.getX(), chunkCenter.getZ()) - 5;
         int j = 0;
@@ -61,7 +59,7 @@ public class UndergroundRuinsFeature extends Feature<UndergroundRuinsFeatureConf
             return false;
         }
         Rotation rotation = Rotation.getRandom(randomsource);
-        UndergroundRuinsFeatureConfiguration config = context.config();
+        UndergroundRuinsFeatureConfiguration config = acConfig;
         int i = randomsource.nextInt(config.structures.size());
         StructureTemplateManager structuretemplatemanager = level.getLevel().getServer().getStructureManager();
         StructureTemplate structuretemplate = structuretemplatemanager.getOrCreate(config.structures.get(i));
@@ -83,7 +81,7 @@ public class UndergroundRuinsFeature extends Feature<UndergroundRuinsFeatureConf
                 String marker = ACCompat.getString(structuretemplate$structureblockinfo.nbt(), "metadata");
                 if (marker.equals("loot_chest")) {
                     level.setBlock(structuretemplate$structureblockinfo.pos(), Blocks.CAVE_AIR.defaultBlockState(), 3);
-                    ACPlatform.setBlockEntityLootTable(level, randomsource, structuretemplate$structureblockinfo.pos().below(), context.config().chestLoot);
+                    ACPlatform.setBlockEntityLootTable(level, randomsource, structuretemplate$structureblockinfo.pos().below(), acConfig.chestLoot);
                 } else {
                     processMarker(marker, level, structuretemplate$structureblockinfo.pos(), randomsource);
                 }

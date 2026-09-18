@@ -7,22 +7,19 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class AmbersolFeature extends Feature<NoneFeatureConfiguration> {
+public class AmbersolFeature extends ACSimpleFeature {
 
-    public AmbersolFeature(Codec<NoneFeatureConfiguration> config) {
+    public AmbersolFeature(Object config) {
         super(config);
     }
 
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos blockpos = context.origin();
-        WorldGenLevel worldgenlevel = context.level();
-        RandomSource randomsource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos blockpos = acOrigin;
+        WorldGenLevel worldgenlevel = acLevel;
+        RandomSource randomsource = acRandom;
 
-        for (blockpos = context.origin(); blockpos.getY() >= worldgenlevel.getMaxBuildHeight() - 3; blockpos = blockpos.above()) {
+        for (blockpos = acOrigin; blockpos.getY() >= worldgenlevel.getMaxBuildHeight() - 3; blockpos = blockpos.above()) {
             if (!worldgenlevel.isEmptyBlock(blockpos.above())) {
                 break;
             }

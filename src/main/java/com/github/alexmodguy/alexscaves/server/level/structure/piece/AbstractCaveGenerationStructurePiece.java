@@ -20,7 +20,11 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+//? if >=26.3 {
+/*import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+*///?} else {
 import net.minecraft.world.level.levelgen.structure.StructurePieceAccessor;
+//?}
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 
@@ -126,7 +130,13 @@ public abstract class AbstractCaveGenerationStructurePiece extends StructurePiec
         }
     }
 
+    // 26.3 deleted the StructurePieceAccessor interface and gave StructurePiece#addChildren the
+    // concrete StructurePiecesBuilder it always received in practice.
+    //? if >=26.3 {
+    /*public void addChildren(StructurePiece piece, StructurePiecesBuilder accessor, RandomSource random) {
+    *///?} else {
     public void addChildren(StructurePiece piece, StructurePieceAccessor accessor, RandomSource random) {
+    //?}
 
     }
 }

@@ -8,7 +8,6 @@ import com.github.alexmodguy.alexscaves.server.entity.living.SeaPigEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -30,7 +29,7 @@ public class SeaPigRenderer extends MobRenderer<SeaPigEntity, SeaPigModel> imple
 
     public SeaPigRenderer(EntityRendererProvider.Context renderManagerIn) {
         super(renderManagerIn, new SeaPigModel(), 0.4F);
-        this.addLayer(new LayerOutside(renderManagerIn.getEntityRenderDispatcher().getItemInHandRenderer()));
+        this.addLayer(new LayerOutside(ACClientCompat.itemInHandRenderer()));
     }
 
     @Override
@@ -50,9 +49,9 @@ public class SeaPigRenderer extends MobRenderer<SeaPigEntity, SeaPigModel> imple
 
     class LayerOutside extends RenderLayer<SeaPigEntity, SeaPigModel> {
 
-        private ItemInHandRenderer itemInHandRenderer;
+        private Object itemInHandRenderer;
 
-        public LayerOutside(ItemInHandRenderer itemInHandRenderer) {
+        public LayerOutside(Object itemInHandRenderer) {
             super(SeaPigRenderer.this);
             this.itemInHandRenderer = itemInHandRenderer;
         }

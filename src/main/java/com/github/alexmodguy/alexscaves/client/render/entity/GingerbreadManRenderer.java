@@ -16,7 +16,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -54,7 +53,7 @@ public class GingerbreadManRenderer extends MobRenderer<GingerbreadManEntity, Gi
 
     public GingerbreadManRenderer(EntityRendererProvider.Context renderManagerIn) {
         super(renderManagerIn, new GingerbreadManModel(), 0.25F);
-        this.addLayer(new ItemLayer(renderManagerIn.getEntityRenderDispatcher().getItemInHandRenderer()));
+        this.addLayer(new ItemLayer(ACClientCompat.itemInHandRenderer()));
         this.addLayer(new TeamOverlayLayer());
         this.addLayer(new LicowitchPossessionLayer<>(this));
     }
@@ -150,10 +149,19 @@ public class GingerbreadManRenderer extends MobRenderer<GingerbreadManEntity, Gi
 
     private class ItemLayer extends ItemInHandLayer<GingerbreadManEntity, GingerbreadManModel> {
 
-        private final ItemInHandRenderer witchItemInHandRenderer;
+        private final Object witchItemInHandRenderer;
 
-        private ItemLayer(ItemInHandRenderer itemInHandRenderer) {
-            super(GingerbreadManRenderer.this, itemInHandRenderer);
+        // Below 1.21.2 this extends VANILLA's ItemInHandLayer, whose constructor takes a real
+        // ItemInHandRenderer. From 1.21.2 the !mc2102-render-import-iteminhand rule repoints the
+        // import at the compat shim, whose constructor takes Object — because 26.3 deleted
+        // ItemInHandRenderer outright and no arm above it may name the type. So the parameter is
+        // Object on every node and is cast back only on the band whose superclass still wants it.
+        private ItemLayer(Object itemInHandRenderer) {
+            //? if >=1.21.2 {
+            /*super(GingerbreadManRenderer.this, itemInHandRenderer);
+            *///?} else {
+            super(GingerbreadManRenderer.this, (net.minecraft.client.renderer.ItemInHandRenderer) itemInHandRenderer);
+            //?}
             this.witchItemInHandRenderer = itemInHandRenderer;
         }
 

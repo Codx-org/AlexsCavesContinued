@@ -52,7 +52,7 @@ public class CandyCaneHookItem extends Item implements ACEnchantableItem, ACTick
 
                 player.awardStat(Stats.ITEM_USED.get(this));
                 player.gameEvent(GameEvent.ITEM_INTERACT_START);
-                player.swing(hand);
+                ACCompat.swing(player, hand);
                 return ACCompat.useConsume(itemstack);
             } else if(!(player.getRootVehicle() instanceof GumWormSegmentEntity) && !(itemStackOpposite.is(this) && !isActive(itemStackOpposite))){
                 if (isActive(itemstack)) {

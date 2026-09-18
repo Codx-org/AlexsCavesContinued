@@ -3,7 +3,6 @@ package com.github.alexmodguy.alexscaves.mixin.client;
 
 import com.github.alexmodguy.alexscaves.client.ACClientPlatform;
 import com.github.alexmodguy.alexscaves.client.gui.ACAdvancementTabs;
-import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.advancements.AdvancementTab;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidget;
@@ -44,10 +43,6 @@ public class AdvancementTabMixin {
 
     @Shadow
     @Final
-    private DisplayInfo display;
-
-    @Shadow
-    @Final
     private AdvancementWidget root;
 
     // Only ever iterated by value, so what the map is keyed on does not matter here — which is
@@ -82,7 +77,7 @@ public class AdvancementTabMixin {
             int i = Mth.floor(this.scrollX);
             int j = Mth.floor(this.scrollY);
             ACAdvancementTabs.setDimensions(width, height);
-            ACAdvancementTabs.renderTabBackground(guiGraphics, topX, topY, this.display, this.scrollX, this.scrollY);
+            ACAdvancementTabs.renderTabBackground(guiGraphics, topX, topY, this.scrollX, this.scrollY);
             this.root.drawConnectivity(guiGraphics, i, j, true);
             this.root.drawConnectivity(guiGraphics, i, j, false);
             this.root.draw(guiGraphics, i, j);

@@ -1,5 +1,7 @@
 package com.github.alexmodguy.alexscaves.client.render.entity;
 
+import com.github.alexmodguy.alexscaves.client.ACClientCompat;
+
 import com.github.alexmodguy.alexscaves.AlexsCaves;
 import com.github.alexmodguy.alexscaves.client.model.GummyBearModel;
 import com.github.alexmodguy.alexscaves.client.model.GummyBearModel;
@@ -36,7 +38,7 @@ public class GummyBearRenderer extends MobRenderer<GummyBearEntity, GummyBearMod
     public GummyBearRenderer(EntityRendererProvider.Context renderManagerIn) {
         super(renderManagerIn, new GummyBearModel(-1.8F), 0.85F);
         this.addLayer(new LayerOutside());
-        this.addLayer(new ItemInHandLayer<>(this, renderManagerIn.getEntityRenderDispatcher().getItemInHandRenderer()));
+        this.addLayer(new ItemInHandLayer<>(this, ACClientCompat.itemInHandRenderer()));
         this.addLayer(new GummyBearHeldMobLayer(this));
         this.addLayer(new LicowitchPossessionLayer<>(this, new GummyBearModel(0.0F), this::getOutsideTextureLocation));
     }

@@ -1,2 +1,0 @@
-Hi! I found an issue with the boss dino; whenever it is dealt damage by a player the game crashes. It happens with both vanilla ranged and melee weapons. Running mod version 1.0.8 for 26.2 and Neoforge version 26.2.0.75
-Just learned the crash only happens in survival mode; no issues damaging it in creative

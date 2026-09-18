@@ -21,7 +21,17 @@ platform {
 			forgeLikeVersionRange = declaredMcRange(fabricLike = false)
 		}
 		required("neoforge") {
-			forgeLikeVersionRange.set("[1,)")
+			// "[1,)" — any NeoForge — is right wherever the loader API this mod calls has been
+			// stable across the whole point-release line of that MC version, which is every node
+			// but one. `deps.neoforge-min` overrides it per node for the case where it is not:
+			// 26.3 is still a BETA line, and 26.3.0.4-beta DELETED five APIs that 26.3.0.1-beta
+			// still had (AbstractContainerScreen#getGuiLeft/#getGuiTop, NeoForgeRenderTypes
+			// #getUnlitTranslucent, FlowerPotBlock#addPlant, ModifyDefaultComponentsEvent#modify's
+			// Consumer overloads, and the whole neoforge.items package). This jar is compiled
+			// against the survivors, so on .1-beta it would install cleanly and then throw
+			// NoSuchMethodError in a screen, a render type and a registry callback. A declared
+			// floor turns that into the loader's own "requires NeoForge x or above" message.
+			forgeLikeVersionRange.set(propOrNull("deps.neoforge-min") ?: "[1,)")
 		}
 		required("codxlib") {
 			// >=1.3.6, not >=1.3: /acc menu is built on CodxLib's api.ui.menu chest-menu toolkit,
@@ -32,6 +42,22 @@ platform {
 		}
 		// NOTE: no Citadel dependency — the subset Alex's Caves uses is bundled into the mod
 		// under com.github.alexmodguy.alexscaves.citadel (see docs/notes/citadel.md).
+	}
+}
+
+// NeoForm 26.3-1's decompiled vanilla source does not recompile under the NeoFormRuntime that
+// MDG 2.0.141 defaults to (which runs JST 2.0.6): NeoForge's own access transformer widens BOTH
+// `HolderSet$Named contents()` and the anonymous `HolderSet$1 contents()` that overrides it, and
+// that JST applies only the first — so the override is left `protected` against a now-`public`
+// parent and javac rejects the whole game with "attempting to assign weaker access privileges;
+// was public". It fails inside createMinecraftArtifacts, i.e. before any of this mod's source is
+// compiled. NFRT 2.0.31 (JST 2.0.11) applies both entries. Pinned for 26.3 ONLY — the other 17
+// NeoForge nodes are verified against the default runtime, and a blanket bump would re-open all
+// of them for a fault that exists on one. The runtime is a separate plugin's extension
+// (net.neoforged.nfrtgradle), applied by moddev, so it is configured here rather than in neoForge {}.
+if (prop("deps.minecraft") == "26.3") {
+	extensions.configure<net.neoforged.nfrtgradle.NeoFormRuntimeExtension> {
+		version.set("2.0.31")
 	}
 }
 
@@ -133,6 +159,12 @@ tasks.named("createMinecraftArtifacts") {
 tasks.named<ProcessResources>("processResources") {
 	exclude("META-INF/accesstransformer.cfg")
 	rename("accesstransformer_mojmap.cfg", "accesstransformer.cfg")
+	// The source file opens with a commented header, and accesstransformers 8.2.x (Forge 26.2's)
+	// logs "Invalid access transformer line" for a bare "#". Ship only the entries: drop comment
+	// and blank lines. Matched under both names since the rename may already have run.
+	filesMatching(listOf("META-INF/accesstransformer_mojmap.cfg", "META-INF/accesstransformer.cfg")) {
+		filter { line -> if (line.isBlank() || line.trimStart().startsWith("#")) null else line }
+	}
 }
 
 // javac reports at most 100 errors by default, which makes "how far off is this node?" a lie

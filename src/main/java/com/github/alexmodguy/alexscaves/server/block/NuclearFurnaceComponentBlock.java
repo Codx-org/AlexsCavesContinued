@@ -228,7 +228,13 @@ public class NuclearFurnaceComponentBlock extends Block implements WorldlyContai
 
 
     @Override
+    // 26.3 narrowed playerDestroy's first two parameters to ServerLevel/ServerPlayer.
+    // Only the signature moves; the body is identical on both sides.
+    //? if >=26.3 {
+    /*public void playerDestroy(net.minecraft.server.level.ServerLevel level, net.minecraft.server.level.ServerPlayer player, BlockPos blockPos, BlockState state, @javax.annotation.Nullable BlockEntity entity, ItemStack itemStack) {
+    *///?} else {
     public void playerDestroy(Level level, Player player, BlockPos blockPos, BlockState state, @javax.annotation.Nullable BlockEntity entity, ItemStack itemStack) {
+    //?}
         checkCriticalityExplosion(level, blockPos);
         super.playerDestroy(level, player, blockPos, state, entity, itemStack);
     }

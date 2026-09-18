@@ -22,7 +22,9 @@ public class CandyCaneBlock extends RotatedPillarBlock {
         ItemStack itemStack = context.getItemInHand();
         if (!com.github.alexmodguy.alexscaves.server.misc.ACCompat.canPerform(itemStack, toolAction))
             return null;
-        if (ToolActions.AXE_STRIP == toolAction && (this == ACBlockRegistry.CANDY_CANE_BLOCK.get() || this == ACBlockRegistry.CHISELED_CANDY_CANE_BLOCK.get())) {
+        // See ACCompat.isAxeStrip — NeoForge 26.3 has no axe ability left to compare against, and
+        // both of these blocks are mapped in data/neoforge/data_maps/block/strippables.json.
+        if (com.github.alexmodguy.alexscaves.server.misc.ACCompat.isAxeStrip(toolAction) && (this == ACBlockRegistry.CANDY_CANE_BLOCK.get() || this == ACBlockRegistry.CHISELED_CANDY_CANE_BLOCK.get())) {
             return ACBlockRegistry.STRIPPED_CANDY_CANE_BLOCK.get().defaultBlockState().setValue(AXIS, state.getValue(AXIS));
         }
         // Fabric patches no such hook onto Block, so there is no supertype answer to defer to.

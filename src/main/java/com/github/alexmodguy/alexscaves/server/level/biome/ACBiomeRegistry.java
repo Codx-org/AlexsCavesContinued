@@ -7,6 +7,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.dimension.LevelStem;
@@ -125,7 +126,9 @@ public class ACBiomeRegistry {
         if (i == 0) {
             return ACBiomeRegistry.getBiomeSkyOverride(player.level().getBiome(player.blockPosition()));
         } else {
-            return BiomeSampler.sampleBiomesFloat(player.level(), player.position(), ACBiomeRegistry::getBiomeSkyOverride);
+            // The sky renderer packs this straight into a colour byte and subtracts it from one, so a
+            // value a rounding error past either end flips the sky to the opposite extreme for a frame.
+            return Mth.clamp(BiomeSampler.sampleBiomesFloat(player.level(), player.position(), ACBiomeRegistry::getBiomeSkyOverride), 0.0F, 1.0F);
         }
     }
 }

@@ -36,8 +36,18 @@ public class ACDummyBiomeSource extends BiomeSource {
         return Stream.empty();
     }
 
+    // 26.3 moved the lookup itself off BiomeSource and onto a BiomeResolver the source hands out,
+    // so the override to supply changes shape with the version — a resolver factory above 26.3,
+    // the lookup itself below it. Both answer null, for the reason given above.
+    //? if >=26.3 {
+    /*@Override
+    public net.minecraft.world.level.biome.BiomeResolver createResolver(Climate.Sampler sampler) {
+        return (quartX, quartY, quartZ) -> null;
+    }
+    *///?} else {
     @Override
     public Holder<Biome> getNoiseBiome(int p_204238_, int p_204239_, int p_204240_, Climate.Sampler p_204241_) {
         return null;
     }
+    //?}
 }

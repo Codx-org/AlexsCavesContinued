@@ -177,7 +177,7 @@ public class NuclearBombEntity extends Entity {
     public InteractionResult interact(Player player, InteractionHand hand) {
         ItemStack itemStack = player.getItemInHand(hand);
         if (itemStack.is(Tags.Items.SHEARS)) {
-            player.swing(hand);
+            ACCompat.swing(player, hand);
             this.playSound(ACSoundRegistry.NUCLEAR_BOMB_DEFUSE.get());
             this.remove(RemovalReason.KILLED);
             ACCompat.spawnAtLocation(this, new ItemStack(ACBlockRegistry.NUCLEAR_BOMB.get()));

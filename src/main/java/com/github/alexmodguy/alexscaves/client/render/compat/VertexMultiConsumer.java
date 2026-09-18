@@ -80,6 +80,15 @@ public class VertexMultiConsumer {
             this.second.setLineWidth(width);
             return this;
         }
+
+        // New abstract method in 26.3, declared without @Override for the same reason as
+        // setLineWidth above. Routed through ACClientCompat rather than called directly on the two
+        // delegates: this arm is >=26.2 and setUv3 does not exist on 26.2.
+        public VertexConsumer setUv3(float u, float v) {
+            com.github.alexmodguy.alexscaves.client.ACClientCompat.setUv3(this.first, u, v);
+            com.github.alexmodguy.alexscaves.client.ACClientCompat.setUv3(this.second, u, v);
+            return this;
+        }
     }
 }
 *///?}

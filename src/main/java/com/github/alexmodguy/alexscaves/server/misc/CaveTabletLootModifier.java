@@ -15,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
-import net.minecraft.world.level.storage.loot.predicates.LootItemConditions;
 import net.minecraftforge.common.loot.IGlobalLootModifier;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,7 +37,15 @@ public class CaveTabletLootModifier implements IGlobalLootModifier {
                     inst.group(
                                     ENTRY_CODEC.forGetter((configuration) -> configuration.biome),
                                     Codec.BOOL.fieldOf("replace").forGetter((configuration) -> configuration.replace),
+                                    // 26.3 deleted IGlobalLootModifier's codec helpers, LOOT_CONDITIONS_CODEC
+                                    // among them. The array is kept rather than folded into an all_of: here it
+                                    // means OR (ACPlatform.orConditions -> Util.anyOf), where a vanilla loot
+                                    // pool's conditions array means AND.
+                                    //? if >=26.3 {
+                                    /*LootItemCondition.DIRECT_CODEC.listOf().xmap(l -> l.toArray(new LootItemCondition[0]), java.util.Arrays::asList).fieldOf("conditions").forGetter(lm -> lm.conditions)
+                                    *///?} else {
                                     LOOT_CONDITIONS_CODEC.fieldOf("conditions").forGetter(lm -> lm.conditions)
+                                    //?}
                             )
                             .apply(inst, CaveTabletLootModifier::new));
 

@@ -147,7 +147,7 @@ public class SpelunkeryTableMenu extends AbstractContainerMenu {
                 itemInFinalSlot.setCount(itemInFinalSlot.getCount() + itemstack.getCount());
                 this.resultContainer.setItem(2, itemInFinalSlot);
             } else {
-                player.drop(itemstack, true);
+                ACCompat.drop(player, itemstack, true);
             }
             this.broadcastChanges();
         });

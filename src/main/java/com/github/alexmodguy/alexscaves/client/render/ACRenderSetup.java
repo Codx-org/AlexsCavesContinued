@@ -77,6 +77,15 @@ public final class ACRenderSetup {
     public static final Toggle OVERLAY = new Toggle(true);
     public static final Toggle NO_OVERLAY = new Toggle(false);
 
+    // Stand-ins for the two vanilla output constants, which 26.3 deleted along with the type that
+    // held them. From that version the shard rules redirect both call-site spellings here instead.
+    // They are null on purpose — setOutputState takes the value and discards it there — and they
+    // are two constants rather than one, because two rules rewriting to the same target fail
+    // configuration as an ambiguous replacement. Unused below 26.3, where the rules still resolve
+    // to the real vanilla constants.
+    public static final Object MAIN_TARGET = null;
+    public static final Object ITEM_ENTITY_TARGET = null;
+
     public static final class Texture {
         final ResourceLocation location;
         final boolean blur;

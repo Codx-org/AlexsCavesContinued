@@ -234,11 +234,15 @@ public class AlexsCaves {
         //? if <26
         MinecraftForge.EVENT_BUS.register(new com.github.alexmodguy.alexscaves.server.event.ACVillagerTradeEvents());
         // Fabric is excluded rather than given a third arm: it has no brewing event to listen to,
-        // so the eleven recipes stay in the vendored static registry on every version there and
+        // so below 26.3 the eleven recipes stay in the vendored static registry there and
         // mixin.fabric.PotionBrewingMixin consults it. See ACEffectRegistry#setup.
+        //
+        // 26.3 deleted PotionBrewing and every loader API built on it, so there is no event left to
+        // listen to on NeoForge either — brewing is datapack-only from there and the same eleven
+        // recipes ship as recipe JSON. Hence the upper bound on the arm below.
         //? if forge && >=1.21.6 {
         /*net.minecraftforge.event.brewing.BrewingRecipeRegisterEvent.BUS.addListener(AlexsCaves::registerBrewingRecipes);
-        *///?} elif !fabric && >=1.20.5 {
+        *///?} elif !fabric && >=1.20.5 && <26.3 {
         /*MinecraftForge.EVENT_BUS.addListener(AlexsCaves::registerBrewingRecipes);
         *///?}
         // No-op below 1.21.9; from there it supplies the CompoundTag entity-data serializer vanilla
@@ -291,6 +295,9 @@ public class AlexsCaves {
         ACLootTableRegistry.GLOBAL_LOOT_MODIFIER_DEF_REG.register(modEventBus);
         ACLootTableRegistry.LOOT_FUNCTION_DEF_REG.register(modEventBus);
         ACCreativeTabRegistry.DEF_REG.register(modEventBus);
+        // 26.3: the pot-pattern registry became datapack content, so there is no DeferredRegister
+        // to attach — the same reason FROG_VARIANT drops out above. See ACPotPatternRegistry.
+        //? if <26.3
         ACPotPatternRegistry.DEF_REG.register(modEventBus);
         // 1.20.3, not 1.20.2 — the criteria list is still a plain open BiMap on 1.20.2, so that one
         // version registers its triggers from ACAdvancementTriggerRegistry.setup() and has no
@@ -325,7 +332,7 @@ public class AlexsCaves {
         ACEffectRegistry.registerBrewing(event::addRecipe);
     }
     *///?}
-    //? if neoforge && >=1.20.5 {
+    //? if neoforge && >=1.20.5 && <26.3 {
     /*private static void registerBrewingRecipes(final net.neoforged.neoforge.event.brewing.RegisterBrewingRecipesEvent event) {
         ACEffectRegistry.registerBrewing(event.getBuilder()::addRecipe);
     }
@@ -350,11 +357,11 @@ public class AlexsCaves {
                 // The component's codec rejects a non-positive value, where the old hook read 0 as
                 // "not enchantable" — none of this mod's items returns one, but say so out loud.
                 if (value > 0) {
-                    event.modify(item, builder -> builder.set(net.minecraft.core.component.DataComponents.ENCHANTABLE, new net.minecraft.world.item.enchantment.Enchantable(value)));
+                    acModify(event, item, builder -> builder.set(net.minecraft.core.component.DataComponents.ENCHANTABLE, new net.minecraft.world.item.enchantment.Enchantable(value)));
                 }
             }
             if (item instanceof com.github.alexmodguy.alexscaves.server.item.ACRepairableItem repairable) {
-                event.modify(item, builder -> {
+                acModify(event, item, builder -> {
                     java.util.List<net.minecraft.core.Holder<net.minecraft.world.item.Item>> materials = new java.util.ArrayList<>();
                     net.minecraft.world.item.enchantment.Repairable existing = acExistingRepairable(item, builder);
                     if (existing != null && !repairable.acReplacesTierRepairMaterials()) {
@@ -367,6 +374,48 @@ public class AlexsCaves {
                 });
             }
         }
+        acStampCompostables(event);
+    }
+    *///?}
+
+    // How a modifier is handed to ModifyDefaultComponentsEvent#modify -- the OTHER thing about this
+    // job that differs across the NeoForge range, and the reason the three call sites above call a
+    // helper instead of the event directly.
+    //
+    // The event has carried a three-argument Initializer (builder, registry context, item) alongside
+    // the one-argument Consumer for a while, and deleted the Consumer overloads inside the 26.3 beta
+    // line: both are present in 26.3.0.1-beta and only Initializer survives in .4-beta. Wrapping the
+    // difference here keeps every call site a plain one-argument lambda on all 41 nodes, which is what
+    // they all want -- not one of them has any use for the context or for the item it already holds.
+    //
+    // The functional interface is the mod's own so that the builder type can differ per arm, which it
+    // does at the 26.1 boundary for exactly the reason the next comment gives.
+    //? if neoforge && >=26.3 {
+    /*@FunctionalInterface
+    private interface ACComponentPatch {
+        void apply(net.minecraft.core.component.DataComponentMap.Builder builder);
+    }
+
+    private static void acModify(net.neoforged.neoforge.event.ModifyDefaultComponentsEvent event, net.minecraft.world.item.Item item, ACComponentPatch patch) {
+        event.modify(item, (builder, context, stamped) -> patch.apply(builder));
+    }
+    *///?} elif neoforge && >=26.1 {
+    /*@FunctionalInterface
+    private interface ACComponentPatch {
+        void apply(net.minecraft.core.component.DataComponentMap.Builder builder);
+    }
+
+    private static void acModify(net.neoforged.neoforge.event.ModifyDefaultComponentsEvent event, net.minecraft.world.item.Item item, ACComponentPatch patch) {
+        event.modify(item, patch::apply);
+    }
+    *///?} elif neoforge && >=1.21.2 {
+    /*@FunctionalInterface
+    private interface ACComponentPatch {
+        void apply(net.minecraft.core.component.DataComponentPatch.Builder builder);
+    }
+
+    private static void acModify(net.neoforged.neoforge.event.ModifyDefaultComponentsEvent event, net.minecraft.world.item.Item item, ACComponentPatch patch) {
+        event.modify(item, patch::apply);
     }
     *///?}
 
@@ -470,6 +519,65 @@ public class AlexsCaves {
                 });
             }
         }
+        acStampFabricCompostables(context);
+    }
+    *///?}
+
+    // ── The compostable odds, 26.3 and up ──────────────────────────────────────
+    // 26.3 deleted the static composter map and made a composter's odds an item component, so the
+    // seventeen pairs ACItemRegistry holds are stamped here beside the enchantable and repairable
+    // ones rather than filled into a map from ACItemRegistry#setup.
+    //
+    // Separate top-level gates rather than one, because a gate cannot nest inside the two modify
+    // arms above and each stamper is called from inside one. The no-op arms take Object so the call
+    // still compiles on every band that never stamps: the event and context types the live arms
+    // name do not exist below 26.3 either.
+    //? if neoforge && >=26.3 {
+    /*private static void acStampCompostables(net.neoforged.neoforge.event.ModifyDefaultComponentsEvent event) {
+        com.github.alexmodguy.alexscaves.server.item.ACItemRegistry.acForEachCompostable((item, chance) ->
+                acModify(event, item, builder -> builder.set(net.minecraft.core.component.DataComponents.COMPOSTABLE, acCompostable(chance))));
+    }
+    *///?} else {
+    private static void acStampCompostables(Object event) {
+    }
+    //?}
+
+    //? if fabric && >=26.3 {
+    /*private static void acStampFabricCompostables(net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents.ModifyContext context) {
+        com.github.alexmodguy.alexscaves.server.item.ACItemRegistry.acForEachCompostable((item, chance) ->
+                context.modify(item, (net.minecraft.core.component.DataComponentMap.Builder builder) ->
+                        builder.set(net.minecraft.core.component.DataComponents.COMPOSTABLE, acCompostable(chance))));
+    }
+    *///?} else {
+    private static void acStampFabricCompostables(Object context) {
+    }
+    //?}
+
+    // The mapping itself. Vanilla ships five COMPOSTABLE_* context int providers and four of them
+    // are a literal match for odds this mod already used — its "low" is a 30/70 weighted list, i.e.
+    // 0.3, and so on up through 0.5, 0.65 and 0.85. The two values vanilla has no provider for ship
+    // as this mod's own JSON under data/alexscaves/context_int_provider/compostable/, in the same
+    // shape, named by the odds rather than by the item so a third use of either reuses the file.
+    //? if >=26.3 {
+    /*private static net.minecraft.world.item.component.Compostable acCompostable(float chance) {
+        return new net.minecraft.world.item.component.Compostable(acCompostableProvider(chance));
+    }
+
+    private static net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider> acCompostableProvider(float chance) {
+        if (chance == 0.3F) {
+            return net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders.COMPOSTABLE_LOW;
+        }
+        if (chance == 0.5F) {
+            return net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders.COMPOSTABLE_LOW_MEDIUM;
+        }
+        if (chance == 0.65F) {
+            return net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders.COMPOSTABLE_MEDIUM;
+        }
+        if (chance == 0.85F) {
+            return net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders.COMPOSTABLE_MEDIUM_HIGH;
+        }
+        return net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.CONTEXT_INT_PROVIDER,
+                ResourceLocation.fromNamespaceAndPath(MODID, "compostable/chance_0_" + Math.round(chance * 10.0F)));
     }
     *///?}
 

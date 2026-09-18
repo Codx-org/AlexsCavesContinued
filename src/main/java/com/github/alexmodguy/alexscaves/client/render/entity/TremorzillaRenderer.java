@@ -68,6 +68,15 @@ public class TremorzillaRenderer extends MobRenderer<TremorzillaEntity, Tremorzi
     }
 
     protected void scale(TremorzillaEntity mob, PoseStack matrixStackIn, float partialTicks) {
+        // From 1.20.5 LivingEntityRenderer#render scales the pose by entity.getScale(), and until
+        // 1.21.2 made getScale() attribute-only that is this entity's baby factor of 0.15.
+        // TremorzillaModel already draws a baby at 0.15 itself (upstream), so the baby came out at
+        // 0.15 x 0.15. Undo the renderer's factor; setupRotations only rotates here, so this gives
+        // back the 1.20.1 pose exactly.
+        //? if >=1.20.5 && <1.21.2 {
+        /*float undoScale = 1.0F / mob.getScale();
+        matrixStackIn.scale(undoScale, undoScale, undoScale);
+        *///?}
     }
 
     public ResourceLocation getTextureLocation(TremorzillaEntity entity) {

@@ -31,20 +31,28 @@ import java.util.Optional;
 public class NaturalSpawnerMixin {
 
     @Inject(
+            //? if >=26.3 {
+            /*method = {"Lnet/minecraft/world/level/NaturalSpawner;spawnMobsForChunkGeneration(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/ChunkPos;Lnet/minecraft/util/RandomSource;)V"},
+            *///?} else {
             method = {"Lnet/minecraft/world/level/NaturalSpawner;spawnMobsForChunkGeneration(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/core/Holder;Lnet/minecraft/world/level/ChunkPos;Lnet/minecraft/util/RandomSource;)V"},
+            //?}
             remap = true,
             at = @At(value = "TAIL")
     )
+    //? if >=26.3 {
+    /*private static void ac_spawnMobsForChunkGeneration(ServerLevelAccessor level, BlockPos surfacePos, ChunkPos chunkPos, RandomSource randomSource, CallbackInfo ci) {
+    *///?} else {
     private static void ac_spawnMobsForChunkGeneration(ServerLevelAccessor level, Holder<Biome> surfaceBiome, ChunkPos chunkPos, RandomSource randomSource, CallbackInfo ci) {
+    //?}
         Holder<Biome> caveBiome = getCaveCreaturesBiome(level, chunkPos, randomSource);
         if (caveBiome != null) {
-            MobSpawnSettings mobspawnsettings = caveBiome.value().getMobSettings();
-            WeightedRandomList<MobSpawnSettings.SpawnerData> weightedrandomlist = mobspawnsettings.getMobs(ACEntityRegistry.CAVE_CREATURE);
+            MobSpawnSettings mobspawnsettings = ACCompat.mobSettings(caveBiome.value());
+            WeightedRandomList<MobSpawnSettings.SpawnerData> weightedrandomlist = ACCompat.mobsOf(mobspawnsettings, ACEntityRegistry.CAVE_CREATURE);
 
             if (!weightedrandomlist.isEmpty()) {
                 int i = chunkPos.getMinBlockX();
                 int j = chunkPos.getMinBlockZ();
-                while (randomSource.nextFloat() < AlexsCaves.COMMON_CONFIG.caveCreatureSpawnCountModifier.get() * mobspawnsettings.getCreatureProbability()) {
+                while (randomSource.nextFloat() < AlexsCaves.COMMON_CONFIG.caveCreatureSpawnCountModifier.get() * ACCompat.creatureProbability(caveBiome.value())) {
                     Optional<MobSpawnSettings.SpawnerData> optional = weightedrandomlist.getRandom(randomSource);
                     if (optional.isPresent()) {
                         MobSpawnSettings.SpawnerData mobspawnsettings$spawnerdata = optional.get();
@@ -112,7 +120,7 @@ public class NaturalSpawnerMixin {
             int height = level.getMinBuildHeight() + Math.round(heightRange * random.nextFloat());
             mutableBlockPos.setY(height);
             Holder<Biome> holder = level.getBiome(mutableBlockPos);
-            if (!holder.value().getMobSettings().getMobs(ACEntityRegistry.CAVE_CREATURE).isEmpty() && !cavesWithCreatures.contains(holder)) {
+            if (!ACCompat.mobsOf(ACCompat.mobSettings(holder.value()), ACEntityRegistry.CAVE_CREATURE).isEmpty() && !cavesWithCreatures.contains(holder)) {
                 cavesWithCreatures.add(holder);
             }
         }

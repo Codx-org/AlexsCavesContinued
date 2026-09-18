@@ -906,7 +906,7 @@ public class TremorzillaEntity extends DinosaurEntity implements KeybindUsingMou
         for (BlockPos blockpos : BlockPos.betweenClosed(Mth.floor(center.x - radius), Mth.floor(center.y - radius), Mth.floor(center.z - radius), Mth.floor(center.x + radius), Mth.floor(center.y + radius), Mth.floor(center.z + radius))) {
             BlockState blockstate = this.level().getBlockState(blockpos);
             boolean nuke = blockstate.is(ACBlockRegistry.NUCLEAR_BOMB.get());
-            if (!blockstate.is(ACTagRegistry.NUKE_PROOF) && blockstate.blocksMotion() && (blockstate.getBlock().getExplosionResistance() <= 15 || nuke) && (square || blockpos.distToCenterSqr(center.x, center.y, center.z) < radius * radius)) {
+            if (!blockstate.is(ACTagRegistry.NUKE_PROOF) && ACCompat.blocksMotion(blockstate) && (blockstate.getBlock().getExplosionResistance() <= 15 || nuke) && (square || blockpos.distToCenterSqr(center.x, center.y, center.z) < radius * radius)) {
                 if (random.nextFloat() <= dropChance && !nuke) {
                     level().destroyBlock(blockpos, true);
                 } else {
@@ -1051,7 +1051,23 @@ public class TremorzillaEntity extends DinosaurEntity implements KeybindUsingMou
     // no longer distinguishes); none of these overrides read it. 1.21.5 deleted lerpTo outright —
     // the client hands the target to the InterpolationHandler returned by getInterpolation(), so the
     // same capture happens in a handler subclass and this entity's own tick lerps exactly as before.
-    //? if >=1.21.5 {
+    // 26.3 made InterpolationHandler an interface with no constructor, so the capture moved
+    // into ACLerpInterpolationHandler and is installed via createInterpolationHandler()
+    // (getInterpolation() is final there). Same suppression, same fields, same result.
+    //? if >=26.3 {
+    /*@Override
+    protected net.minecraft.world.entity.InterpolationHandler createInterpolationHandler() {
+        return new com.github.alexmodguy.alexscaves.server.entity.util.ACLerpInterpolationHandler(this, (pos, yr, xr) -> {
+            lx = pos.x();
+            ly = pos.y();
+            lz = pos.z();
+            lyr = yr;
+            lxr = xr;
+            lSteps = net.minecraft.world.entity.LinearInterpolationHandler.DEFAULT_INTERPOLATION_STEPS;
+            setDeltaMovement(lxd, lyd, lzd);
+        });
+    }
+    *///?} elif >=1.21.5 {
     /*private net.minecraft.world.entity.InterpolationHandler acInterpolation;
 
     @Override
@@ -1378,10 +1394,18 @@ public class TremorzillaEntity extends DinosaurEntity implements KeybindUsingMou
 
     // 1.20.5 made LivingEntity#getDimensions final and moved the extension point to
     // getDefaultDimensions, which is also what super has to resolve to there — calling the
-    // final getDimensions from inside it would recurse.
-    //? if >=1.20.5 {
+    // final getDimensions from inside it would recurse. That final method multiplies whatever this
+    // returns by getScale(), so the baby factor must be applied here exactly once: on 1.20.5-1.21.1
+    // getScale() IS the baby's 0.15 (overridden below), so return unscaled sizes (super would add
+    // vanilla's 0.5 age scale on top); from 1.21.2 getScale() is attribute-only and getAgeScale()
+    // carries the 0.15, which super already applies to the standing size.
+    //? if >=1.21.2 {
     /*protected EntityDimensions getDefaultDimensions(Pose poseIn) {
-        return this.isTremorzillaSwimming() ? SWIMMING_SIZE.scale(this.getScale()) : super.getDefaultDimensions(poseIn);
+        return this.isTremorzillaSwimming() ? SWIMMING_SIZE.scale(this.getAgeScale()) : super.getDefaultDimensions(poseIn);
+    }
+    *///?} elif >=1.20.5 {
+    /*protected EntityDimensions getDefaultDimensions(Pose poseIn) {
+        return this.isTremorzillaSwimming() ? SWIMMING_SIZE : this.getType().getDimensions();
     }
     *///?} else {
     public EntityDimensions getDimensions(Pose poseIn) {

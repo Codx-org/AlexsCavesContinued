@@ -195,7 +195,13 @@ public class RebarBlock extends Block implements BucketPickup, LiquidBlockContai
         return this.defaultBlockState().setValue(CONNECT_X, xAxis).setValue(CONNECT_Y, yAxis).setValue(CONNECT_Z, zAxis);
     }
 
+    // 26.3 narrowed playerDestroy's first two parameters to ServerLevel/ServerPlayer.
+    // Only the signature moves; the body is identical on both sides.
+    //? if >=26.3 {
+    /*public void playerDestroy(net.minecraft.server.level.ServerLevel level, net.minecraft.server.level.ServerPlayer player, BlockPos blockPos, BlockState blockState, @Nullable BlockEntity blockEntity, ItemStack stack) {
+    *///?} else {
     public void playerDestroy(Level level, Player player, BlockPos blockPos, BlockState blockState, @Nullable BlockEntity blockEntity, ItemStack stack) {
+    //?}
         super.playerDestroy(level, player, blockPos, blockState, blockEntity, stack);
         Vec3 findDirOf = player.getEyePosition().subtract(Vec3.atCenterOf(blockPos));
         BlockState set = blockState;

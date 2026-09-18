@@ -33,7 +33,7 @@ public class DrinkableBottledItem extends Item {
             if (livingEntity instanceof Player player && !((Player) livingEntity).getAbilities().instabuild) {
                 ItemStack itemstack = new ItemStack(Items.GLASS_BOTTLE);
                 if (!player.getInventory().add(itemstack)) {
-                    player.drop(itemstack, false);
+                    com.github.alexmodguy.alexscaves.server.misc.ACCompat.drop(player, itemstack, false);
                 }
             }
 

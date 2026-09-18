@@ -44,7 +44,7 @@ public class SeaStaffItem extends Item implements ACClientExtensionItem, ACEncha
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack itemstack = player.getItemInHand(hand);
         level.playSound((Player) null, player.getX(), player.getY(), player.getZ(), ACSoundRegistry.SEA_STAFF_CAST.get(), SoundSource.PLAYERS, 0.5F, (level.getRandom().nextFloat() * 0.45F + 0.75F));
-        player.swing(hand);
+        ACCompat.swing(player, hand);
         float seekAmount = ACCompat.enchantLevel(itemstack, ACEnchantmentRegistry.SOAK_SEEKING);
         if (!level.isClientSide()) {
             double dist = 128;

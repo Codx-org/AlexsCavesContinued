@@ -134,7 +134,7 @@ public class WatcherRenderer extends MobRenderer<WatcherEntity, WatcherModel> {
         this.model.setupAnim(entity, f5, f8, f7, f2, f6);
         Minecraft minecraft = Minecraft.getInstance();
         boolean flag = this.isBodyVisible(entity);
-        boolean flag1 = !flag && !entity.isInvisibleTo(minecraft.player);
+        boolean flag1 = !flag && minecraft.player != null && !entity.isInvisibleTo(minecraft.player);
         boolean flag2 = minecraft.shouldEntityAppearGlowing(entity);
         RenderType rendertype = this.getRenderType(entity, flag, flag1, flag2);
         if (rendertype != null) {

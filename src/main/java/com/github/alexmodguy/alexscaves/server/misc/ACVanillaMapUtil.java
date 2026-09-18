@@ -23,7 +23,24 @@ import net.minecraft.world.level.saveddata.maps.MapDecoration;
  */
 public class ACVanillaMapUtil {
 
-    //? if >=1.20.5 {
+    // ⚠️ 26.3 cut MapDecorationType down to (assetId, showOnItemFrame, trackCount): the map colour
+    // and the exploration-map flag are gone, so the marker loses its custom grey on that band.
+    //? if >=26.3 {
+    /*public static final net.minecraftforge.registries.DeferredRegister<net.minecraft.world.level.saveddata.maps.MapDecorationType> DEF_REG =
+            net.minecraftforge.registries.DeferredRegister.create(net.minecraft.core.registries.Registries.MAP_DECORATION_TYPE, com.github.alexmodguy.alexscaves.AlexsCaves.MODID);
+
+    private static final java.util.function.Supplier<net.minecraft.world.level.saveddata.maps.MapDecorationType> UNDERGROUND_CABIN_TYPE =
+            DEF_REG.register("underground_cabin", () -> new net.minecraft.world.level.saveddata.maps.MapDecorationType(
+                    ResourceLocation.fromNamespaceAndPath(com.github.alexmodguy.alexscaves.AlexsCaves.MODID, "underground_cabin"),
+                    true,
+                    false));
+
+    // The registry hands out a Holder for the same object; addTargetDecoration wants that, not the
+    // value. Resolved lazily because the DeferredRegister has not run when this class is loaded.
+    public static net.minecraft.core.Holder<net.minecraft.world.level.saveddata.maps.MapDecorationType> undergroundCabin() {
+        return net.minecraft.core.registries.BuiltInRegistries.MAP_DECORATION_TYPE.wrapAsHolder(UNDERGROUND_CABIN_TYPE.get());
+    }
+    *///?} elif >=1.20.5 {
     /*public static final net.minecraftforge.registries.DeferredRegister<net.minecraft.world.level.saveddata.maps.MapDecorationType> DEF_REG =
             net.minecraftforge.registries.DeferredRegister.create(net.minecraft.core.registries.Registries.MAP_DECORATION_TYPE, com.github.alexmodguy.alexscaves.AlexsCaves.MODID);
 

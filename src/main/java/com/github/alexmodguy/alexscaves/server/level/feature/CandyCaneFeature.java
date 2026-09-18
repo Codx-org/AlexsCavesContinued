@@ -10,21 +10,18 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
-public class CandyCaneFeature extends Feature<NoneFeatureConfiguration> {
+public class CandyCaneFeature extends ACSimpleFeature {
 
-    public CandyCaneFeature(Codec<NoneFeatureConfiguration> codec) {
+    public CandyCaneFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos genAt = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos genAt = acOrigin;
         if (!level.getBlockState(genAt).is(ACBlockRegistry.BLOCK_OF_FROSTED_CHOCOLATE.get())) {
             return false;
         }

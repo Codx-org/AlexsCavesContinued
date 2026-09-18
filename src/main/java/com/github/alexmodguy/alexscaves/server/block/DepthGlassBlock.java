@@ -83,5 +83,13 @@ public class DepthGlassBlock extends ACTransparentBlock {
         return (boolean) false;
     }
 
+    // 26.3 narrowed isViewBlocking from a StatePredicate to a StateArgumentPredicate<AABB> — the
+    // same three arguments plus the box being tested. An extra overload rather than a gate: below
+    // 26.3 the method reference still binds the three-argument form, at 26.3 it binds this one, and
+    // the EntityType overload above can never be confused with either.
+    private static Boolean noOption(BlockState state, BlockGetter level, BlockPos pos, net.minecraft.world.phys.AABB box) {
+        return (boolean) false;
+    }
+
 
 }

@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(DecoratedPotPatterns.class)
 public class DecoratedPotPatternsMixin {
 
-    //? if >=26.2 {
+    //? if >=26.2 && <26.3 {
     /*@org.spongepowered.asm.mixin.injection.Inject(method = "itemToPatternMappings", at = @org.spongepowered.asm.mixin.injection.At("TAIL"))
     private static void ac_itemToPatternMappings(java.util.function.BiConsumer<net.minecraft.resources.ResourceKey<net.minecraft.world.item.Item>, net.minecraft.resources.ResourceKey<net.minecraft.world.level.block.entity.DecoratedPotPattern>> consumer, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
         com.github.alexmodguy.alexscaves.server.misc.ACPotPatternRegistry.contributeItemToPatternMappings(consumer);

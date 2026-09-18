@@ -17,7 +17,7 @@ public class AmberMonolithBlock extends BaseEntityBlock {
 
     // 1.20.3 made Block#codec() abstract for datapack-defined blocks; Alex's Caves' blocks
     // are never described by value, so they all share one placeholder. See ACPlatform.
-    //? if >=1.20.3 {
+    //? if >=1.20.3 && <26.3 {
     /*@Override
     public com.mojang.serialization.MapCodec<? extends AmberMonolithBlock> codec() {
         return com.github.alexmodguy.alexscaves.server.misc.ACPlatform.unsupportedBlockCodec();

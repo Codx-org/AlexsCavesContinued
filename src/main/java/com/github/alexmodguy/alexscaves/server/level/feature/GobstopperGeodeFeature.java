@@ -13,14 +13,11 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GobstopperGeodeFeature extends Feature<NoneFeatureConfiguration> {
+public class GobstopperGeodeFeature extends ACSimpleFeature {
 
     private static final Block[] GRADIENT_BLOCKS = new Block[]{
             ACBlockRegistry.RED_ROCK_CANDY.get(),
@@ -31,15 +28,15 @@ public class GobstopperGeodeFeature extends Feature<NoneFeatureConfiguration> {
             ACBlockRegistry.ORANGE_ROCK_CANDY.get(),
     };
 
-    public GobstopperGeodeFeature(Codec<NoneFeatureConfiguration> codec) {
+    public GobstopperGeodeFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         if (!level.getBlockState(pos).isAir()) {
             boolean eatenQuadX = randomSource.nextBoolean();
             boolean eatenQuadY = pos.getY() < -10;

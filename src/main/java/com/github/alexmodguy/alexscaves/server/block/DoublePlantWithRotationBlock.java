@@ -58,19 +58,28 @@ public class DoublePlantWithRotationBlock extends DoublePlantBlock implements Bo
         level.setBlock(blockpos, copyWaterloggedFrom(level, blockpos, this.defaultBlockState().setValue(HALF, DoubleBlockHalf.UPPER).setValue(FACING, state.getValue(FACING))), 3);
     }
 
-    // 1.20.2 dropped isValidBonemealTarget's trailing "is this the client" boolean;
-    // none of these three read it.
-    //? if >=1.20.2
+    // Three bands. 1.20.2 dropped isValidBonemealTarget's trailing "is this the client" boolean,
+    // and 26.3 added a trailing source-of-the-bonemeal enum to all three BonemealableBlock methods.
+    // None of these three read either argument, so every arm shares one body.
+    //? if >=26.3
+    /*public boolean isValidBonemealTarget(LevelReader level, BlockPos blockPos, BlockState blockState, net.minecraft.world.level.block.BonemealSource bonemealSource) {*/
+    //? if >=1.20.2 && <26.3
     /*public boolean isValidBonemealTarget(LevelReader level, BlockPos blockPos, BlockState blockState) {*/
     //? if <1.20.2
     public boolean isValidBonemealTarget(LevelReader level, BlockPos blockPos, BlockState blockState, boolean idk) {
         return true;
     }
 
+    //? if >=26.3
+    /*public boolean isBonemealSuccess(Level level, RandomSource randomSource, BlockPos blockPos, BlockState state, net.minecraft.world.level.block.BonemealSource bonemealSource) {*/
+    //? if <26.3
     public boolean isBonemealSuccess(Level level, RandomSource randomSource, BlockPos blockPos, BlockState state) {
         return true;
     }
 
+    //? if >=26.3
+    /*public void performBonemeal(ServerLevel level, RandomSource randomSource, BlockPos blockPos, BlockState state, net.minecraft.world.level.block.BonemealSource bonemealSource) {*/
+    //? if <26.3
     public void performBonemeal(ServerLevel level, RandomSource randomSource, BlockPos blockPos, BlockState state) {
         popResource(level, blockPos, new ItemStack(this));
     }

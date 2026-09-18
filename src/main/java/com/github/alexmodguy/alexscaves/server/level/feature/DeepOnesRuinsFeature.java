@@ -15,7 +15,7 @@ import java.util.Set;
 
 public class DeepOnesRuinsFeature extends UndergroundRuinsFeature {
 
-    public DeepOnesRuinsFeature(Codec<UndergroundRuinsFeatureConfiguration> codec) {
+    public DeepOnesRuinsFeature(Object codec) {
         super(codec);
     }
 

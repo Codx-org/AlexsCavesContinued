@@ -40,7 +40,176 @@ package com.github.alexmodguy.alexscaves.client.render.compat;
 // many independent spans for replacement rules — several of them overlap one another and one
 // changes a body, not just a signature — so the file grows a third whole-class arm, which is the
 // shape it was already written in.
-//? if >=26.2 {
+//
+// 26.3 needs a fourth arm. Five deltas, none of which a replacement rule can express together:
+// submitItem takes an ItemQuads record instead of a List<BakedQuad> and draws foil through a
+// COMBINED render type rather than an overlay pass; submitModel's sprite became a UvMapping and
+// lost its trailing CrumblingOverlay, which moved out to a new abstract submitCrumblingOverlay;
+// submitTextBackground is new and abstract; and submitBreakingBlockModel grew a trailing boolean.
+//
+// The foil change is the one worth reading twice, because getting it wrong builds green and
+// double-draws every enchanted item. In 26.2 a foiled quad was drawn TWICE — once into a glint
+// overlay type, once into the base type. In 26.3 vanilla's own loop (read from ItemFeatureRenderer's
+// bytecode) is two ternaries and a single put: it picks itemGlintRenderType() OR itemRenderType(),
+// then putBakedQuadWithGlint OR putBakedQuad, and falls straight back to the loop head. The glint
+// types are texture-parameterised now (itemCutoutGlint(Identifier) and friends), i.e. each one is a
+// complete item type with the glint folded in, not an overlay to composite on top. So this arm is an
+// if/else and there is no VertexMultiConsumer in submitItem at all.
+//
+// putBakedQuadWithGlint's fourth argument is the foil DECAL pose, which vanilla computes with a
+// private static ItemFeatureRenderer#computeFoilDecalPose. It is not reachable, so the quad's own
+// pose stands in: the glint then sits flat on the quad instead of parallaxing with view angle. That
+// is a cosmetic approximation of an effect this mod only ever draws on book-widget items, and it is
+// a deliberate one — the alternative is reimplementing a private matrix tweak from bytecode.
+//
+// foilBuffer keeps its three-argument shape because two other files call it, but on 26.3 its body
+// collapses: glintTranslucent() and glint() and entityGlint() are all deleted, and the branch that
+// chose between them read Minecraft#useShaderTransparency and RenderType#outputTarget, both also
+// gone. Every caller in the tree passes sheeted = false (armour and the cave book, each documented
+// at its call site as "drawn on an entity, never the flat GUI sheet"), so the only branch that has
+// to survive is the entity one — and its 26.3 successor was already chosen, by construction, in the
+// build script's own entityGlint rule. The parameter stays, ignored, so the call sites need no arm.
+//? if >=26.3 {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.texture.UvMapping;
+
+import java.util.function.Function;
+
+public final class ACDrawCollector implements SubmitNodeCollector {
+
+    private final Function<RenderType, VertexConsumer> lookup;
+
+    public ACDrawCollector(Function<RenderType, VertexConsumer> lookup) {
+        this.lookup = lookup;
+    }
+
+    @Override
+    public OrderedSubmitNodeCollector order(int order) {
+        return this;
+    }
+
+    public static VertexConsumer foilBuffer(Function<RenderType, VertexConsumer> lookup, RenderType renderType, boolean sheeted) {
+        return com.mojang.blaze3d.vertex.VertexMultiConsumer.create(
+                lookup.apply(RenderTypes.patternedShieldGlint()), lookup.apply(renderType));
+    }
+
+    @Override
+    public void submitItem(PoseStack poseStack, net.minecraft.world.item.ItemDisplayContext displayContext,
+                           int light, int overlay, int outlineColor, int[] tintLayers,
+                           net.minecraft.client.resources.model.geometry.ItemQuads quads,
+                           net.minecraft.client.renderer.item.ItemStackRenderState.FoilType foilType) {
+        PoseStack.Pose pose = poseStack.last();
+        com.mojang.blaze3d.vertex.QuadInstance quadInstance = new com.mojang.blaze3d.vertex.QuadInstance();
+        quadInstance.setLightCoords(light);
+        quadInstance.setOverlayCoords(overlay);
+        boolean foil = foilType != net.minecraft.client.renderer.item.ItemStackRenderState.FoilType.NONE;
+        for (net.minecraft.client.renderer.block.model.BakedQuad quad : quads.all()) {
+            net.minecraft.client.renderer.block.model.BakedQuad.MaterialInfo info = quad.materialInfo();
+            RenderType quadType = foil ? info.itemGlintRenderType() : info.itemRenderType();
+            int tintIndex = info.tintIndex();
+            quadInstance.setColor(info.isTinted() && tintIndex >= 0 && tintIndex < tintLayers.length ? tintLayers[tintIndex] : -1);
+            VertexConsumer consumer = this.lookup.apply(quadType);
+            if (foil) {
+                consumer.putBakedQuadWithGlint(pose, quad, quadInstance, pose);
+            } else {
+                consumer.putBakedQuad(pose, quad, quadInstance);
+            }
+        }
+    }
+
+    @Override
+    public void submitCustomGeometry(PoseStack poseStack, RenderType renderType, SubmitNodeCollector.CustomGeometryRenderer renderer) {
+        renderer.render(poseStack.last(), this.lookup.apply(renderType));
+    }
+
+    @Override
+    public <S> void submitModel(Model<? super S> model, S state, PoseStack poseStack, RenderType renderType,
+                                int light, int overlay, int tintedColor, UvMapping uvMapping,
+                                int outlineColor) {
+        VertexConsumer consumer = this.lookup.apply(renderType);
+        if (uvMapping != null) {
+            consumer = uvMapping.wrap(consumer);
+        }
+        model.setupAnim(state);
+        model.renderToBuffer(poseStack, consumer, light, overlay, tintedColor);
+    }
+
+    // ---- entity-frame furniture an item render never reaches ----
+
+    @Override
+    public <S> void submitCrumblingOverlay(Model<? super S> model, S state, PoseStack poseStack, RenderType renderType,
+                                           int light, int overlay, int tintedColor,
+                                           ModelFeatureRenderer.CrumblingOverlay crumbling) {
+    }
+
+    @Override
+    public void submitShadow(PoseStack poseStack, float radius,
+                             java.util.List<net.minecraft.client.renderer.entity.state.EntityRenderState.ShadowPiece> pieces) {
+    }
+
+    @Override
+    public void submitNameTag(PoseStack poseStack, net.minecraft.world.phys.Vec3 offset, int light,
+                              net.minecraft.network.chat.Component text, boolean discrete, int backgroundColor,
+                              net.minecraft.client.renderer.state.CameraRenderState camera) {
+    }
+
+    @Override
+    public void submitText(PoseStack poseStack, float x, float y, net.minecraft.util.FormattedCharSequence text,
+                           boolean dropShadow, net.minecraft.client.gui.Font.DisplayMode displayMode,
+                           int light, int color, int backgroundColor, int outlineColor) {
+    }
+
+    @Override
+    public void submitTextBackground(PoseStack poseStack, float x0, float y0, float x1, float y1,
+                                     int light, net.minecraft.client.gui.Font.DisplayMode displayMode, int color) {
+    }
+
+    @Override
+    public void submitFlame(PoseStack poseStack, net.minecraft.client.renderer.entity.state.EntityRenderState state,
+                            org.joml.Quaternionf rotation) {
+    }
+
+    @Override
+    public void submitLeash(PoseStack poseStack, net.minecraft.client.renderer.entity.state.EntityRenderState.LeashState leash) {
+    }
+
+    @Override
+    public void submitMovingBlock(PoseStack poseStack, net.minecraft.client.renderer.block.MovingBlockRenderState state, int light) {
+    }
+
+    @Override
+    public void submitBlockModel(PoseStack poseStack, RenderType renderType,
+                                 java.util.List<net.minecraft.client.renderer.block.dispatch.BlockStateModelPart> parts,
+                                 int[] tintLayers, int light, int overlay, int outlineColor) {
+    }
+
+    @Override
+    public void submitBreakingBlockModel(PoseStack poseStack,
+                                         java.util.List<net.minecraft.client.renderer.block.dispatch.BlockStateModelPart> parts,
+                                         int light, boolean breakingOverlay) {
+    }
+
+    @Override
+    public void submitShapeOutline(PoseStack poseStack, net.minecraft.world.phys.shapes.VoxelShape shape,
+                                   RenderType renderType, int color, float lineWidth, boolean depthTest) {
+    }
+
+    @Override
+    public void submitQuadParticleGroup(net.minecraft.client.renderer.state.level.QuadParticleRenderState particles) {
+    }
+
+    @Override
+    public void submitGizmoPrimitives(net.minecraft.client.renderer.gizmos.DrawableGizmoPrimitives.Group group,
+                                      net.minecraft.client.renderer.state.CameraRenderState camera, boolean opaque) {
+    }
+}
+*///?} elif >=26.2 {
 /*import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;

@@ -254,6 +254,10 @@ public abstract class DeepOneBaseEntity extends PathfinderMob implements IAnimat
 
     @Override
     public void aiStep() {
+        // Below 26.3 only Player ticks its own swing, so a Mob that swings has to do it here. At
+        // 26.3 LivingEntity#baseTick ticks the swing state for every living entity and the method
+        // is gone along with the fields it drove, so dropping the call is the port, not a loss.
+        //? if <26.3
         this.updateSwingTime();
         this.updateNoActionTime();
         super.aiStep();

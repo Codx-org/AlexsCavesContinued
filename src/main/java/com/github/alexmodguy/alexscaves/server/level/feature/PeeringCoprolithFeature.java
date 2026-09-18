@@ -11,27 +11,24 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.BulkSectionAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import java.util.BitSet;
 import java.util.function.Function;
 
-public class PeeringCoprolithFeature extends Feature<NoneFeatureConfiguration> {
+public class PeeringCoprolithFeature extends ACSimpleFeature {
 
     private static final int SIZE = 18;
 
-    public PeeringCoprolithFeature(Codec<NoneFeatureConfiguration> codec) {
+    public PeeringCoprolithFeature(Object codec) {
         super(codec);
     }
 
     @Override
 
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        BlockPos blockpos = context.origin();
-        WorldGenLevel worldgenlevel = context.level();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        BlockPos blockpos = acOrigin;
+        WorldGenLevel worldgenlevel = acLevel;
         float f = randomsource.nextFloat() * (float) Math.PI;
         float f1 = (float) SIZE / 8.0F;
         int i = Mth.ceil(((float) SIZE / 16.0F * 2.0F + 1.0F) / 2.0F);
@@ -158,7 +155,7 @@ public class PeeringCoprolithFeature extends Feature<NoneFeatureConfiguration> {
         if (!blockState.is(ACBlockRegistry.COPROLITH.get()) && !blockState.is(ACBlockRegistry.GUANOSTONE.get())) {
             return false;
         } else {
-            return isAdjacentToAir(blockStateFunction, blockPos);
+            return net.minecraft.world.level.levelgen.feature.Feature.isAdjacentToAir(blockStateFunction, blockPos);
         }
     }
 }

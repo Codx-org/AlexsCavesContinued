@@ -66,23 +66,54 @@ public class SpelunkeryTableWordButton extends AbstractWidget {
 
     @Override
     public int getX() {
-        return super.getX() + parent.getGuiLeft();
+        return super.getX() + parentLeft();
     }
 
     @Override
     public void setX(int x) {
-        super.setX(x - parent.getGuiLeft());
+        super.setX(x - parentLeft());
     }
 
     @Override
     public int getY() {
-        return super.getY() + parent.getGuiTop();
+        return super.getY() + parentTop();
     }
 
     @Override
     public void setY(int y) {
-        super.setY(y - parent.getGuiTop());
+        super.setY(y - parentTop());
     }
+
+    // The container screen's own origin, which a widget class outside its package cannot read off
+    // the protected leftPos/topPos fields. Three spellings over the matrix, so it is a helper rather
+    // than four gated overrides:
+    //
+    //   - Forge and NeoForge both patched in getGuiLeft()/getGuiTop(), which is what the source says;
+    //   - NeoForge deprecated that pair at 26.1.2 in favour of getLeftPos()/getTopPos() and DELETED it
+    //     inside the 26.3 beta line -- present in 26.3.0.1-beta, gone in .4-beta;
+    //   - Fabric has neither, so the accesswidener opens the fields and the !fab-gui-left/!fab-gui-top rules rewrite
+    //     the call below to a plain field read.
+    //
+    // The gate is >=26.3 rather than >=26.1.2 on purpose: the new pair only exists from 26.1.2, but the
+    // old one still works everywhere below 26.3, and a wider gate would have to be re-proved on three
+    // more nodes to buy nothing.
+    //? if neoforge && >=26.3 {
+    /*private int parentLeft() {
+        return parent.getLeftPos();
+    }
+
+    private int parentTop() {
+        return parent.getTopPos();
+    }
+    *///?} else {
+    private int parentLeft() {
+        return parent.getGuiLeft();
+    }
+
+    private int parentTop() {
+        return parent.getGuiTop();
+    }
+    //?}
 
     // 1.21.9 folded the click coordinates into one MouseButtonEvent record and added the
     // double-click flag. Neither arm reads either, so only the header differs -- but without

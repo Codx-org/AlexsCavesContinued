@@ -54,23 +54,89 @@ public class MultiNoiseBiomeSourceMixin implements MultiNoiseBiomeSourceAccessor
     @Unique
     private boolean ac_resolvedOwningLevel;
 
+    /**
+     * The placement question itself, lifted out of the injection handler so both arms below can ask
+     * it. Returns the biome to substitute, or null to leave the source's own answer alone.
+     *
+     * <p>The loop deliberately does not stop at the first match: the original handler called
+     * {@code setReturnValue} once per matching condition and the last one won, so this keeps
+     * assigning rather than returning early.
+     */
+    @Unique
+    private Holder<Biome> ac_rareBiomeAt(int x, int y, int z, Climate.Sampler sampler) {
+        ac_resolveOwningLevel();
+        VoronoiGenerator.VoronoiInfo voronoiInfo = ACBiomeRarity.getRareBiomeInfoForQuad(lastSampledWorldSeed, x, z);
+        if (voronoiInfo == null) {
+            return null;
+        }
+        Holder<Biome> found = null;
+        float unquantizedDepth = Climate.unquantizeCoord(sampler.sample(x, y, z).depth());
+        int foundRarityOffset = ACBiomeRarity.getRareBiomeOffsetId(voronoiInfo);
+        for (Map.Entry<ResourceKey<Biome>, BiomeGenerationNoiseCondition> condition : BiomeGenerationConfig.BIOMES.entrySet()) {
+            if (foundRarityOffset == condition.getValue().getRarityOffset() && condition.getValue().test(x, y, z, unquantizedDepth, sampler, lastSampledDimension, voronoiInfo)) {
+                found = ((BiomeSourceAccessor)this).getResourceKeyMap().get(condition.getKey());
+            }
+        }
+        return found;
+    }
+
+    // 26.3 pulled the lookup off the source: there is no getNoiseBiome(int,int,int,Sampler) to inject
+    // into any more. The source hands out a BiomeResolver instead, whose own lookup takes no sampler
+    // at all — so above 26.3 the injection moves to the factory and wraps the resolver it returns,
+    // capturing the sampler the placement question still needs. Same question, same answer, asked one
+    // level further out.
+    //
+    // There are TWO factories, and wrapping only the obvious one places no biomes at all. Chunk fill
+    // goes ChunkGenerator#doCreateBiomes -> BiomeSource#createResolverForChunk -> fillBiomesFromNoise,
+    // and MultiNoiseBiomeSource OVERRIDES createResolverForChunk without routing through
+    // createResolver: it bulk-samples the six climate density functions over the chunk volume into
+    // DensityBuffers and hands back a resolver that reads those buffers, so it never asks the source
+    // for a position at all. createResolver is what locate, the carvers and ServerLevel's uncached
+    // lookup use. Wrapping one and not the other is what made locate report a biome that generation
+    // had never placed. Read out of 26.3 bytecode, not from the class names.
+    //
+    // The wrap deliberately keeps asking the passed Climate.Sampler rather than the buffers:
+    // BiomeGenerationNoiseCondition#test samples the Voronoi CELL CENTRE, which is far outside the
+    // chunk being filled and so outside the volume those buffers cover.
+    //? if >=26.3 {
+    /*@Inject(at = @At("RETURN"),
+            method = "Lnet/minecraft/world/level/biome/MultiNoiseBiomeSource;createResolver(Lnet/minecraft/world/level/biome/Climate$Sampler;)Lnet/minecraft/world/level/biome/BiomeResolver;",
+            cancellable = true
+    )
+    private void ac_wrapNoiseBiomeResolver(Climate.Sampler sampler, CallbackInfoReturnable<net.minecraft.world.level.biome.BiomeResolver> cir) {
+        cir.setReturnValue(ac_wrapResolver(cir.getReturnValue(), sampler));
+    }
+
+    @Inject(at = @At("RETURN"),
+            method = "Lnet/minecraft/world/level/biome/MultiNoiseBiomeSource;createResolverForChunk(Lnet/minecraft/world/level/biome/Climate$Sampler;IIIIII)Lnet/minecraft/world/level/biome/BiomeResolver;",
+            cancellable = true
+    )
+    private void ac_wrapChunkBiomeResolver(Climate.Sampler sampler, int quartX, int quartY, int quartZ, int sizeX, int sizeY, int sizeZ, CallbackInfoReturnable<net.minecraft.world.level.biome.BiomeResolver> cir) {
+        cir.setReturnValue(ac_wrapResolver(cir.getReturnValue(), sampler));
+    }
+
+    @Unique
+    private net.minecraft.world.level.biome.BiomeResolver ac_wrapResolver(net.minecraft.world.level.biome.BiomeResolver inner, Climate.Sampler sampler) {
+        if (inner == null) {
+            return inner;
+        }
+        return (x, y, z) -> {
+            Holder<Biome> rare = ac_rareBiomeAt(x, y, z, sampler);
+            return rare != null ? rare : inner.getNoiseBiome(x, y, z);
+        };
+    }
+    *///?} else {
     @Inject(at = @At("HEAD"),
             method = "Lnet/minecraft/world/level/biome/MultiNoiseBiomeSource;getNoiseBiome(IIILnet/minecraft/world/level/biome/Climate$Sampler;)Lnet/minecraft/core/Holder;",
             cancellable = true
     )
     private void ac_getNoiseBiomeCoords(int x, int y, int z, Climate.Sampler sampler, CallbackInfoReturnable<Holder<Biome>> cir) {
-        ac_resolveOwningLevel();
-        VoronoiGenerator.VoronoiInfo voronoiInfo = ACBiomeRarity.getRareBiomeInfoForQuad(lastSampledWorldSeed, x, z);
-        if(voronoiInfo != null){
-            float unquantizedDepth = Climate.unquantizeCoord(sampler.sample(x, y, z).depth());
-            int foundRarityOffset = ACBiomeRarity.getRareBiomeOffsetId(voronoiInfo);
-            for (Map.Entry<ResourceKey<Biome>, BiomeGenerationNoiseCondition> condition : BiomeGenerationConfig.BIOMES.entrySet()) {
-                if (foundRarityOffset == condition.getValue().getRarityOffset() && condition.getValue().test(x, y, z, unquantizedDepth, sampler, lastSampledDimension, voronoiInfo)) {
-                    cir.setReturnValue(((BiomeSourceAccessor)this).getResourceKeyMap().get(condition.getKey()));
-                }
-            }
+        Holder<Biome> rare = ac_rareBiomeAt(x, y, z, sampler);
+        if (rare != null) {
+            cir.setReturnValue(rare);
         }
     }
+    //?}
 
     /**
      * Finds the level this biome source belongs to, once. Reading a level's generator is a plain

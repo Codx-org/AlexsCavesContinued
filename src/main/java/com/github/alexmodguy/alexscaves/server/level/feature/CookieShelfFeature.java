@@ -12,24 +12,21 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class CookieShelfFeature  extends Feature<NoneFeatureConfiguration> {
+public class CookieShelfFeature extends ACSimpleFeature {
 
-    public CookieShelfFeature(Codec<NoneFeatureConfiguration> codec) {
+    public CookieShelfFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        BlockPos pos = context.origin();
-        WorldGenLevel level = context.level();
-        RandomSource randomSource = context.random();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        BlockPos pos = acOrigin;
+        WorldGenLevel level = acLevel;
+        RandomSource randomSource = acRandom;
         boolean placedFirst = tryPlaceCookie(level, pos, randomSource);
         if(placedFirst && randomSource.nextBoolean()){
             tryPlaceCookie(level, pos.above(2 + randomSource.nextInt(3)), randomSource);

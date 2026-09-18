@@ -416,6 +416,57 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			extensions.getByType<org.gradle.api.tasks.SourceSetContainer>()
 				.named("main").get().java.exclude("**/mixin/client/ChunkSectionsToRenderMixin.java")
 		}
+		// 26.3 rewrote worldgen features as a registry of MapCodecs and deleted the classes that were
+		// only ever a shared base for a family of leaf features. CoralFeature, CoralMushroomFeature,
+		// KelpFeature and SeagrassFeature all went (only the leaves CoralClawFeature/CoralTreeFeature
+		// remain), so these three mixins name a target that does not exist — proven by an A/B listing
+		// of the 26.2 and 26.3 jars, not inferred from the API shape.
+		//
+		// The cost is a known, cosmetic behaviour gap: vanilla coral, kelp and seagrass are no longer
+		// suppressed inside the Abyssal Chasm on 26.3. Retargeting coral onto the surviving leaves
+		// would restore a third of it, but kelp and seagrass have no feature class left at all, so a
+		// gap that is documented and uniform beats one that is partial and silent.
+		//
+		// Their siblings LakeFeatureMixin and MultifaceGrowthFeatureMixin are NOT excluded: both
+		// targets survive as records, and those two are gated onto the new four-argument place().
+		if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) {
+			extensions.getByType<org.gradle.api.tasks.SourceSetContainer>()
+				.named("main").get().java.exclude(
+					"**/mixin/CoralFeatureMixin.java",
+					"**/mixin/KelpFeatureMixin.java",
+					"**/mixin/SeagrassFeatureMixin.java",
+					// 26.3 made brewing data-driven and deleted PotionBrewing outright, so the Fabric
+					// brewing hook has no target class. The mod's ELEVEN brewing recipes are not lost
+					// with it: from 26.3 they ship as minecraft:brewing recipe JSON, authored under
+					// data/alexscaves/recipes/brewing/ and dropped again below the band, so this
+					// exclusion costs the code path and not the content.
+					"**/mixin/fabric/PotionBrewingMixin.java",
+				)
+		}
+		// The mirror image: two mixins that exist only to replace something 26.3 DELETED. Through
+		// 26.2 RenderSystem carried outputColorTextureOverride / outputDepthTextureOverride, two
+		// public statics saying which target is being rendered into right now; vanilla set them
+		// around GuiItemAtlas#drawToSlot and PictureInPictureRenderer#prepare, and PreparedRenderType
+		// read them when it opened a pass. 26.3 passes the pass down as a parameter instead and
+		// deleted both fields, so ACClientCompat#drawImmediate — which has no such parameter — keeps
+		// the same two sites in mod state. Below 26.3 the fields are still there and these two
+		// would be pointless; they also name renderpearl types that do not exist yet.
+		if (!ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) {
+			extensions.getByType<org.gradle.api.tasks.SourceSetContainer>()
+				.named("main").get().java.exclude(
+					"**/mixin/client/GuiItemAtlasTargetMixin.java",
+					"**/mixin/client/PictureInPictureTargetMixin.java",
+				)
+		}
+		// The NeoForge half of the same deletion — loader-scoped, because the block above is not.
+		// ProperBrewingRecipe extends net.minecraftforge.common.brewing.BrewingRecipe, which the
+		// !fab-brewing rule re-points at this mod's own stand-in on Fabric; that class still exists
+		// at 26.3, so the file must keep compiling there. On NeoForge the same name resolves to the
+		// loader's own package, which 26.3 deleted along with the event that consumed it.
+		if (ctx.loader is Loader.NeoForge && ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) {
+			extensions.getByType<org.gradle.api.tasks.SourceSetContainer>()
+				.named("main").get().java.exclude("**/server/potion/ProperBrewingRecipe.java")
+		}
 	}
 
 	private fun Project.registerGenerateManifestTask(ctx: Context) {
@@ -445,6 +496,7 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 		"1.21.11" -> 94
 		"26.1", "26.1.1", "26.1.2" -> 101
 		"26.2" -> 107
+		"26.3" -> 121
 		else -> 48
 	}
 	private fun packMinorFor(mc: String): Int = when (mc) {
@@ -576,6 +628,27 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 				if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.2")) {
 					add("client.ChunkSectionsToRenderMixin")
 				}
+				// The three vanilla underwater-plant features 26.3 deleted outright — see the
+				// source-set excludes above for which classes went and what the gap costs.
+				// The two immediate-draw target mixins, whose reason to exist is a 26.3 deletion —
+				// see the source-set exclude above.
+				if (!ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) {
+					add("client.GuiItemAtlasTargetMixin")
+					add("client.PictureInPictureTargetMixin")
+				}
+				if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) {
+					add("CoralFeatureMixin")
+					add("KelpFeatureMixin")
+					add("SeagrassFeatureMixin")
+					// 26.3 made brewing data-driven: PotionBrewing is gone from the jar entirely,
+					// replaced by BrewingRecipe/BrewingInput/PotionIngredient and ~500 recipe JSONs.
+					// The mixin has no target to retarget onto, so it vanishes rather than moves.
+					// Listed here as well as pruned by package on the other two loaders, because on
+					// Fabric the fabric. prefix stays — same as the trade-table pair above.
+					// This removes the Fabric CODE PATH for brewing; the eleven recipes themselves
+					// are re-added as minecraft:brewing recipe JSON on 26.3, so nothing is lost.
+					add("fabric.PotionBrewingMixin")
+				}
 			}
 			if (vanishedMixins.isNotEmpty()) doLast {
 				val pruned = DataPackMigration.pruneMixinEntries(destinationDir, ctx.modId, vanishedMixins)
@@ -689,7 +762,17 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			// Fabric's HolderSet codec reads a tag or a list, and nothing more — the composite
 			// biome set the cabin structure is authored with has no reader here at all, and an
 			// unreadable one is fatal. See DataPackMigration.flattenCompositeHolderSets.
-			if (ctx.loader is Loader.Fabric) doLast {
+			//
+			// ⚠️ NeoForge REGISTERS the composite types and still cannot read them from 26.3. Every
+			// one of them asks for the target registry with RegistryOps.retrieveRegistryLookup, and
+			// 26.3's RegistryDataLoader hands a datapack registry file a plain HolderGetter instead
+			// of a HolderLookup.RegistryLookup — so the cabin dies with "Found holder getter but was
+			// not a registry lookup for ResourceKey[minecraft:root / minecraft:worldgen/biome]" and
+			// leaves alexscaves:underground_cabin unbound, exactly the fatal shape Fabric had. The
+			// same file is fine on NeoForge 26.2, so this is a 26.3 boundary rather than a loader one.
+			if (ctx.loader is Loader.Fabric ||
+				(ctx.loader is Loader.NeoForge && ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3"))
+			) doLast {
 				val flattened = DataPackMigration.flattenCompositeHolderSets(destinationDir)
 				logger.lifecycle("Flattened composite HolderSets in $flattened data-pack files")
 			}
@@ -815,7 +898,7 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			}
 			// 1.21.6 replaced every scalar shader uniform with a std140 block and split the fog
 			// distance in two. Both are client-only GLSL link failures, invisible to runServer —
-			// see DataPackMigration.migrateCoreShadersTo1216. Expect 13, one per core shader.
+			// see DataPackMigration.migrateCoreShadersTo1216. Expect 14, one per core shader.
 			if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=1.21.6")) doLast {
 				val reuniformed = DataPackMigration.migrateCoreShadersTo1216(destinationDir, ctx.modId)
 				logger.lifecycle("Rewrote $reuniformed core shaders onto the 1.21.6 uniform blocks")
@@ -883,6 +966,104 @@ abstract class ModPlatformPlugin @Inject constructor() : Plugin<Project> {
 			if (!ctx.stonecutter.eval(ctx.currentMcVersion, ">=26")) doLast {
 				val untraded = DataPackMigration.dropVillagerTradeData(destinationDir, ctx.modId)
 				logger.lifecycle("Dropped $untraded pre-26 villager trade data files")
+			}
+			// And the mirror image of the brewing gates in ACEffectRegistry and AlexsCaves: the
+			// minecraft:brewing recipe type arrives with 26.3, so below it these eleven files name an
+			// unknown recipe type — there the same recipes come from a loader event or the vendored
+			// static registry instead. Expect 11.
+			if (!ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) doLast {
+				val unbrewed = DataPackMigration.dropBrewingRecipes(destinationDir, ctx.modId)
+				logger.lifecycle("Dropped $unbrewed pre-26.3 brewing recipe files")
+			}
+			// 26.3 rewrote the worldgen data pack three independent ways, and all three have to run
+			// AFTER the two 26.1/26.2 feature passes above. Those find their files through the
+			// literal path "/worldgen/configured_feature/" and write into "config", so flattening
+			// or moving first makes them match zero files — with no error, because matching nothing
+			// is indistinguishable from having nothing to do. doLast blocks run in registration
+			// order, so appending here is the ordering guarantee.
+			if (ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3")) {
+				// Name/Properties -> id/properties, simple_state_provider unwrapped to the bare
+				// state, weighted_state_provider -> weighted. Shape-keyed, so it reaches this mod's
+				// own feature codecs and not just the 18 vanilla-typed files. Expect 30.
+				doLast {
+					val respelled = DataPackMigration.migrateBlockStatesTo263(destinationDir)
+					logger.lifecycle("Respelled block states and providers in $respelled worldgen files for 26.3")
+				}
+				// ConfiguredFeature stopped wrapping its options in "config". Expect 76.
+				doLast {
+					val hoisted = DataPackMigration.hoistFeatureConfigsTo263(destinationDir)
+					logger.lifecycle("Hoisted the feature config to top level in $hoisted files for 26.3")
+				}
+				// configured_feature -> feature, configured_carver -> carver. Strictly last of the
+				// three feature passes above; the two spawner passes below touch other directories
+				// entirely, so they are free to follow. Expect 76.
+				doLast {
+					val moved = DataPackMigration.renameWorldgenRegistriesTo263(destinationDir)
+					logger.lifecycle("Moved $moved entries into the 26.3 worldgen registry directories")
+				}
+				// A biome's spawners/spawn_costs became the natural_mob_spawns attribute, and
+				// creature_spawn_probability became an attribute of its own. Merges into the
+				// `attributes` object the >=1.21.11 pass created earlier in this chain, so it has
+				// to run after it — which appending here guarantees. Expect 6.
+				doLast {
+					val respawned = DataPackMigration.migrateBiomeSpawnersTo263(destinationDir)
+					logger.lifecycle("Moved spawners into attributes in $respawned biomes for 26.3")
+				}
+				// The same minCount/maxCount -> count respell inside a structure's spawn_overrides.
+				// Eleven of the fourteen structures declare it empty, so only three change. Expect 3.
+				doLast {
+					val restocked = DataPackMigration.migrateStructureSpawnsTo263(destinationDir)
+					logger.lifecycle("Rewrote the spawn overrides in $restocked structures for 26.3")
+				}
+				// random_offset -> offset, with the one horizontal spread feeding both x and z.
+				// Independent of the three feature passes above (it touches placed_feature, which
+				// 26.3 leaves where it is), but it has to see the flattened tree, so it sits here
+				// rather than ahead of them. Expect 26.
+				doLast {
+					val offsets = DataPackMigration.migratePlacementModifiersTo263(destinationDir)
+					logger.lifecycle("Rewrote random_offset as offset in $offsets placed features for 26.3")
+				}
+				// Loot conditions and functions went singular, and block_state_property became
+				// match_block. First of the three loot/advancement passes, and behind every worldgen
+				// one, because it has to see the 1.21 singular folder names migrateTo121 produces and
+				// the entity predicates migrateEntityPredicatesTo262 rewrites; appending here
+				// guarantees both. Expect ~190.
+				doLast {
+					val singular = DataPackMigration.migrateLootTo263(destinationDir)
+					logger.lifecycle("Respelled the conditions and functions in $singular loot and advancement files for 26.3")
+				}
+				// 26.3 deleted EntityPredicate's advancement wrapper, so a criterion field that named
+				// one inline has to name a minecraft:entity_properties loot condition instead. After
+				// the pass above, which is what collapses the list form and so makes "already a
+				// condition" testable. Expect 29 files.
+				doLast {
+					val wrapped = DataPackMigration.wrapEntityPredicatesTo263(destinationDir)
+					logger.lifecycle("Wrapped the inline entity predicates in $wrapped advancements for 26.3")
+				}
+				// 26.3 dropped the untyped shorthand for a NumberProvider, so {min, max} has to name
+				// minecraft:uniform. After the respell, which is what puts a function's id under
+				// `type` where the owner lookup can see it. Expect 52 files.
+				doLast {
+					val typed = DataPackMigration.typeNumberProvidersTo263(destinationDir)
+					logger.lifecycle("Typed the uniform number providers in $typed loot files for 26.3")
+				}
+				// 26.3 compiles every shader through a SPIR-V generator, which needs #include in
+				// place of #moj_import and an explicit layout(location = N) on every user in/out —
+				// see DataPackMigration.migrateShadersTo263. Last of the shader chain: it has to see
+				// the >=1.21.6 uniform blocks and the >=1.21.9 screen-quad rewrite, both of which
+				// add and delete declarations it has to number. Expect 18 (13 core + 5 post).
+				doLast {
+					val spirv = DataPackMigration.migrateShadersTo263(destinationDir, ctx.modId)
+					logger.lifecycle("Rewrote $spirv shaders onto the 26.3 SPIR-V GLSL dialect")
+				}
+			}
+			// 26.3 answers "what does an axe turn this into" from a data map instead of from
+			// ToolActions, so the seven mappings are authored for it and dropped everywhere else —
+			// see ACCompat.isAxeStrip, which is gated on the loader as well as the version because
+			// Fabric's stand-in keeps the old mechanism at 26.3.
+			if (!(ctx.loader is Loader.NeoForge && ctx.stonecutter.eval(ctx.currentMcVersion, ">=26.3"))) doLast {
+				val unstripped = DataPackMigration.dropNeoForgeStrippables(destinationDir)
+				logger.lifecycle("Dropped $unstripped NeoForge strippables data map files")
 			}
 		}
 	}

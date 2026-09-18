@@ -208,9 +208,9 @@ public class AmberMonolithBlockEntity extends BlockEntity implements ACUpdatePac
     private static MobSpawnSettings.SpawnerData getEntitySpawnSettingsForBiome(Level level, BlockPos pos, List<EntityType<?>> forcedEntityTypes) {
         Biome biome = level.getBiome(pos).value();
         if (biome != null) {
-            WeightedRandomList<MobSpawnSettings.SpawnerData> spawnList = biome.getMobSettings().getMobs(ACEntityRegistry.CAVE_CREATURE);
+            WeightedRandomList<MobSpawnSettings.SpawnerData> spawnList = ACCompat.mobsOf(ACCompat.mobSettings(biome), ACEntityRegistry.CAVE_CREATURE);
             if (spawnList.isEmpty()) {
-                spawnList = biome.getMobSettings().getMobs(MobCategory.CREATURE);
+                spawnList = ACCompat.mobsOf(ACCompat.mobSettings(biome), MobCategory.CREATURE);
             }
             if(!forcedEntityTypes.isEmpty()){
                 // 1.21.5 moved the weight out of SpawnerData and into a Weighted<E> wrapper, so

@@ -92,7 +92,14 @@ public class VoidBeingEyeParticle extends ACCustomParticle {
 
         Vector3f vector3f1 = new Vector3f(-1.0F, -1.0F, 0.0F);
         vector3f1.rotate(quaternion);
-        Vector3f[] avector3f = new Vector3f[]{new Vector3f(-1.0F, -1.0F, -0.05F), new Vector3f(-1.0F, 1.0F, -0.05F), new Vector3f(1.0F, 1.0F, -0.05F), new Vector3f(1.0F, -1.0F, -0.05F)};
+        // The eye sits a hair in front of the portal it is drawn over. 1.21 flipped which way the
+        // camera rotation faces, so the same offset put it a hair behind, and the portal hid it.
+        //? if >=1.21 {
+        /*float eyeZ = 0.05F;
+        *///?} else {
+        float eyeZ = -0.05F;
+        //?}
+        Vector3f[] avector3f = new Vector3f[]{new Vector3f(-1.0F, -1.0F, eyeZ), new Vector3f(-1.0F, 1.0F, eyeZ), new Vector3f(1.0F, 1.0F, eyeZ), new Vector3f(1.0F, -1.0F, eyeZ)};
         float f4 = 0.5F;
         float offsetX = prevCameraOffsetX + (cameraOffsetX - prevCameraOffsetX) * partialTick;
         float offsetY = prevCameraOffsetY + (cameraOffsetY - prevCameraOffsetY) * partialTick;

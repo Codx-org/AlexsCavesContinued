@@ -14,14 +14,11 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.material.Fluids;
 
 import java.util.Map;
 
-public class LicorootTreeFeature extends Feature<NoneFeatureConfiguration> {
+public class LicorootTreeFeature extends ACSimpleFeature {
 
     private static final Map<Direction, Direction[]> SPIRAL_UP_MAP = Util.make(Maps.newHashMap(), (map) -> {
         map.put(Direction.NORTH, new Direction[]{Direction.NORTH, Direction.UP, Direction.SOUTH, Direction.DOWN});
@@ -37,15 +34,15 @@ public class LicorootTreeFeature extends Feature<NoneFeatureConfiguration> {
         map.put(Direction.WEST, new Direction[]{Direction.WEST, Direction.DOWN, Direction.EAST, Direction.UP});
     });
 
-    public LicorootTreeFeature(Codec<NoneFeatureConfiguration> codec) {
+    public LicorootTreeFeature(Object codec) {
         super(codec);
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
-        RandomSource randomsource = context.random();
-        WorldGenLevel level = context.level();
-        BlockPos treeGround = context.origin();
+    public boolean acPlace(WorldGenLevel acLevel, RandomSource acRandom, BlockPos acOrigin) {
+        RandomSource randomsource = acRandom;
+        WorldGenLevel level = acLevel;
+        BlockPos treeGround = acOrigin;
         int centerAboveGround = 5 + randomsource.nextInt(5);
         int height = centerAboveGround + 4 + randomsource.nextInt(7);
         if (!checkCanTreePlace(level, treeGround, height)) {
