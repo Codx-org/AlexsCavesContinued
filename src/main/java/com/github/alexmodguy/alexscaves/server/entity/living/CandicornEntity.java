@@ -705,9 +705,13 @@ public class CandicornEntity extends TamableAnimal implements KeybindUsingMount,
         }
     }
 
+    // Runs on both sides, and the server half is the one that matters: controllerForwardsTicks is
+    // what setRunning reads, and running is what fills the meter the charge spends. From 1.21.2 a
+    // ServerPlayer's zza/xxa are never written (setPlayerInput is gone), so the raw fields read 0
+    // here and the candicorn could neither sprint nor charge — hence ACCompat#riderZza.
     protected void tickRidden(Player player, Vec3 vec3) {
         super.tickRidden(player, vec3);
-        if (player.zza != 0 || player.xxa != 0) {
+        if (ACCompat.riderZza(player) != 0 || ACCompat.riderXxa(player) != 0) {
             this.setRot(player.getYRot(), player.getXRot() * 0.25F);
             this.setYHeadRot(player.getYHeadRot());
             this.setTarget(null);
@@ -715,7 +719,7 @@ public class CandicornEntity extends TamableAnimal implements KeybindUsingMount,
         if (vec3.z <= 0.0D) {
             this.gallopSoundCounter = 0;
         }
-        if(player.zza > 0){
+        if(ACCompat.riderZza(player) > 0){
             controllerForwardsTicks++;
         }else{
             controllerForwardsTicks = 0;

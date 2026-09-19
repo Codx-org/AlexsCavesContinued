@@ -1,11 +1,12 @@
 {
-  "__comment": "Mobs that do not drown. Until 1.20.1 these overrode LivingEntity#canBreatheUnderwater in code; 1.20.2 made that method final and reads this tag instead.",
+  "__comment": "Mobs that do not drown. Until 1.20.1 these overrode LivingEntity#canBreatheUnderwater in code; 1.20.2 made that method final and reads this tag instead. WaterAnimal lost its own always-true override at the same boundary, which the fish never noticed (their handleAirSupply refills air in water) and the amphibious trilocaris, whose handleAirSupply is a deliberate no-op, did: it drowned underwater.",
   "replace": false,
   "values": [
     "alexscaves:deep_one",
     "alexscaves:deep_one_knight",
     "alexscaves:deep_one_mage",
     "alexscaves:mine_guardian",
+    "alexscaves:trilocaris",
     "alexscaves:tremorzilla"
   ]
 }

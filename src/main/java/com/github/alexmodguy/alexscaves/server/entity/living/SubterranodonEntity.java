@@ -396,8 +396,8 @@ public class SubterranodonEntity extends DinosaurEntity implements PackAnimal, F
 
     protected void tickRidden(Player player, Vec3 vec3) {
         super.tickRidden(player, vec3);
-        slowRidden = player.zza < 0.3F || timeVehicle < 10 || this.onGround();
-        if (player.zza != 0 || player.xxa != 0) {
+        slowRidden = ACCompat.riderZza(player) < 0.3F || timeVehicle < 10 || this.onGround();
+        if (ACCompat.riderZza(player) != 0 || ACCompat.riderXxa(player) != 0) {
             this.setRot(player.getYRot(), player.getXRot() * 0.25F);
             this.setTarget(null);
         }

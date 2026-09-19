@@ -59,35 +59,50 @@ public abstract class LivingEntityMixin extends Entity implements ICitadelDataEn
     //? if >=1.21.6 {
     /*@Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V")
     private void acc_citadel_writeAdditional(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
-        CompoundTag citadelDat = acGetCitadelEntityData();
-        if (citadelDat != null) {
-            ACCompat.tagOf(output).put("CitadelData", citadelDat);
-        }
+        acc_citadel_write(ACCompat.tagOf(output));
     }
 
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V")
     private void acc_citadel_readAdditional(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
-        CompoundTag compoundNBT = ACCompat.tagOf(input);
-        if (compoundNBT.contains("CitadelData")) {
-            acSetCitadelEntityData(ACCompat.getCompound(compoundNBT, "CitadelData"));
-        }
+        acc_citadel_read(ACCompat.tagOf(input));
     }
     *///?} else {
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V")
     private void acc_citadel_writeAdditional(CompoundTag compoundNBT, CallbackInfo ci) {
-        CompoundTag citadelDat = acGetCitadelEntityData();
-        if (citadelDat != null) {
-            compoundNBT.put("CitadelData", citadelDat);
-        }
+        acc_citadel_write(compoundNBT);
     }
 
     @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/LivingEntity;readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V")
     private void acc_citadel_readAdditional(CompoundTag compoundNBT, CallbackInfo ci) {
-        if (compoundNBT.contains("CitadelData")) {
+        acc_citadel_read(compoundNBT);
+    }
+    //?}
+
+    // The save key must be unique to this mod. Upstream wrote "CitadelData", and so do the real
+    // Citadel and AlexsMobsContinued's vendored copy — all three at TAIL of the same method, into
+    // the same compound, so whichever mixin ran last replaced the other two's tag and each read
+    // back someone else's on load. That is how the Cave Compendium forgot everything on rejoin
+    // beside Alex's Mobs. The legacy key is still read, once, when ours is absent, so a save from
+    // before the rename keeps its progress.
+    @org.spongepowered.asm.mixin.Unique
+    private static final String ACC_CITADEL_DATA_KEY = "AlexsCavesCitadelData";
+
+    @org.spongepowered.asm.mixin.Unique
+    private void acc_citadel_write(CompoundTag compoundNBT) {
+        CompoundTag citadelDat = acGetCitadelEntityData();
+        if (citadelDat != null) {
+            compoundNBT.put(ACC_CITADEL_DATA_KEY, citadelDat);
+        }
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private void acc_citadel_read(CompoundTag compoundNBT) {
+        if (compoundNBT.contains(ACC_CITADEL_DATA_KEY)) {
+            acSetCitadelEntityData(ACCompat.getCompound(compoundNBT, ACC_CITADEL_DATA_KEY));
+        } else if (compoundNBT.contains("CitadelData")) {
             acSetCitadelEntityData(ACCompat.getCompound(compoundNBT, "CitadelData"));
         }
     }
-    //?}
 
     public CompoundTag acGetCitadelEntityData() {
         return entityData.get(CitadelSyncedData.CITADEL_DATA);

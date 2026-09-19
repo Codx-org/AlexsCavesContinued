@@ -498,7 +498,7 @@ public class TremorsaurusEntity extends DinosaurEntity implements KeybindUsingMo
 
     protected void tickRidden(Player player, Vec3 vec3) {
         super.tickRidden(player, vec3);
-        if (player.zza != 0 || player.xxa != 0) {
+        if (ACCompat.riderZza(player) != 0 || ACCompat.riderXxa(player) != 0) {
             this.setRot(player.getYRot(), player.getXRot() * 0.25F);
             this.setYHeadRot(player.getYHeadRot());
             this.setTarget(null);

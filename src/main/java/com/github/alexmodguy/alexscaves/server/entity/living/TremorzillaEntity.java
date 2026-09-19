@@ -1247,7 +1247,7 @@ public class TremorzillaEntity extends DinosaurEntity implements KeybindUsingMou
     protected void tickRidden(Player player, Vec3 vec3) {
         super.tickRidden(player, vec3);
         this.setTarget(null);
-        if (player.zza != 0 || player.xxa != 0) {
+        if (ACCompat.riderZza(player) != 0 || ACCompat.riderXxa(player) != 0) {
             if (this.getAnimation() != ANIMATION_LEFT_TAIL && this.getAnimation() != ANIMATION_RIGHT_TAIL) {
                 this.setRot(player.getYRot(), player.getXRot() * 0.25F);
                 this.setYHeadRot(player.getYHeadRot());
