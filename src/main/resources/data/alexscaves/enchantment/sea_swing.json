@@ -1,0 +1,20 @@
+{
+  "description": {
+    "translate": "enchantment.alexscaves.sea_swing"
+  },
+  "supported_items": "#alexscaves:enchantable/ortholance",
+  "weight": 2,
+  "max_level": 1,
+  "min_cost": {
+    "base": 1,
+    "per_level_above_first": 10
+  },
+  "max_cost": {
+    "base": 41,
+    "per_level_above_first": 10
+  },
+  "anvil_cost": 4,
+  "slots": [
+    "mainhand"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "__comment": "What Alex's Caves means by 'dirt'. Vanilla narrowed its own dirt tag at MC 26.1 down to three members, dropping grass_block, podzol, mycelium, the moss blocks and the muds - and grass_block is exactly what this mod's surface rules lay on a dry primordial-caves floor, so leaning on the vanilla tag silently stopped dinosaurs spawning and stopped every cave tree generating. The mod owns the membership now, so it means the same thing on every supported version; the vanilla tag is still folded in so other mods' dirt keeps counting.",
+  "values": [
+    "#minecraft:dirt",
+    "minecraft:grass_block",
+    "minecraft:podzol",
+    "minecraft:mycelium",
+    "minecraft:moss_block",
+    "minecraft:mud",
+    "minecraft:muddy_mangrove_roots",
+    {
+      "id": "minecraft:pale_moss_block",
+      "required": false
+    }
+  ]
+}

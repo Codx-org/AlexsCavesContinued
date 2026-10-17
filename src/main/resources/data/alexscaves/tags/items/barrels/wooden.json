@@ -1,0 +1,15 @@
+{
+  "__comment": "Owned here rather than referenced straight from the loader's convention namespace. Fabric API ships convention-tags-v1 below 1.20.5, whose names are nothing like the v2 path form this recipe was written against (c:iron_ingots, not c:ingots/iron), and even v2 has never carried every path the loaders do \u2014 so the reference resolved to an EMPTY tag and the recipe was silently uncraftable on those nodes, with no log line at all. Naming the vanilla member outright fixes every version and loader at once; the convention references stay as optional entries so other mods' equivalents still count wherever the loader defines them. Same shape as the concrete and gravel tags beside this one.",
+  "replace": false,
+  "values": [
+    "minecraft:barrel",
+    {
+      "id": "#forge:barrels/wooden",
+      "required": false
+    },
+    {
+      "id": "#c:wooden_barrels",
+      "required": false
+    }
+  ]
+}

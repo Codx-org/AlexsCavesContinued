@@ -1,0 +1,166 @@
+package com.github.alexmodguy.alexscaves.client.gui;
+
+import com.github.alexmodguy.alexscaves.client.ACClientCompat;
+
+import com.github.alexmodguy.alexscaves.server.misc.ACColors;
+
+import com.github.alexmodguy.alexscaves.AlexsCaves;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.sounds.SoundManager;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.util.StringDecomposer;
+
+public class SpelunkeryTableWordButton extends AbstractWidget {
+
+    public static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AlexsCaves.MODID, "textures/gui/spelunkery_table.png");
+    private SpelunkeryTableScreen parent;
+
+    private Font font;
+    private Component glyphText;
+    private Component normalText;
+
+    public SpelunkeryTableWordButton(SpelunkeryTableScreen parent, Font font, int x, int y, int height, int width, Component text) {
+        super(x, y, height, width, text);
+        this.parent = parent;
+        this.font = font;
+        this.normalText = text.plainCopy().withStyle(Style.EMPTY);
+        this.glyphText = text.copy().withStyle(SpelunkeryTableScreen.GLYPH_FONT);
+    }
+
+    @Override
+    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (!parent.hasTablet()) {
+            return;
+        }
+        float revealWordsAmount = parent.getRevealWordsAmount(ACClientCompat.frameTime());
+        int textColor = active ? 4210752 : 0XBFBFBF;
+        int revealTextColor = parent.isTargetWord(this) ? parent.getHighlightColor() : 0XBFBFBF;
+        int alpha = (int) ((1F - revealWordsAmount) * 255);
+        int r = (int) (textColor >> 16 & 255);
+        int g = (int) (textColor >> 8 & 255);
+        int b = (int) (textColor & 255);
+        int revealAlpha = (int) (revealWordsAmount * 255);
+        int revealR = (int) (revealTextColor >> 16 & 255);
+        int revealG = (int) (revealTextColor >> 8 & 255);
+        int revealB = (int) (revealTextColor & 255);
+        if (alpha >= 1) {
+            drawEquidistantWord(font, guiGraphics, this.glyphText, this.getX(), this.getY(), ACColors.argb(alpha, r, g, b));
+        }
+        if (revealAlpha >= 1) {
+            drawEquidistantWord(font, guiGraphics, this.normalText, this.getX(), this.getY(), ACColors.argb(revealAlpha, revealR, revealG, revealB));
+        }
+    }
+
+    @Override
+    protected void updateWidgetNarration(NarrationElementOutput output) {
+
+    }
+
+
+    @Override
+    public int getX() {
+        return super.getX() + parentLeft();
+    }
+
+    @Override
+    public void setX(int x) {
+        super.setX(x - parentLeft());
+    }
+
+    @Override
+    public int getY() {
+        return super.getY() + parentTop();
+    }
+
+    @Override
+    public void setY(int y) {
+        super.setY(y - parentTop());
+    }
+
+    // The container screen's own origin, which a widget class outside its package cannot read off
+    // the protected leftPos/topPos fields. Three spellings over the matrix, so it is a helper rather
+    // than four gated overrides:
+    //
+    //   - Forge and NeoForge both patched in getGuiLeft()/getGuiTop(), which is what the source says;
+    //   - NeoForge deprecated that pair at 26.1.2 in favour of getLeftPos()/getTopPos() and DELETED it
+    //     inside the 26.3 beta line -- present in 26.3.0.1-beta, gone in .4-beta;
+    //   - Fabric has neither, so the accesswidener opens the fields and the !fab-gui-left/!fab-gui-top rules rewrite
+    //     the call below to a plain field read.
+    //
+    // The gate is >=26.3 rather than >=26.1.2 on purpose: the new pair only exists from 26.1.2, but the
+    // old one still works everywhere below 26.3, and a wider gate would have to be re-proved on three
+    // more nodes to buy nothing.
+    //? if neoforge && >=26.3 {
+    /*private int parentLeft() {
+        return parent.getLeftPos();
+    }
+
+    private int parentTop() {
+        return parent.getTopPos();
+    }
+    *///?} else {
+    private int parentLeft() {
+        return parent.getGuiLeft();
+    }
+
+    private int parentTop() {
+        return parent.getGuiTop();
+    }
+    //?}
+
+    // 1.21.9 folded the click coordinates into one MouseButtonEvent record and added the
+    // double-click flag. Neither arm reads either, so only the header differs -- but without
+    // the gate the pre-1.21.9 shape silently overrides nothing from 1.21.9 up and every word
+    // in the spelunkery minigame becomes unclickable.
+    //? if >=1.21.9 {
+    /*@Override
+    public void onClick(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+    *///?} else {
+    @Override
+    public void onClick(double x, double y) {
+    //?}
+        if (parent.hasPaper()) {
+            parent.onClickWord(this);
+            this.active = false;
+        }
+    }
+
+    @Override
+    public void playDownSound(SoundManager soundManager) {
+    }
+
+    public Component getNormalText() {
+        return normalText;
+    }
+
+    public void renderTranslationText(int tickCount, int textColor, GuiGraphics guiGraphics, Font font, float magnifyingXMin, float magnifyingXMax, float magnifyingYMin, float magnifyingYMax) {
+        if (!this.active) {
+            ACClientCompat.pushPose(guiGraphics);
+            guiGraphics.enableScissor((int) magnifyingXMin, (int) magnifyingYMin, (int) magnifyingXMax, (int) magnifyingYMax);
+            float age = (float) (Math.sin((tickCount + ACClientCompat.frameTime()) * 0.2F) + 1F) * 0.5F;
+            int alpha = (int) (Mth.clamp(age, 0.1F, 1F) * 255);
+            int r = (int) (textColor >> 16 & 255);
+            int g = (int) (textColor >> 8 & 255);
+            int b = (int) (textColor & 255);
+            drawEquidistantWord(font, guiGraphics, this.normalText, this.getX(), this.getY(), ACColors.argb(alpha, r, g, b));
+            guiGraphics.disableScissor();
+            ACClientCompat.popPose(guiGraphics);
+        }
+    }
+
+    private void drawEquidistantWord(Font font, GuiGraphics guiGraphics, Component component, int x, int y, int color) {
+        int letterWidth = 6;
+        StringDecomposer.iterateFormatted(component, Style.EMPTY, (position, style, j) -> {
+            guiGraphics.drawString(font, Component.literal(String.valueOf((char) j)).withStyle(style), x + letterWidth * position, y, ACColors.opaque(color), false);
+            return true;
+        });
+    }
+
+}

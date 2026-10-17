@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "III",
+    "IBI",
+    "III"
+  ],
+  "key": {
+    "I": {
+      "tag": "alexscaves:ingots/iron"
+    },
+    "B": {
+      "tag": "alexscaves:barrels/wooden"
+    }
+  },
+  "result": {
+    "item": "alexscaves:metal_barrel"
+  }
+}

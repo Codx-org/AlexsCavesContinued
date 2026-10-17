@@ -1,0 +1,9 @@
+{
+  "values": [
+    "#alexscaves:primordial_caves_base_blocks",
+    {
+      "id": "#minecraft:overworld_carver_replaceables",
+      "required": false
+    }
+  ]
+}

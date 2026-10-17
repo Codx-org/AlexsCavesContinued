@@ -1,0 +1,600 @@
+package com.github.alexmodguy.alexscaves.mixin;
+
+import com.github.alexmodguy.alexscaves.server.misc.ACCompat;
+
+import com.github.alexmodguy.alexscaves.server.entity.util.MagnetUtil;
+import com.github.alexmodguy.alexscaves.server.entity.util.MagneticEntityAccessor;
+import com.github.alexmodguy.alexscaves.server.item.ACItemRegistry;
+import com.github.alexmodguy.alexscaves.server.item.RainbounceBootsItem;
+import com.github.alexmodguy.alexscaves.server.misc.ACTagRegistry;
+import com.github.alexmodguy.alexscaves.server.potion.ACEffectRegistry;
+import com.github.alexmodguy.alexscaves.citadel.CitadelConstants;
+import com.github.alexmodguy.alexscaves.citadel.server.entity.CitadelSyncedData;
+import com.google.common.collect.ImmutableList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.*;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.List;
+
+@Mixin(Entity.class)
+public abstract class EntityMixin implements MagneticEntityAccessor {
+
+    @Shadow
+    @Final
+    protected SynchedEntityData entityData;
+
+    @Shadow
+    protected abstract void playStepSound(BlockPos p_20135_, BlockState p_20136_);
+
+    @Shadow
+    private Level level;
+    @Shadow
+    private Vec3 position;
+
+    @Shadow
+    private EntityDimensions dimensions;
+
+    @Shadow
+    public abstract void tick();
+
+    @Shadow
+    public abstract void refreshDimensions();
+
+    // The cached eye height ac_refreshDimensions corrects. A private field of that name and type on
+    // every version in the range.
+    @Shadow
+    private float eyeHeight;
+
+    @Shadow
+    protected boolean wasTouchingWater;
+
+    @Shadow
+    public abstract AABB getBoundingBox();
+
+    @Shadow
+    public abstract Level level();
+
+    @Shadow
+    public abstract boolean onGround();
+
+    @Shadow
+    public abstract double getY();
+
+    // The four magnet accessors are DEFINED here — so the defineId calls run inside Entity's own
+    // class initialiser and take Entity's slots in the id pool, exactly as before — but they are
+    // STORED on CitadelSyncedData rather than in fields merged into Entity. NeoForge 21.8 scans the
+    // holder class for @MixinMerged EntityDataAccessor fields and throws in dev when it finds any;
+    // see CitadelSyncedData's class notes for the whole story. Hence the boolean field: it holds the
+    // call without being an accessor itself.
+    private static final boolean AC_MAGNET_DATA_INSTALLED = CitadelSyncedData.installMagnet(
+            SynchedEntityData.defineId(Entity.class, EntityDataSerializers.FLOAT),
+            SynchedEntityData.defineId(Entity.class, EntityDataSerializers.FLOAT),
+            SynchedEntityData.defineId(Entity.class, EntityDataSerializers.FLOAT),
+            SynchedEntityData.defineId(Entity.class, EntityDataSerializers.DIRECTION));
+    private float attachChangeProgress = 0F;
+    private float prevAttachChangeProgress = 0F;
+    private Direction prevAttachDir = Direction.DOWN;
+    private int jumpFlipCooldown = 0;
+
+    private BlockPos lastStepPos;
+    private Vec3 lastBouncePos;
+
+    // Citadel registers this entity data at the TAIL of Entity's constructor because
+    // Entity#defineSynchedData is abstract and cannot be injected into. 1.20.5 kept it abstract
+    // but made SynchedEntityData immutable once built, so the TAIL of the constructor is too
+    // late -- there is no `define` to call any more. The builder therefore has to be reached
+    // while the constructor still holds it.
+    //
+    // It is a @ModifyArg on the `defineSynchedData(builder)` call and NOT an @Inject-with-@Local
+    // or a @Redirect, and both halves of that matter:
+    //
+    //  * @Inject: Mixin only allows injecting into a constructor at RETURN/TAIL unless the
+    //    bundled Mixin supports arbitrary constructor injection. NeoForge's does; Forge's does
+    //    not, and every Forge node from 1.20.6 up died at startup with "@At("INVOKE") selector
+    //    Found @Inject targetting a constructor".
+    //  * @Redirect on the trailing `builder.build()`: works, but a redirect OWNS the instruction
+    //    it replaces, and only one mod can own it. Any other mod adding its own synched data the
+    //    same way -- toucanlib does -- makes both redirects target the same `build()` call, the
+    //    loser fails its injection check and the game hard-crashes at class load with
+    //    defaultRequire: 1. It crashed players who had both mods installed, and neither mod is
+    //    at fault on its own.
+    //
+    // @ModifyArg is stackable: several handlers can chain on one argument, each seeing the
+    // previous one's value, so this composes with any other mod doing the same thing. Defining
+    // our accessors before the subclass's own defines is safe -- Builder#define writes at
+    // accessor.id(), so define order carries no meaning. Fully-qualified so the gated-out branch
+    // needs no import.
+    //? if >=1.20.5 {
+    /*@org.spongepowered.asm.mixin.injection.ModifyArg(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;defineSynchedData(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/Entity;<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V")
+    private net.minecraft.network.syncher.SynchedEntityData.Builder acc_citadel_registerData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        builder.define(CitadelSyncedData.MAGNET_DELTA_X, 0F);
+        builder.define(CitadelSyncedData.MAGNET_DELTA_Y, 0F);
+        builder.define(CitadelSyncedData.MAGNET_DELTA_Z, 0F);
+        builder.define(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION, Direction.DOWN);
+        return builder;
+    }
+    *///?} else {
+    @Inject(at = @At("TAIL"), remap = CitadelConstants.REMAPREFS, method = "Lnet/minecraft/world/entity/Entity;<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V")
+    private void acc_citadel_registerData(CallbackInfo ci) {
+        entityData.define(CitadelSyncedData.MAGNET_DELTA_X, 0F);
+        entityData.define(CitadelSyncedData.MAGNET_DELTA_Y, 0F);
+        entityData.define(CitadelSyncedData.MAGNET_DELTA_Z, 0F);
+        entityData.define(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION, Direction.DOWN);
+    }
+    //?}
+
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;tick()V"},
+            remap = true,
+            at = @At(value = "TAIL")
+    )
+    public void ac_tick(CallbackInfo ci) {
+        Entity thisEntity = (Entity) (Object) this;
+        prevAttachChangeProgress = attachChangeProgress;
+        if (this.prevAttachDir != this.getMagneticAttachmentFace()) {
+            if (attachChangeProgress < 1.0F) {
+                attachChangeProgress += 0.1F;
+            } else if (attachChangeProgress >= 1.0F) {
+                this.prevAttachDir = this.getMagneticAttachmentFace();
+            }
+        } else {
+            this.attachChangeProgress = 1.0F;
+        }
+
+        if (MagnetUtil.isPulledByMagnets(thisEntity)) {
+            MagnetUtil.tickMagnetism(thisEntity);
+            if (this.jumpFlipCooldown > 0) {
+                this.jumpFlipCooldown--;
+            }
+        } else {
+            if (this.getMagneticAttachmentFace() != Direction.DOWN) {
+                this.setMagneticAttachmentFace(Direction.DOWN);
+                this.refreshDimensions();
+            }
+        }
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;onSyncedDataUpdated(Lnet/minecraft/network/syncher/EntityDataAccessor;)V"},
+            remap = true,
+            at = @At(value = "TAIL")
+    )
+    public void ac_onSyncedDataUpdated(EntityDataAccessor<?> entityDataAccessor, CallbackInfo ci) {
+        if (CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION.equals(entityDataAccessor)) {
+            this.prevAttachChangeProgress = 0.0F;
+            this.attachChangeProgress = 0.0F;
+        }
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;getEyePosition()Lnet/minecraft/world/phys/Vec3;"},
+            remap = true,
+            cancellable = true,
+            at = @At(value = "HEAD")
+    )
+    public void ac_getEyePosition(CallbackInfoReturnable<Vec3> cir) {
+        if (getMagneticAttachmentFace() != Direction.DOWN) {
+            cir.setReturnValue(MagnetUtil.getEyePositionForAttachment((Entity) (Object) this, getMagneticAttachmentFace(), 1.0F));
+        }
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;getEyePosition(F)Lnet/minecraft/world/phys/Vec3;"},
+            remap = true,
+            cancellable = true,
+            at = @At(value = "HEAD")
+    )
+    public void ac_getEyePosition_lerp(float partialTick, CallbackInfoReturnable<Vec3> cir) {
+        if (getMagneticAttachmentFace() != Direction.DOWN && getMagneticAttachmentFace() != Direction.UP) {
+            cir.setReturnValue(MagnetUtil.getEyePositionForAttachment((Entity) (Object) this, getMagneticAttachmentFace(), partialTick));
+        }
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;collide(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"},
+            remap = true,
+            cancellable = true,
+            at = @At(value = "HEAD")
+    )
+    //must override entire method for compatibility with Radium mod
+    public void ac_collide(Vec3 deltaIn, CallbackInfoReturnable<Vec3> cir) {
+
+        AABB aabb = this.getBoundingBox();
+        Entity thisEntity = (Entity) (Object) this;
+        //AC CODE START
+        List<VoxelShape> list;
+        //fix infinity voxel collection crash for ItemEntity
+        if (this.getY() > this.level().getMinBuildHeight() - 200) {
+            list = this.level().getEntityCollisions(thisEntity, aabb.expandTowards(deltaIn));
+            List<VoxelShape> list2 = MagnetUtil.getMovingBlockCollisions(thisEntity, aabb);
+            list = ImmutableList.<VoxelShape>builder().addAll(list).addAll(list2).build();
+        } else {
+            list = List.of();
+        }
+        //AC CODE END
+        Vec3 vec3 = deltaIn.lengthSqr() == 0.0D ? deltaIn : Entity.collideBoundingBox(thisEntity, deltaIn, aabb, this.level(), list);
+        boolean flag = deltaIn.x != vec3.x;
+        boolean flag1 = deltaIn.y != vec3.y;
+        boolean flag2 = deltaIn.z != vec3.z;
+        boolean flag3 = this.onGround() || flag1 && deltaIn.y < 0.0D;
+        float stepHeight = thisEntity.getStepHeight();
+        if (stepHeight > 0.0F && flag3 && (flag || flag2)) {
+            Vec3 vec31 = Entity.collideBoundingBox(thisEntity, new Vec3(deltaIn.x, stepHeight, deltaIn.z), aabb, this.level, list);
+            Vec3 vec32 = Entity.collideBoundingBox(thisEntity, new Vec3(0.0D, stepHeight, 0.0D), aabb.expandTowards(deltaIn.x, 0.0D, deltaIn.z), this.level, list);
+            if (vec32.y < (double) stepHeight) {
+                Vec3 vec33 = Entity.collideBoundingBox(thisEntity, new Vec3(deltaIn.x, 0.0D, deltaIn.z), aabb.move(vec32), this.level(), list).add(vec32);
+                if (vec33.horizontalDistanceSqr() > vec31.horizontalDistanceSqr()) {
+                    vec31 = vec33;
+                }
+            }
+
+            if (vec31.horizontalDistanceSqr() > vec3.horizontalDistanceSqr()) {
+                cir.setReturnValue(vec31.add(Entity.collideBoundingBox(thisEntity, new Vec3(0.0D, -vec31.y + deltaIn.y, 0.0D), aabb.move(vec31), this.level(), list)));
+                return;
+            }
+        }
+
+        cir.setReturnValue(vec3);
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;turn(DD)V"},
+            remap = true,
+            cancellable = true,
+            at = @At(value = "HEAD")
+    )
+    public void ac_turn(double yBy, double xBy, CallbackInfo ci) {
+        if (getMagneticAttachmentFace() != Direction.DOWN) {
+            ci.cancel();
+            MagnetUtil.turnEntityOnMagnet((Entity) (Object) this, xBy, yBy, getMagneticAttachmentFace());
+        }
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;makeBoundingBox()Lnet/minecraft/world/phys/AABB;"},
+            remap = true,
+            cancellable = true,
+            at = @At(value = "HEAD")
+    )
+    public void ac_makeBoundingBox(CallbackInfoReturnable<AABB> cir) {
+        if (this.entityData.isDirty() && getMagneticAttachmentFace() != Direction.DOWN) {
+            cir.setReturnValue(MagnetUtil.rotateBoundingBox(dimensions, getMagneticAttachmentFace(), position));
+        }
+    }
+
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;isInWater()Z"},
+            remap = true,
+            cancellable = true,
+            at = @At(value = "HEAD")
+    )
+    public void ac_isInWater(CallbackInfoReturnable<Boolean> cir) {
+        // Acid and purple soda are the mod's two swimmable fluids, and on Forge they swim because of a
+        // loader patch: LivingEntity's travel branch asks the fluid's type to move the entity, and a type
+        // that declines (PurpleSodaFluidType does not override that method, so it declines by default)
+        // falls through to vanilla's own water travel. AcidFluidType does override it — with a verbatim
+        // copy of vanilla's water branch plus one swim-speed multiply, which is exactly what this tree's
+        // fabric LivingEntityAttributesMixin already applies inside vanilla water travel. So on a loader
+        // with no such patch, answering "yes, I am in water" reproduces both fluids' physics faithfully.
+        //
+        // Two loaders have no patch to fall back on. Fabric never had one — fabric/forge/fluids/FluidType
+        // is compiled and dormant, nothing dispatches to it. And NeoForge DELETED the call site at 26.1:
+        // the FluidType class and its move/motionScale/canSwim all still ship on 26.2, but the patched
+        // LivingEntity's travel gate is vanilla-shaped there (isInWater / isInLava / isAffectedByFluids /
+        // canStandOnFluid) with no isInFluidType left in it. Every cached NeoForge build below 26 has two
+        // or three isInFluidType call sites in that class; all four 26.x builds have none. Probe the CALL
+        // SITE in the patched class, never the API type — the type outlived its only caller here.
+        //
+        // The heights this reads are populated on every node: >=26 by widening EntityFluidInteraction's
+        // tracked set (ac_trackModFluids below), below it by ac_pushInModFluids. Two things this
+        // deliberately does not reproduce, neither of them reported and both of them cosmetic-adjacent:
+        // the eye check stays keyed on the water tag, so a submerged head neither drowns nor draws the
+        // underwater overlay in soda.
+        //? if fabric || (neoforge && >=26.1) {
+        /*if (com.github.alexmodguy.alexscaves.server.misc.ACFluids.modFluidHeight((Entity) (Object) this) > 0.0D) {
+            cir.setReturnValue(true);
+            return;
+        }
+        *///?}
+        if ((Object) this instanceof LivingEntity living && living.getActiveEffectsMap() != null && living.hasEffect(ACCompat.effect(ACEffectRegistry.BUBBLED.get())) && (living.canBreatheUnderwater() || ACCompat.isAquatic(living)) && !living.getType().builtInRegistryHolder().is(ACTagRegistry.RESISTS_BUBBLED)) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    // The rainbounce boots' bounce hangs off "this move ended by landing on something", and until 26.2
+    // that moment was a call out to the block: Entity#move asked the state's Block to update the entity
+    // after a fall onto it, guarded by "the y this step asked for is not the y it got". (The hook's own
+    // name is deliberately not spelled here — a replacement rule rewrites it, in prose as readily as in
+    // a target string.)
+    //
+    // 26.2 deleted that hook (from SlimeBlock and BedBlock too — see SundropBlock) and folded the work
+    // back into the entity, as a private restituteMovementAfterCollisions(BlockState, boolean, boolean,
+    // Vec3) called from the same place in move(). Two things follow. (1) NeoForge patches an extra
+    // leading BlockPos onto it and calls THAT overload from move(), leaving the vanilla-shaped one
+    // behind as a delegate nothing invokes — so the anchor is per loader, since @At matches the call
+    // site's descriptor. (2) The new guard is `canSimulateMovement() && ((flag && verticalCollision) ||
+    // horizontalCollision)`, i.e. it also fires on a purely horizontal collision, which the old one
+    // never did; verticalCollision is the same statement about the same step that "asked-for y is not
+    // the y it got" was, so the missing half of the guard moves into the handler.
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V"},
+            remap = true,
+            cancellable = true,
+            //? if neoforge && >=26.2 {
+            /*at = {@At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/Entity;restituteMovementAfterCollisions(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;ZZLnet/minecraft/world/phys/Vec3;)V",
+                    shift = At.Shift.AFTER
+            )}
+            *///?} elif >=26.2 {
+            /*at = {@At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/Entity;restituteMovementAfterCollisions(Lnet/minecraft/world/level/block/state/BlockState;ZZLnet/minecraft/world/phys/Vec3;)V",
+                    shift = At.Shift.AFTER
+            )}
+            *///?} else {
+            at = {@At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/block/Block;updateEntityAfterFallOn(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;)V",
+                    shift = At.Shift.AFTER
+            )}
+            //?}
+    )
+    public void ac_move(MoverType moverType, Vec3 vec3, CallbackInfo ci) {
+        //? if >=26.2 {
+        /*if (!((Entity) (Object) this).verticalCollision) {
+            return;
+        }
+        *///?}
+        if ((Object) this instanceof LivingEntity living && living.getItemBySlot(EquipmentSlot.FEET).is(ACItemRegistry.RAINBOUNCE_BOOTS.get())) {
+            RainbounceBootsItem.onEntityLand(living, vec3);
+        }
+    }
+
+    // Citadel guards every magnet-data access, because on 1.20.1 the accessors are registered from
+    // a constructor TAIL inject that a subclass could conceivably outrun. 1.20.5 deleted
+    // SynchedEntityData#hasItem outright — the container is now a fixed-size array built in one
+    // shot — and the question no longer arises: registration happens inside Entity's constructor,
+    // before the container exists, so if an entity exists at all its data is there.
+    private boolean ac_hasMagnetData(EntityDataAccessor<?> accessor) {
+        //? if >=1.20.5 {
+        /*return true;
+        *///?} else {
+        return entityData.hasItem(accessor);
+        //?}
+    }
+
+    @Override
+    public float getMagneticDeltaX() {
+        return ac_hasMagnetData(CitadelSyncedData.MAGNET_DELTA_X) ? entityData.get(CitadelSyncedData.MAGNET_DELTA_X) : 0.0F;
+    }
+
+    @Override
+    public float getMagneticDeltaY() {
+        return ac_hasMagnetData(CitadelSyncedData.MAGNET_DELTA_Y) ? entityData.get(CitadelSyncedData.MAGNET_DELTA_Y) : 0.0F;
+    }
+
+    @Override
+    public float getMagneticDeltaZ() {
+        return ac_hasMagnetData(CitadelSyncedData.MAGNET_DELTA_Z) ? entityData.get(CitadelSyncedData.MAGNET_DELTA_Z) : 0.0F;
+    }
+
+    // Upstream did this from Forge's EntityEvent.Size, which Forge deleted in 1.20.2, so the magnet
+    // cases are reimplemented here on every version and loader instead. A magnetised entity is
+    // stuck to some face of a block: on the ceiling its eyes are the same distance from the (now
+    // upper) feet, and on a wall it is lying sideways, so there is no vertical eye offset at all.
+    //
+    // That event only ever rewrote the CACHED eye height — the field getEyeHeight() returns and the
+    // camera, getEyeY and the vanilla eye position read — and never getEyeHeight(Pose), which
+    // MagnetUtil#getEyePositionForAttachment needs to stay the plain standing value. So this hooks
+    // the one place that field is written, refreshDimensions, rather than either getEyeHeight
+    // overload: below 1.20.5 LivingEntity overrides getEyeHeight(Pose, EntityDimensions) as final
+    // without calling super, so an Entity-level inject there never ran for a player or a mob; and
+    // from 1.20.5 refreshDimensions copies EntityDimensions#eyeHeight straight into the field
+    // without calling any getEyeHeight at all, while the final getEyeHeight(Pose) that was hooked
+    // instead fed a zero into the wall-walking camera. refreshDimensions writes the field before
+    // its single return on every version in the range, so RETURN always sees the fresh value.
+    @Inject(
+            method = {"Lnet/minecraft/world/entity/Entity;refreshDimensions()V"},
+            remap = true,
+            at = @At(value = "RETURN")
+    )
+    public void ac_refreshDimensions(CallbackInfo ci) {
+        Direction dir = this.getMagneticAttachmentFace();
+        if (dir == Direction.UP) {
+            this.eyeHeight = ACCompat.height(this.dimensions) - this.eyeHeight;
+        } else if (dir.getAxis() != Direction.Axis.Y) {
+            this.eyeHeight = 0.0F;
+        }
+    }
+
+    @Override
+    public Direction getMagneticAttachmentFace() {
+        return ac_hasMagnetData(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION) ? entityData.get(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION) : Direction.DOWN;
+    }
+
+    @Override
+    public Direction getPrevMagneticAttachmentFace() {
+        return prevAttachDir;
+    }
+
+    @Override
+    public float getAttachmentProgress(float partialTicks) {
+        return prevAttachChangeProgress + (attachChangeProgress - prevAttachChangeProgress) * partialTicks;
+    }
+
+    @Override
+    public void setMagneticDeltaX(float f) {
+        if (ac_hasMagnetData(CitadelSyncedData.MAGNET_DELTA_X)) {
+            entityData.set(CitadelSyncedData.MAGNET_DELTA_X, f);
+        }
+    }
+
+    @Override
+    public void setMagneticDeltaY(float f) {
+        if (ac_hasMagnetData(CitadelSyncedData.MAGNET_DELTA_Y)) {
+            entityData.set(CitadelSyncedData.MAGNET_DELTA_Y, f);
+        }
+    }
+
+    @Override
+    public void setMagneticDeltaZ(float f) {
+        if (ac_hasMagnetData(CitadelSyncedData.MAGNET_DELTA_Z)) {
+            entityData.set(CitadelSyncedData.MAGNET_DELTA_Z, f);
+        }
+    }
+
+    @Override
+    public void setMagneticAttachmentFace(Direction dir) {
+        if (ac_hasMagnetData(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION)) {
+            entityData.set(CitadelSyncedData.MAGNET_ATTACHMENT_DIRECTION, dir);
+        }
+    }
+
+    @Override
+    public void postMagnetJump() {
+        this.jumpFlipCooldown = 20;
+    }
+
+    @Override
+    public boolean canChangeDirection() {
+        return jumpFlipCooldown <= 0 && getAttachmentProgress(1.0F) == 1.0F;
+    }
+
+    @Override
+    public void stepOnMagnetBlock(BlockPos pos) {
+        if (lastStepPos == null || lastStepPos.distSqr(pos) > 2) {
+            this.lastStepPos = pos;
+            this.playStepSound(pos, level.getBlockState(pos));
+        }
+    }
+
+    // 26 pulled an entity's fluid state into a vanilla EntityFluidInteraction, which tracks height,
+    // eye-immersion and flow per TagKey<Fluid> — for exactly the tags it is handed at construction.
+    // Entity's field initialiser hands it Set.of(WATER, LAVA), so a modded fluid is invisible to
+    // getFluidHeight/isEyeInFluid, and NeoForge 26.1 removed the FluidType-shaped queries that used
+    // to answer for one. Widening that one argument restores every question ACFluids asks, on every
+    // loader and with no per-entity state of our own; the trackers cost two more entries in a
+    // Reference2ObjectArrayMap and one identity compare per distinct fluid in the entity's box.
+    //
+    // A @ModifyArg rather than an @Inject because the call site is a field initialiser, i.e. inside
+    // <init>, and Forge's Mixin refuses an @Inject into a constructor anywhere but RETURN/TAIL —
+    // where the object has already been built with the narrow set. Other injector types carry no
+    // such restriction (see citadel/EntityMixin's SynchedEntityData$Builder redirect).
+    //
+    // ⚠️ INVOKE on the constructor, NOT @At("NEW"). "NEW" resolves to the `new` instruction itself,
+    // which is a TypeInsnNode carrying no arguments, so @ModifyArg dies at apply time with
+    // "targetting a non-method insn" — a hard boot failure that compiles clean and that
+    // verify_mixins.py cannot see, since the type the NEW form names does exist. The arguments live
+    // on the invokespecial two instructions later (javap: `63: invokespecial … ."<init>":(Ljava/util/Set;)V`),
+    // which is what an argument-modifying injector has to anchor on.
+    //? if >=26 {
+    /*@org.spongepowered.asm.mixin.injection.ModifyArg(
+            method = "<init>",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/EntityFluidInteraction;<init>(Ljava/util/Set;)V"))
+    private java.util.Set<net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid>> ac_trackModFluids(
+            java.util.Set<net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid>> tracked) {
+        java.util.Set<net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid>> widened =
+                new java.util.LinkedHashSet<>(tracked);
+        widened.add(ACTagRegistry.ACID);
+        widened.add(ACTagRegistry.PURPLE_SODA);
+        return widened;
+    }
+    *///?}
+
+    // Below 26 there is no EntityFluidInteraction to widen, but the map it replaced is the same idea
+    // and just as open: Entity#fluidHeight is keyed by TagKey<Fluid> and filled by public
+    // updateFluidHeightAndDoFluidPushing(TagKey, double) calls, so adding this mod's two fluids to it
+    // is two more calls rather than a mechanism. Forge and NeoForge never take this arm — they have
+    // the FluidType-shaped queries ACFluids uses below 26 — so it is Fabric's 18 sub-26 nodes only.
+    //
+    // updateInWaterStateAndDoFluidPushing() is the single driver: it clears the map at HEAD, then does
+    // water and lava. TAIL is therefore the only correct anchor — HEAD would have our entries cleared
+    // out from under us — and the method's name and descriptor are byte-identical on 1.20.1, 1.20.5,
+    // 1.21, 1.21.5, 1.21.9 and 1.21.11 (javap'd against the vanilla jar, not the loader-patched one),
+    // so one arm covers the whole band. The return value is deliberately not touched: it feeds
+    // baseTick's water/lava bookkeeping, which this mod's fluids have never claimed to be.
+    //
+    // 0.014D is the push scale. That is Forge's FluidType#motionScale default, which neither
+    // AcidFluidType nor PurpleSodaFluidType overrides, so it is exactly what the other two loaders
+    // apply below 26. Eye immersion needs no arm at all — updateFluidOnEyes records every tag of the
+    // fluid state at eye level, so isEyeInFluid answers for a mod tag for free.
+    //? if fabric && <26 {
+    /*@Inject(method = "updateInWaterStateAndDoFluidPushing()Z", at = @At("TAIL"))
+    private void ac_pushInModFluids(CallbackInfoReturnable<Boolean> cir) {
+        Entity self = (Entity) (Object) this;
+        self.updateFluidHeightAndDoFluidPushing(ACTagRegistry.ACID, 0.014D);
+        self.updateFluidHeightAndDoFluidPushing(ACTagRegistry.PURPLE_SODA, 0.014D);
+    }
+    *///?}
+
+    // The two halves of "acid and soda behave like water" that ac_isInWater above does NOT buy, on
+    // the same two loaders and for the same reason: nothing there dispatches to a FluidType, so
+    // vanilla answers every fluid question about this mod's fluids with the water tag's answer,
+    // which is zero.
+    //
+    // ① Surfacing. LivingEntity#aiStep decides a swim-jump with
+    //    `boolean flag = this.isInWater() && this.getFluidHeight(WATER) > 0.0` and only calls
+    //    jumpInLiquid(WATER) when flag holds; otherwise it falls through to a jumpFromGround that a
+    //    floating entity never reaches, because that arm is guarded on onGround(). isInWater() is
+    //    already true here, the height is still 0, so holding jump in soda did nothing at all and
+    //    the player sank with no way up. Both getFluidHeight calls in aiStep are javap-confirmed on
+    //    vanilla 26.2 and on 1.21.11.
+    //
+    // ② Drowning. LivingEntity#baseTick gates the whole air-supply block on
+    //    isEyeInFluid(WATER) && !canBreatheUnderwater(), so a head under soda neither lost air nor
+    //    showed the bubble bar. Forge does drown you — FluidType#canDrownIn defaults to true and
+    //    neither of this mod's two overrides it — so this is parity with the other loader, not a
+    //    new behaviour. It also restores isUnderWater() and the bubble bar, and brings back a
+    //    submerged screen overlay, which had been absent in soda on these loaders since the fluid
+    //    stopped going through a FluidType. ⚠️ It is VANILLA's overlay, not this mod's: the two
+    //    under_acid/under_purple_soda textures are only reachable through
+    //    IClientFluidTypeExtensions#getRenderOverlayTexture, which is Forge's, and vanilla's
+    //    ScreenEffectRenderer blits a hardcoded textures/misc/underwater.png (javap'd on 26.2).
+    //    Wrong tint, right signal; swapping it needs a per-version injection into a method that is
+    //    renderWater on three different descriptors and submitWater on a fourth.
+    //
+    // Both answer for the water tag ONLY, and only upwards: a real water reading always wins, so an
+    // entity in water next to soda is unaffected. Everything else keyed on FluidTags.WATER —
+    // freezing, fire extinguishing, boat physics — reads the block, not these, and is untouched.
+    //
+    // ACFluids rather than the mod tags' own trackers on purpose: NeoForge 26.1.2.97 hard-throws
+    // from getFluidHeight/isEyeInFluid for any tag that is not WATER or LAVA (see ACFluids), which
+    // is exactly the build this arm has to run on.
+    //? if fabric || (neoforge && >=26.1) {
+    /*@Inject(method = "getFluidHeight(Lnet/minecraft/tags/TagKey;)D", remap = true, cancellable = true, at = @At("RETURN"))
+    private void ac_modFluidHeightAsWater(net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid> tag, CallbackInfoReturnable<Double> cir) {
+        if (tag == net.minecraft.tags.FluidTags.WATER) {
+            double modHeight = com.github.alexmodguy.alexscaves.server.misc.ACFluids.modFluidHeight((Entity) (Object) this);
+            if (modHeight > cir.getReturnValueD()) {
+                cir.setReturnValue(modHeight);
+            }
+        }
+    }
+
+    @Inject(method = "isEyeInFluid(Lnet/minecraft/tags/TagKey;)Z", remap = true, cancellable = true, at = @At("RETURN"))
+    private void ac_modFluidOnEyesAsWater(net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid> tag, CallbackInfoReturnable<Boolean> cir) {
+        if (tag == net.minecraft.tags.FluidTags.WATER && !cir.getReturnValueZ()
+                && com.github.alexmodguy.alexscaves.server.misc.ACFluids.isEyeInModFluid((Entity) (Object) this)) {
+            cir.setReturnValue(true);
+        }
+    }
+    *///?}
+}

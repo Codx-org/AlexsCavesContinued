@@ -1,0 +1,76 @@
+package com.github.alexmodguy.alexscaves.server.item;
+
+import com.github.alexmodguy.alexscaves.server.misc.ACCompat;
+
+import com.github.alexmodguy.alexscaves.server.potion.ACEffectRegistry;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.food.FoodProperties;
+
+public class ACFoods {
+    public static final FoodProperties TRILOCARIS_TAIL = ACFoodBuilder.of().nutrition(2).saturationMod(0.3F).meat().build();
+    public static final FoodProperties TRILOCARIS_TAIL_COOKED = ACFoodBuilder.of().nutrition(5).saturationMod(0.5F).meat().build();
+    public static final FoodProperties PINE_NUTS = ACFoodBuilder.of().nutrition(2).saturationMod(0.175F).build();
+    public static final FoodProperties DINOSAUR_NUGGETS = ACFoodBuilder.of().nutrition(3).saturationMod(0.3F).meat().fast().build();
+    public static final FoodProperties SERENE_SALAD = ACFoodBuilder.of().nutrition(5).saturationMod(0.35F).bowl().build();
+    public static final FoodProperties SEETHING_STEW = ACFoodBuilder.of().nutrition(6).saturationMod(0.6F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.RAGE.get()), 2200), 1.0F).bowl().build();
+    public static final FoodProperties PRIMORDIAL_SOUP = ACFoodBuilder.of().nutrition(6).saturationMod(0.6F).effect(() -> new MobEffectInstance(MobEffects.DIG_SPEED, 800), 1.0F).bowl().build();
+    public static final FoodProperties RADGILL = ACFoodBuilder.of().nutrition(2).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.IRRADIATED.get()), 2000), 1.0F).build();
+    public static final FoodProperties RADGILL_COOKED = ACFoodBuilder.of().nutrition(5).saturationMod(0.3F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.IRRADIATED.get()), 1000), 0.1F).build();
+    public static final FoodProperties SPELUNKIE = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).fast().build();
+    public static final FoodProperties SLAM = ACFoodBuilder.of().nutrition(4).saturationMod(0.5F).effect(() -> new MobEffectInstance(MobEffects.DAMAGE_BOOST, 400), 1.0F).meat().build();
+    public static final FoodProperties SOYLENT_GREEN = ACFoodBuilder.of().nutrition(3).saturationMod(0.35F).alwaysEat().meat().sound(SoundEvents.HONEY_DRINK).build();
+    public static final FoodProperties LANTERNFISH = ACFoodBuilder.of().nutrition(1).saturationMod(0.175F).fast().build();
+    public static final FoodProperties LANTERNFISH_COOKED = ACFoodBuilder.of().nutrition(2).saturationMod(0.3F).fast().build();
+    public static final FoodProperties TRIPODFISH = ACFoodBuilder.of().nutrition(2).saturationMod(0.2F).build();
+    public static final FoodProperties TRIPODFISH_COOKED = ACFoodBuilder.of().nutrition(5).saturationMod(0.34F).build();
+    public static final FoodProperties SEA_PIG = ACFoodBuilder.of().nutrition(1).saturationMod(0.2F).effect(() -> new MobEffectInstance(MobEffects.HUNGER, 1200), 0.7F).build();
+    public static final FoodProperties MUSSEL_COOKED = ACFoodBuilder.of().nutrition(4).saturationMod(0.3F).fast().build();
+    public static final FoodProperties DEEP_SEA_SUSHI_ROLL = ACFoodBuilder.of().nutrition(7).saturationMod(0.4F).build();
+    public static final FoodProperties STINKY_FISH = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.STUNNED.get()), 100), 1.0F).build();
+    public static final FoodProperties VESPER_WING = ACFoodBuilder.of().nutrition(3).saturationMod(0.2F).effect(() -> new MobEffectInstance(MobEffects.HUNGER, 1200), 1.0F).build();
+    public static final FoodProperties VESPER_SOUP = ACFoodBuilder.of().nutrition(5).saturationMod(0.3F).alwaysEat().effect(() -> new MobEffectInstance(MobEffects.NIGHT_VISION, 2400), 1.0F).bowl().build();
+    public static final FoodProperties DARKENED_APPLE = ACFoodBuilder.of().nutrition(4).saturationMod(0.35F).alwaysEat().build();
+
+    public static final FoodProperties BLOCK_OF_CHOCOLATE = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties BLOCK_OF_FROSTING = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.02F).build();
+    public static final FoodProperties SWEET_PUFF = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.02F).build();
+    public static final FoodProperties CAKE_LAYER = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.02F).build();
+    public static final FoodProperties COOKIE = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties COOKIE_HALF = ACFoodBuilder.of().nutrition(1).saturationMod(0.05F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties DOUGH = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties LICOROOT = ACFoodBuilder.of().nutrition(3).saturationMod(0.1F).effect(() -> new MobEffectInstance(MobEffects.CONFUSION, 200), 0.1F).build();
+    public static final FoodProperties LICOROOT_VINE = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(MobEffects.CONFUSION, 200), 0.1F).build();
+    public static final FoodProperties SMALL_PEPPERMINT = ACFoodBuilder.of().nutrition(3).saturationMod(0.15F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties LARGE_PEPPERMINT = ACFoodBuilder.of().nutrition(5).saturationMod(0.15F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties VANILLA_ICE_CREAM = ACFoodBuilder.of().nutrition(4).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.03F).build();
+    public static final FoodProperties CHOCOLATE_ICE_CREAM = ACFoodBuilder.of().nutrition(4).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.03F).build();
+    public static final FoodProperties SWEETBERRY_ICE_CREAM = ACFoodBuilder.of().nutrition(4).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.03F).build();
+    public static final FoodProperties SUNDAE = ACFoodBuilder.of().nutrition(12).saturationMod(0.35F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 400), 0.2F).bowl().build();
+    public static final FoodProperties SPRINKLES = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties GIANT_SWEETBERRY = ACFoodBuilder.of().nutrition(5).saturationMod(0.2F).build();
+    public static final FoodProperties CANDY_CANE = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties CANDY_CANE_POLE = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties LOLLIPOP_BUNCH = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties FROSTMINT = ACFoodBuilder.of().nutrition(3).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties SUGAR_GLASS = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties SUNDROP = ACFoodBuilder.of().nutrition(5).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.05F).build();
+    public static final FoodProperties GUMMY_RING = ACFoodBuilder.of().nutrition(3).saturationMod(0.15F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties ROCK_CANDY = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties JELLY_BEAN = ACFoodBuilder.of().nutrition(1).saturationMod(0.05F).build();
+    public static final FoodProperties GINGERBREAD = ACFoodBuilder.of().nutrition(4).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties GINGERBREAD_HALF = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties GINGERBREAD_CRUMBS = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties PURPLE_SODA_BOTTLE = ACFoodBuilder.of().nutrition(2).saturationMod(0.1F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).sound(SoundEvents.GENERIC_DRINK).build();
+    public static final FoodProperties SWEETISH_FISH = ACFoodBuilder.of().nutrition(2).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties GELATIN = ACFoodBuilder.of().nutrition(3).saturationMod(0.25F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties HOT_CHOCOLATE_BOTTLE = ACFoodBuilder.of().nutrition(4).saturationMod(0.25F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.02F).sound(SoundEvents.GENERIC_DRINK).build();
+    public static final FoodProperties PEPPERMINT_POWDER = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).fast().effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties CARAMEL = ACFoodBuilder.of().nutrition(2).saturationMod(0.3F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.04F).build();
+    public static final FoodProperties CARAMEL_APPLE = ACFoodBuilder.of().nutrition(6).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.02F).build();
+    public static final FoodProperties GUMBALL_PILE = ACFoodBuilder.of().nutrition(3).saturationMod(0.2F).effect(() -> new MobEffectInstance(ACCompat.effect(ACEffectRegistry.SUGAR_RUSH.get()), 200), 0.01F).build();
+    public static final FoodProperties ALEX_MEAL = ACFoodBuilder.of().nutrition(40).saturationMod(5.0F).effect(() -> new MobEffectInstance(MobEffects.CONFUSION, 200), 1.0F).effect(() -> new MobEffectInstance(MobEffects.BAD_OMEN, 48000), 1.0F).bowl().build();
+    public static final FoodProperties BIOME_TREAT = ACFoodBuilder.of().nutrition(20).saturationMod(0.1F).build();
+    public static final FoodProperties BIOME_TREAT_DONE = ACFoodBuilder.of().nutrition(1).saturationMod(0.1F).build();
+}

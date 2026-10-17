@@ -1,0 +1,8 @@
+{
+  "comparator_output": 14,
+  "description": {
+    "translate": "item.alexscaves.music_disc_tasty.desc"
+  },
+  "length_in_seconds": 183.0,
+  "sound_event": "alexscaves:tasty_music_disc"
+}

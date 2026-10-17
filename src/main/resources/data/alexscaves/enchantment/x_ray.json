@@ -1,0 +1,23 @@
+{
+  "description": {
+    "translate": "enchantment.alexscaves.x_ray"
+  },
+  "supported_items": "#alexscaves:enchantable/raygun",
+  "weight": 10,
+  "max_level": 1,
+  "min_cost": {
+    "base": 1,
+    "per_level_above_first": 12
+  },
+  "max_cost": {
+    "base": 41,
+    "per_level_above_first": 10
+  },
+  "anvil_cost": 1,
+  "slots": [
+    "mainhand"
+  ],
+  "exclusive_set": [
+    "alexscaves:gamma_ray"
+  ]
+}
