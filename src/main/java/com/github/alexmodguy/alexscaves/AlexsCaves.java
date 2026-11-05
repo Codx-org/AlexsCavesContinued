@@ -124,6 +124,18 @@ public class AlexsCaves {
         CLIENT_CONFIG_SPEC.load(codx.codxlib.api.CodxLib.configDir().resolve("alexscaves-client.toml"));
         BiomeGenerationConfig.reloadConfig();
         com.github.alexmodguy.alexscaves.fabric.ModBus modEventBus = com.github.alexmodguy.alexscaves.fabric.ModBus.INSTANCE;
+        *///?} elif neoforge && >=26.3 {
+        /*// FML renamed COMMON to LOCAL during the 26.3 release line. Resolve by name so
+        // this node supports both its original NeoForge minimum and newer loader builds.
+        ModConfig.Type commonConfigType;
+        try {
+            commonConfigType = ModConfig.Type.valueOf("LOCAL");
+        } catch (IllegalArgumentException ignored) {
+            commonConfigType = ModConfig.Type.valueOf("COMMON");
+        }
+        ModLoadingContext.get().getActiveContainer().registerConfig(commonConfigType, COMMON_CONFIG_SPEC, "alexscaves-general.toml");
+        ModLoadingContext.get().getActiveContainer().registerConfig(ModConfig.Type.CLIENT, CLIENT_CONFIG_SPEC, "alexscaves-client.toml");
+        IEventBus modEventBus = ModLoadingContext.get().getActiveContainer().getEventBus();
         *///?} elif neoforge && >=1.21 {
         /*ModLoadingContext.get().getActiveContainer().registerConfig(ModConfig.Type.COMMON, COMMON_CONFIG_SPEC, "alexscaves-general.toml");
         ModLoadingContext.get().getActiveContainer().registerConfig(ModConfig.Type.CLIENT, CLIENT_CONFIG_SPEC, "alexscaves-client.toml");
